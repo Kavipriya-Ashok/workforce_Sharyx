@@ -1,0 +1,10 @@
+export declare const AuditLogRemoveColumnsName: any[];
+export declare const AuditLogRemoveColumnsNameByTable: {};
+export declare const AuditLogSameTableReferenceName: {};
+export declare const AuditLogChangeTableReferenceName: {};
+export declare const AuditLogIdentityName: {};
+export declare const AuditLogRemoveColumn: () => (target: any, propertyKey: string) => void;
+export declare const AuditLogTableRemoveColumns: () => (target: any, propertyKey: string) => void;
+export declare function AuditLogSameTableReference(ReferenceTableName: string): (target: any, propertyKey: string) => void;
+export declare function AuditLogIdentity(ReferenceTableName?: string, ISPorperty?: boolean): (target: any, propertyKey: string) => void;
+export declare function AuditLogChangeTableReference(ReferenceTableName: string): (target: any, propertyKey: string) => void;

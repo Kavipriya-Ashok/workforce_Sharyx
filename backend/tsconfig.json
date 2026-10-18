@@ -6,7 +6,9 @@
       "@Service/*": ["src/Service/*"],
       "@Helper/*": ["src/Helper/*"],
       "@Controller/*": ["src/Controller/*"],
-      "@Database/*": ["src/Database/*"]
+      "@Database/*": ["src/Database/*"],
+      "@WhatsApp/*": ["src/WhatsApp/*"],
+      "@Email/*": ["src/Email/*"]
     },
     "module": "commonjs",
     "declaration": true,

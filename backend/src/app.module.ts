@@ -37,9 +37,15 @@ import { ExceptionHelper } from "./Helper/Exception.helper";
 import { MailerService } from "./Service/Mailer.service";
 import { EncryptionService } from "./Service/Encryption.service";
 import { CommonSeederService } from "./Database/Seeds/CommonSeeder.service";
+import { WhatsAppModule } from "./WhatsApp/whatsapp.module";
+import { EmailModule } from "./Email/email.module";
+import { LeadModule } from "./Module/Lead.module";
 
 @Module({
   imports: [
+    WhatsAppModule,
+    EmailModule,
+    LeadModule,
     ClsModule,
     ServeStaticModule.forRoot({
       rootPath: __dirname + "/client",
@@ -52,16 +58,16 @@ import { CommonSeederService } from "./Database/Seeds/CommonSeeder.service";
       imports: [ConfigModule],
       useFactory: (_ConfigService: ConfigService) => ({
         type: "postgres",
-        host: _ConfigService.get("Database.Host"),
-        port: _ConfigService.get("Database.Port"),
-        username: _ConfigService.get("Database.User"),
-        password: _ConfigService.get("Database.Password"),
-        database: _ConfigService.get("Database.Name"),
-        synchronize: _ConfigService.get("Database.Sync"),
+        host: _ConfigService.get("Database.Host") || process.env.DB_HOST || "localhost",
+        port: Number(_ConfigService.get("Database.Port") || process.env.DB_PORT) || 5432,
+        username: _ConfigService.get("Database.User") || process.env.DB_USER || "postgres",
+        password: String(_ConfigService.get("Database.Password") || process.env.DB_PASS || "postgres"),
+        database: _ConfigService.get("Database.Name") || process.env.DB_NAME || "postgres",
+        synchronize: _ConfigService.get("Database.Sync") ?? true,
         keepConnectionAlive: true,
         entities: [__dirname + "/Database/**/*.{ts,js}"],
         logger: "advanced-console",
-        logging: _ConfigService.get("Database.LOG"),
+        logging: _ConfigService.get("Database.LOG") ?? false,
         bigNumberStrings: false,
         supportBigNumbers: true,
         dateStrings: true,
@@ -77,8 +83,8 @@ import { CommonSeederService } from "./Database/Seeds/CommonSeeder.service";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (_ConfigService: ConfigService) => ({
-        secret: _ConfigService.get("JWT.SecertToken"),
-        signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") },
+        secret: _ConfigService.get("JWT.SecertToken") || "sharyx_jwt_secret_token_secure_key_2026",
+        signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") || "7d" },
       }),
       inject: [ConfigService],
     }),
@@ -119,13 +125,29 @@ import { CommonSeederService } from "./Database/Seeds/CommonSeeder.service";
     {
       provide: "REDIS_CLIENT",
       useFactory: () => {
+        const redisPort = Number(process.env.REDIS_PORT);
+        const validPort = !isNaN(redisPort) && redisPort > 0 ? redisPort : 6379;
+        const redisHost = process.env.REDIS_HOST || "127.0.0.1";
+
+        if (process.env.REDIS_ENABLE === "false" || !process.env.REDIS_PORT) {
+          // Return non-throwing mock client when Redis is disabled
+          return {
+            keys: async () => [],
+            mget: async () => [],
+            set: async () => "OK",
+            del: async () => 1,
+            on: () => {},
+          } as any;
+        }
+
         return new Redis({
-          host: process.env.REDIS_HOST,
-          port: Number(process.env.REDIS_PORT),
+          host: redisHost,
+          port: validPort,
+          lazyConnect: true,
+          retryStrategy: () => null,
         });
       },
     },
-    CacheService,
   ],
   exports: [AuthService, EncryptionService],
 })

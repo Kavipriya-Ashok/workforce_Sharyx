@@ -24,15 +24,21 @@ export class AuditLogService {
   private SameReferenceColumn = AuditLogSameTableReferenceName;
   private LogTableIdentifierName = AuditLogIdentityName;
   private ChangeTableReferenceName = AuditLogChangeTableReferenceName;
-  private DB = new InfluxDB({
-    url: process.env.INFLUX_URL,
-    token: process.env.INFLUX_TOKEN,
-  });
-  private writeApi = this.DB.getWriteApi(
-    process.env.INFLUX_ORG,
-    process.env.INFLUX_BUCKET
-  );
-  private queryApi = this.DB.getQueryApi(process.env.INFLUX_ORG);
+  private DB = process.env.INFLUX_URL
+    ? new InfluxDB({
+        url: process.env.INFLUX_URL,
+        token: process.env.INFLUX_TOKEN || "",
+      })
+    : null;
+  private writeApi = this.DB && process.env.INFLUX_ORG && process.env.INFLUX_BUCKET
+    ? this.DB.getWriteApi(
+        process.env.INFLUX_ORG,
+        process.env.INFLUX_BUCKET
+      )
+    : null;
+  private queryApi = this.DB && process.env.INFLUX_ORG
+    ? this.DB.getQueryApi(process.env.INFLUX_ORG)
+    : null;
 
   constructor(
     private _EventEmitter: EventEmitter2,

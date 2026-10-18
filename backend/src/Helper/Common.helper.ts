@@ -3,8 +3,9 @@ import { format, differenceInDays } from "date-fns";
 import "reflect-metadata";
 
 export const CurrentUser = createParamDecorator((data, req) => {
-  if (req.getArgs()[0].user.user_id) {
-    return req.getArgs()[0].user.user_id;
+  const request = req.getArgs()[0];
+  if (request?.user?.user_id) {
+    return request.user.user_id;
   } else {
     return 0;
   }

@@ -1,14 +1,14 @@
 export default () => ({
   Port: process.env.PORT || 8000,
   Database: {
-    Host: process.env.DB_HOST,
-    Port: 5432,
-    User: process.env.DB_USER,
-    Password: process.env.DB_PASS,
-    Name: process.env.DB_NAME,
+    Host: process.env.DB_HOST || "localhost",
+    Port: process.env.DB_PORT || 5432,
+    User: process.env.DB_USER || "postgres",
+    Password: process.env.DB_PASS || "postgres",
+    Name: process.env.DB_NAME || "postgres",
     Seed: process.env.DB_SEED,
-    Sync: process.env.DB_SYNC == "true",
-    LOG: process.env.DB_LOG == "true",
+    Sync: process.env.DB_SYNC === "true" || true,
+    LOG: process.env.DB_LOG === "true",
   },
   Encryption: {
     SecertKey: process.env.SECERT_KEY,

@@ -1,0 +1,10 @@
+import "reflect-metadata";
+export declare const CurrentUser: (...dataOrPipes: any[]) => ParameterDecorator;
+export declare const RandomValue: (min: any, max: any) => number;
+export declare const DateFormatForDB: (SourceDate: Date | null) => string;
+export declare const DBDateTimeStart: (SourceDate: Date | null) => any;
+export declare const DBDateTimeEnd: (SourceDate: Date | null) => any;
+export declare const DateFormatForReport: (SourceDate: Date | null) => string;
+export declare const DateComparison: (StartDate: Date, EndDate: Date) => boolean;
+export declare const SetLastDateOfMonth: (StartDate: Date) => string;
+export declare const EmptyUuid = "00000000-0000-0000-0000-00000000000";

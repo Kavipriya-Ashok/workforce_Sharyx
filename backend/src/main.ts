@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
@@ -16,9 +17,21 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: { origin: "*", exposedHeaders: "*" },
   });
-  app.setGlobalPrefix("api");
+  app.enableShutdownHooks();
+  app.setGlobalPrefix("api", {
+    exclude: ["webhook/whatsapp"],
+  });
   app.enableVersioning({
     type: VersioningType.URI,
+  });
+  // Auto-rewrite any external Meta webhook variations to internal /api/v1/WhatsApp/Webhook
+  app.use((req: any, res: any, next: any) => {
+    if (req.url && (req.url.startsWith("/api/webhook/whatsapp") || req.url.startsWith("/webhook/whatsapp"))) {
+      req.url = req.url
+        .replace("/api/webhook/whatsapp", "/api/v1/WhatsApp/Webhook")
+        .replace("/webhook/whatsapp", "/api/v1/WhatsApp/Webhook");
+    }
+    next();
   });
   app.use(compression());
   app.use(errorHandler());
