@@ -20,23 +20,51 @@ __decorate([
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "tenant_id", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ length: 50, default: "smtp" }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "provider", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 150, nullable: true }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "display_name", void 0);
+__decorate([
     (0, typeorm_1.Column)({ length: 150 }),
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "email_address", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 150 }),
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "client_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "client_secret", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "refresh_token", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], EmailAccountConfig.prototype, "access_token", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    __metadata("design:type", Date)
+], EmailAccountConfig.prototype, "token_expires_at", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 150, nullable: true }),
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "smtp_host", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "int", default: 587 }),
+    (0, typeorm_1.Column)({ type: "int", default: 587, nullable: true }),
     __metadata("design:type", Number)
 ], EmailAccountConfig.prototype, "smtp_port", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 150 }),
+    (0, typeorm_1.Column)({ length: 150, nullable: true }),
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "smtp_user", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "text" }),
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "smtp_password", void 0);
 __decorate([
@@ -44,7 +72,7 @@ __decorate([
     __metadata("design:type", String)
 ], EmailAccountConfig.prototype, "imap_host", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "int", default: 993 }),
+    (0, typeorm_1.Column)({ type: "int", default: 993, nullable: true }),
     __metadata("design:type", Number)
 ], EmailAccountConfig.prototype, "imap_port", void 0);
 __decorate([

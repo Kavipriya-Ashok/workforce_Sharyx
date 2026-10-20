@@ -15,6 +15,7 @@ const Email_service_1 = require("./Services/Email.service");
 const EmailAI_service_1 = require("./Services/EmailAI.service");
 const EmailCampaign_service_1 = require("./Services/EmailCampaign.service");
 const EmailImap_service_1 = require("./Services/EmailImap.service");
+const EmailValidation_service_1 = require("./Services/EmailValidation.service");
 const Encryption_service_1 = require("../Service/Encryption.service");
 let EmailModule = class EmailModule {
 };
@@ -31,6 +32,7 @@ exports.EmailModule = EmailModule = __decorate([
             EmailAI_service_1.EmailAIService,
             EmailCampaign_service_1.EmailCampaignService,
             EmailImap_service_1.EmailImapService,
+            EmailValidation_service_1.EmailValidationService,
             Encryption_service_1.EncryptionService,
         ],
         exports: [
@@ -38,6 +40,7 @@ exports.EmailModule = EmailModule = __decorate([
             EmailAI_service_1.EmailAIService,
             EmailCampaign_service_1.EmailCampaignService,
             EmailImap_service_1.EmailImapService,
+            EmailValidation_service_1.EmailValidationService,
         ],
     })
 ], EmailModule);

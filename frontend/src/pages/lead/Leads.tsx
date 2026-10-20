@@ -9,6 +9,7 @@ import {
   Trash2,
   Phone,
   MessageSquare,
+  Mail,
   ChevronRight,
   IndianRupee,
   CheckCircle2,
@@ -32,6 +33,7 @@ import { LeadService } from "@/service/leadService";
 import { LeadFormDialog } from "./components/LeadFormDialog";
 import { LeadDetailDrawer } from "./components/LeadDetailDrawer";
 import { LeadImportDialog } from "./components/LeadImportDialog";
+import { SendLeadEmailModal } from "./components/SendLeadEmailModal";
 import { toast } from "sonner";
 
 const STAGES = [
@@ -67,6 +69,7 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [emailModalLead, setEmailModalLead] = useState<Lead | null>(null);
 
   const fetchData = async () => {
     try {
@@ -381,6 +384,16 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                               <MessageSquare className="h-3.5 w-3.5" />
                             </a>
                           )}
+                          {l.email && (
+                            <button
+                              type="button"
+                              onClick={() => setEmailModalLead(l)}
+                              className="p-1.5 hover:bg-indigo-500/20 text-indigo-400 rounded-lg transition-colors border border-indigo-500/20"
+                              title={`Send Email to ${l.email}`}
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -469,6 +482,15 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
         isCandidate={isCandidate}
         onSuccess={fetchData}
       />
+
+      {emailModalLead && (
+        <SendLeadEmailModal
+          open={!!emailModalLead}
+          onOpenChange={(isOpen) => !isOpen && setEmailModalLead(null)}
+          lead={emailModalLead}
+          onEmailSent={fetchData}
+        />
+      )}
     </div>
   );
 }

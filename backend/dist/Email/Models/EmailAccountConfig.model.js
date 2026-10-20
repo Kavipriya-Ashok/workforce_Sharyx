@@ -23,32 +23,56 @@ __decorate([
     __metadata("design:type", String)
 ], EmailAccountConfigModel.prototype, "tenant_id", void 0);
 __decorate([
+    (0, swagger_1.ApiProperty)({ example: "smtp", default: "smtp" }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], EmailAccountConfigModel.prototype, "provider", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: "Support Team", required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], EmailAccountConfigModel.prototype, "display_name", void 0);
+__decorate([
     (0, swagger_1.ApiProperty)({ example: "support@sharyx.com" }),
     (0, class_validator_1.IsNotEmpty)({ message: "Email address is required" }),
     (0, class_validator_1.IsEmail)({}, { message: "Invalid email format" }),
     __metadata("design:type", String)
 ], EmailAccountConfigModel.prototype, "email_address", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "smtp.gmail.com" }),
-    (0, class_validator_1.IsNotEmpty)({ message: "SMTP Host is required" }),
+    (0, swagger_1.ApiProperty)({ example: "your-client-id.apps.googleusercontent.com", required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], EmailAccountConfigModel.prototype, "client_id", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: "GOCSPX-...", required: false }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], EmailAccountConfigModel.prototype, "client_secret", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: "smtp.gmail.com", required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], EmailAccountConfigModel.prototype, "smtp_host", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: 587, default: 587 }),
+    (0, swagger_1.ApiProperty)({ example: 587, default: 587, required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], EmailAccountConfigModel.prototype, "smtp_port", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "support@sharyx.com" }),
-    (0, class_validator_1.IsNotEmpty)({ message: "SMTP User is required" }),
+    (0, swagger_1.ApiProperty)({ example: "support@sharyx.com", required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], EmailAccountConfigModel.prototype, "smtp_user", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "app_password_here" }),
-    (0, class_validator_1.IsNotEmpty)({ message: "SMTP Password is required" }),
+    (0, swagger_1.ApiProperty)({ example: "app_password_here", required: false }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], EmailAccountConfigModel.prototype, "smtp_password", void 0);

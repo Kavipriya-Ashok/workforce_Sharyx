@@ -8,4 +8,8 @@ export declare class EmailAIService {
         subject: string;
         draft: any;
     }>;
+    generateLeadFollowupDraft(leadId: string, customPrompt?: string, intent?: string, tenantId?: string): Promise<{
+        subject: any;
+        body_html: any;
+    }>;
 }

@@ -15,15 +15,36 @@ export interface EmailLog {
 
 export interface EmailAccountConfig {
   id?: string;
+  provider?: 'google-email' | 'smtp';
+  display_name?: string;
   email_address: string;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_user: string;
+  client_id?: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
   smtp_password?: string;
   imap_host?: string;
   imap_port?: number;
   use_ssl?: boolean;
   is_active?: boolean;
+}
+
+export interface OAuthStatus {
+  isConnected: boolean;
+  provider: 'google-email' | 'smtp' | 'none';
+  email_address?: string;
+  display_name?: string;
+  token_expires_at?: string;
+}
+
+export interface EmailValidationResult {
+  isValid: boolean;
+  score: number;
+  reason?: string;
+  isDisposable: boolean;
+  isRoleBased: boolean;
+  hasMxRecords: boolean;
+  mxHost?: string;
 }
 
 export interface EmailAIConfig {

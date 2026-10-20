@@ -6,6 +6,7 @@ import { EmailService } from "./Services/Email.service";
 import { EmailAIService } from "./Services/EmailAI.service";
 import { EmailCampaignService } from "./Services/EmailCampaign.service";
 import { EmailImapService } from "./Services/EmailImap.service";
+import { EmailValidationService } from "./Services/EmailValidation.service";
 import { EncryptionService } from "@Service/Encryption.service";
 
 @Module({
@@ -19,6 +20,7 @@ import { EncryptionService } from "@Service/Encryption.service";
     EmailAIService,
     EmailCampaignService,
     EmailImapService,
+    EmailValidationService,
     EncryptionService,
   ],
   exports: [
@@ -26,6 +28,7 @@ import { EncryptionService } from "@Service/Encryption.service";
     EmailAIService,
     EmailCampaignService,
     EmailImapService,
+    EmailValidationService,
   ],
 })
 export class EmailModule {}

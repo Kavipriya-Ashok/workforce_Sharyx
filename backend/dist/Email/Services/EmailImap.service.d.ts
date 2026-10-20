@@ -1,4 +1,5 @@
 import { OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { lead } from "@Database/Table/Lead/lead";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
 import { EmailService } from "./Email.service";
@@ -12,5 +13,30 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService);
     onModuleInit(): void;
     onModuleDestroy(): void;
-    pollInbox(): Promise<void>;
+    extractPhoneNumber(text: string): string | null;
+    extractCompanyName(fromEmail: string, bodyText: string): string | null;
+    findOrCreateLeadFromEmail(fromEmail: string, fromName: string, bodyText: string, subject: string, tenantId?: string): Promise<{
+        leadRecord: lead;
+        extractedPhone: string | null;
+        extractedCompany: string | null;
+    }>;
+    private triggerAutoReply;
+    syncNow(tenantId?: string): Promise<{
+        synced: number;
+        status: string;
+        provider?: undefined;
+    } | {
+        synced: number;
+        provider: string;
+        status?: undefined;
+    }>;
+    pollInbox(): Promise<{
+        synced: number;
+        status: string;
+        provider?: undefined;
+    } | {
+        synced: number;
+        provider: string;
+        status?: undefined;
+    }>;
 }

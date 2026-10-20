@@ -7,6 +7,8 @@ import { EmailAISettingsView } from './components/EmailAISettingsView';
 import { CreateCampaignView } from './components/CreateCampaignView';
 import { ComposeEmailDialog } from './components/ComposeEmailDialog';
 import { EmailSettingsDialog } from './components/EmailSettingsDialog';
+import { emailService } from '@/service/emailService';
+import { toast } from 'sonner';
 import {
   Mail,
   Bot,
@@ -15,6 +17,7 @@ import {
   PlusCircle,
   Inbox,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 export const EmailAutomation: React.FC = () => {
@@ -43,6 +46,24 @@ export const EmailAutomation: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                toast.loading('Syncing incoming emails and leads...', { id: 'email-sync' });
+                const res = await emailService.syncInbox();
+                const count = res?.synced ?? 0;
+                toast.success(`Sync complete! ${count} new email(s) processed & CRM leads updated.`, { id: 'email-sync' });
+              } catch (err: any) {
+                toast.error(err.message || 'Sync failed', { id: 'email-sync' });
+              }
+            }}
+            className="gap-1.5 border-slate-700 bg-slate-800 text-slate-200 hover:text-white"
+          >
+            <RefreshCw className="h-4 w-4 text-cyan-400" />
+            Sync Inbox & Leads
+          </Button>
+          <Button
             variant="emerald"
             size="sm"
             onClick={() => setComposeOpen(true)}
@@ -58,7 +79,7 @@ export const EmailAutomation: React.FC = () => {
             className="gap-1.5"
           >
             <Settings className="h-4 w-4 text-slate-400" />
-            SMTP & IMAP Setup
+            Mailbox Setup
           </Button>
         </div>
       </div>

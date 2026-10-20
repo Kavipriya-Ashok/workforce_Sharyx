@@ -3,4 +3,5 @@ export declare class SendEmailModel {
     subject: string;
     html: string;
     lead_id?: string;
+    bypassValidation?: boolean;
 }

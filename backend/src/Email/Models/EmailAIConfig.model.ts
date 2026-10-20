@@ -49,4 +49,23 @@ export class GenerateEmailAIDraftModel {
   @IsOptional()
   @IsString()
   incoming_body?: string;
+
+  @IsOptional()
+  @IsString()
+  lead_name?: string;
+
+  @IsOptional()
+  conversation_history?: Array<{ direction: string; body: string }>;
+
+  @IsOptional()
+  @IsBoolean()
+  has_phone?: boolean;
+
+  @IsOptional()
+  @IsString()
+  phone_number?: string;
+
+  @IsOptional()
+  @IsString()
+  company_name?: string;
 }

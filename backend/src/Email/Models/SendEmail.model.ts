@@ -21,4 +21,8 @@ export class SendEmailModel {
   @IsOptional()
   @IsString()
   lead_id?: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  bypassValidation?: boolean;
 }

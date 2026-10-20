@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
 import { OnboardingWizard } from '@/pages/onboarding/OnboardingWizard';
 import { AdminLayout } from '@/pages/admin/AdminLayout';
+import { OAuthCallback } from '@/pages/auth/OAuthCallback';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,9 @@ export function App() {
 
             {/* 10-Step Onboarding Wizard */}
             <Route path="/onboarding" component={OnboardingWizard} />
+
+            {/* Google OAuth Callback */}
+            <Route path="/oauth/callback" component={OAuthCallback} />
 
             {/* Protected Admin Command Center Routes */}
             <Route path="/admin">

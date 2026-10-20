@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Lead } from "@/types/lead";
 import { LeadService } from "@/service/leadService";
+import { SendLeadEmailModal } from "./SendLeadEmailModal";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 
@@ -30,6 +31,7 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [note, setNote] = useState("");
   const [submittingNote, setSubmittingNote] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
 
   const fetchDetails = async () => {
     if (!leadId) return;
@@ -122,12 +124,13 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
                 </a>
               ) : null}
               {lead.email ? (
-                <a
-                  href={`mailto:${lead.email}`}
-                  className="flex items-center justify-center gap-1.5 p-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700/50"
+                <button
+                  type="button"
+                  onClick={() => setEmailModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 p-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl text-xs font-semibold border border-indigo-500/20 transition-colors"
                 >
-                  <Mail className="h-3.5 w-3.5 text-blue-400" /> Email
-                </a>
+                  <Mail className="h-3.5 w-3.5 text-indigo-400" /> Send Email
+                </button>
               ) : null}
             </div>
 
@@ -182,6 +185,18 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
           </div>
         </div>
       </div>
+
+      {emailModalOpen && lead && (
+        <SendLeadEmailModal
+          open={emailModalOpen}
+          onOpenChange={setEmailModalOpen}
+          lead={lead}
+          onEmailSent={() => {
+            fetchDetails();
+            onUpdate();
+          }}
+        />
+      )}
     </div>
   );
 }

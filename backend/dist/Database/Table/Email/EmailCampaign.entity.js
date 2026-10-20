@@ -47,6 +47,18 @@ __decorate([
     (0, typeorm_1.Column)({ length: 20, default: "draft" }),
     __metadata("design:type", String)
 ], EmailCampaign.prototype, "campaign_status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 50, default: "after_reply" }),
+    __metadata("design:type", String)
+], EmailCampaign.prototype, "trigger_event", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: true }),
+    __metadata("design:type", Boolean)
+], EmailCampaign.prototype, "is_active", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "int", default: 0 }),
+    __metadata("design:type", Number)
+], EmailCampaign.prototype, "delay_seconds", void 0);
 exports.EmailCampaign = EmailCampaign = __decorate([
     (0, typeorm_1.Entity)("email_campaign")
 ], EmailCampaign);

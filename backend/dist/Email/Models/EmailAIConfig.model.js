@@ -73,4 +73,28 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], GenerateEmailAIDraftModel.prototype, "incoming_body", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], GenerateEmailAIDraftModel.prototype, "lead_name", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Array)
+], GenerateEmailAIDraftModel.prototype, "conversation_history", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], GenerateEmailAIDraftModel.prototype, "has_phone", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], GenerateEmailAIDraftModel.prototype, "phone_number", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], GenerateEmailAIDraftModel.prototype, "company_name", void 0);
 //# sourceMappingURL=EmailAIConfig.model.js.map

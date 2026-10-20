@@ -4,11 +4,30 @@ import {
   EmailAIConfig,
   EmailCampaign,
   EmailLog,
+  OAuthStatus,
+  EmailValidationResult,
 } from '@/types/email';
 
 const API_BASE = '/api/v1/Email';
 
 export const emailService = {
+  // Email Validation (5-Layer Deliverability Check)
+  validateEmail: async (email: string): Promise<EmailValidationResult> => {
+    try {
+      const res = await axios.post(`${API_BASE}/Validate`, { email });
+      return res.data?.AddtionalData || res.data;
+    } catch (err: any) {
+      return {
+        isValid: false,
+        score: 0,
+        reason: err.response?.data?.message || err.message,
+        isDisposable: false,
+        isRoleBased: false,
+        hasMxRecords: false,
+      };
+    }
+  },
+
   // Config
   getConfig: async (): Promise<EmailAccountConfig | null> => {
     try {
@@ -22,6 +41,63 @@ export const emailService = {
   saveConfig: async (config: EmailAccountConfig) => {
     const res = await axios.post(`${API_BASE}/Config`, config);
     return res.data;
+  },
+
+  // Google OAuth 2.0
+  getGoogleAuthUrl: async (redirectUri?: string): Promise<string> => {
+    const res = await axios.get(`${API_BASE}/OAuth/AuthUrl`, {
+      params: redirectUri ? { redirectUri } : {},
+    });
+    const data = res.data?.AddtionalData || res.data;
+    return data?.url || '';
+  },
+
+  connectGoogle: async (code: string, redirectUri?: string) => {
+    const res = await axios.post(`${API_BASE}/OAuth/Connect`, {
+      code,
+      redirectUri,
+    });
+    return res.data?.AddtionalData || res.data;
+  },
+
+  getOAuthStatus: async (): Promise<OAuthStatus> => {
+    try {
+      const res = await axios.get(`${API_BASE}/OAuth/Status`);
+      return res.data?.AddtionalData || res.data || { isConnected: false, provider: 'none' };
+    } catch {
+      return { isConnected: false, provider: 'none' };
+    }
+  },
+
+  disconnectGoogle: async () => {
+    const res = await axios.post(`${API_BASE}/OAuth/Disconnect`);
+    return res.data;
+  },
+
+  // Lead Direct Send & AI Follow-Up Draft
+  generateLeadAiDraft: async (data: {
+    lead_id: string;
+    customPrompt?: string;
+    intent?: string;
+  }): Promise<{ subject: string; body_html: string }> => {
+    const res = await axios.post(`${API_BASE}/Lead/AiDraft`, data);
+    return res.data?.AddtionalData || res.data;
+  },
+
+  sendLeadEmail: async (data: {
+    lead_id: string;
+    to: string;
+    subject: string;
+    html: string;
+    isAiDrafted?: boolean;
+  }) => {
+    const res = await axios.post(`${API_BASE}/Lead/Send`, data);
+    return res.data;
+  },
+
+  syncInbox: async () => {
+    const res = await axios.post(`${API_BASE}/Sync`);
+    return res.data?.AddtionalData || res.data;
   },
 
   // 2-Way Inbox & Sending

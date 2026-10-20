@@ -11,4 +11,12 @@ export declare class GenerateEmailAIDraftModel {
     from_email?: string;
     subject?: string;
     incoming_body?: string;
+    lead_name?: string;
+    conversation_history?: Array<{
+        direction: string;
+        body: string;
+    }>;
+    has_phone?: boolean;
+    phone_number?: string;
+    company_name?: string;
 }

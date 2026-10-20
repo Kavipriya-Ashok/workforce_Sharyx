@@ -8,4 +8,7 @@ export declare class EmailCampaign extends BaseTable {
     sent_count: number;
     opened_count: number;
     campaign_status: string;
+    trigger_event: string;
+    is_active: boolean;
+    delay_seconds: number;
 }
