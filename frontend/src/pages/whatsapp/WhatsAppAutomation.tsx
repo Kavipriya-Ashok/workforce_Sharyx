@@ -9,6 +9,7 @@ import { WhatsAppTemplatesTab } from './components/WhatsAppTemplatesTab';
 import { WhatsAppAnalyticsPage } from './components/WhatsAppAnalyticsPage';
 import { WhatsAppSettingsDialog } from './components/WhatsAppSettingsDialog';
 import { CreateWhatsAppTemplateDialog } from './components/CreateWhatsAppTemplateDialog';
+import { MultiAgentHub } from './components/MultiAgentHub';
 import { whatsappService } from '@/service/whatsappService';
 import { WhatsAppConfig } from '@/types/whatsapp';
 import {
@@ -24,6 +25,7 @@ import {
   CheckCircle2,
   Layers,
   LayoutTemplate,
+  Users,
 } from 'lucide-react';
 
 export const WhatsAppAutomation: React.FC = () => {
@@ -173,7 +175,11 @@ export const WhatsAppAutomation: React.FC = () => {
 
       {/* Tabs Hub */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-5 max-w-2xl bg-slate-900 border border-slate-800">
+        <TabsList className="grid grid-cols-6 max-w-3xl bg-slate-900 border border-slate-800">
+          <TabsTrigger value="multi_agent" className="gap-2 text-xs">
+            <Users className="h-3.5 w-3.5 text-indigo-400" />
+            AI Squad
+          </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2 text-xs">
             <LayoutTemplate className="h-3.5 w-3.5 text-amber-400" />
             Templates
@@ -195,6 +201,10 @@ export const WhatsAppAutomation: React.FC = () => {
             Telemetry
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="multi_agent" className="mt-4">
+          <MultiAgentHub />
+        </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
           <WhatsAppTemplatesTab />

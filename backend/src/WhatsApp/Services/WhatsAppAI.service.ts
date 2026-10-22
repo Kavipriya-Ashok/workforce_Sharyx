@@ -2,12 +2,16 @@ import { Injectable, Logger } from "@nestjs/common";
 import { WhatsAppAIConfig } from "@Database/Table/WhatsApp/WhatsAppAIConfig.entity";
 import { WhatsAppAIConfigModel } from "../Models/WhatsAppAIConfig.model";
 import { PromptEngineService } from "./PromptEngine.service";
+import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
 
 @Injectable()
 export class WhatsAppAIService {
   private readonly logger = new Logger(WhatsAppAIService.name);
 
-  constructor(private readonly promptEngineService: PromptEngineService) {}
+  constructor(
+    private readonly promptEngineService: PromptEngineService,
+    private readonly orchestrator: AgentOrchestratorService
+  ) {}
 
   async getConfig(tenantId: string = "default"): Promise<WhatsAppAIConfig | null> {
     return await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
@@ -26,8 +30,8 @@ export class WhatsAppAIService {
     config.system_prompt = data.system_prompt || null;
     config.welcome_message = data.welcome_message || null;
     config.fallback_message = data.fallback_message || null;
-    config.llm_provider = data.llm_provider || "openai";
-    config.llm_model = data.llm_model || "gpt-4o-mini";
+    config.llm_provider = data.llm_provider || "gemini";
+    config.llm_model = data.llm_model || "gemini-2.5-flash";
     if (data.api_key !== undefined) {
       config.api_key = data.api_key;
     }
@@ -44,7 +48,8 @@ export class WhatsAppAIService {
     customerMessage: string,
     customerPhone: string,
     tenantId: string = "default",
-    conversationId?: string
+    conversationId?: string,
+    extras?: { customerName?: string; leadId?: string }
   ): Promise<string | null> {
     const config = await this.getConfig(tenantId);
     if (!config || !config.is_ai_enabled) {
@@ -55,6 +60,35 @@ export class WhatsAppAIService {
     const upperMsg = customerMessage.trim().toUpperCase();
     if (config.stop_words && config.stop_words.some((w) => upperMsg.includes(w.toUpperCase()))) {
       return "You have successfully unsubscribed. Reply START anytime to re-enable messages.";
+    }
+
+    // Multi-agent team: Receptionist -> Sales / Appointment / Support
+    if (conversationId) {
+      try {
+        const result = await this.orchestrator.handle({
+          channel: "whatsapp",
+          tenantId,
+          conversationRef: conversationId,
+          message: customerMessage,
+          phone: customerPhone,
+          name: extras?.customerName,
+          leadId: extras?.leadId,
+          llm: {
+            provider: config.llm_provider,
+            model: config.llm_model,
+            apiKey: config.api_key || undefined,
+          },
+        });
+        if (result) {
+          if (result.humanTakeover && !result.reply) return null; // human is handling this chat
+          this.logger.log(
+            `🤝 [MULTI-AGENT] ${result.agentName}${result.handoffs.length ? ` (via ${result.handoffs.map((h) => `${h.from}→${h.to}`).join(", ")})` : ""}`
+          );
+          if (result.reply) return result.reply;
+        }
+      } catch (err: any) {
+        this.logger.error(`Multi-agent orchestrator failed, using legacy pipeline: ${err.message}`);
+      }
     }
 
     try {

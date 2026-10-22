@@ -202,8 +202,8 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         }
         const customPrompt = aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.system_prompt;
         const systemPrompt = this.buildSystemPrompt(ctx, customPrompt);
-        const openAiKey = (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.api_key) || process.env.OPENAI_API_KEY;
-        const geminiKey = (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.api_key) || process.env.GEMINI_API_KEY;
+        const openAiKey = process.env.OPENAI_API_KEY || (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.api_key);
+        const geminiKey = process.env.GEMINI_API_KEY || (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.api_key);
         const isGemini = (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.llm_provider) === "gemini" || ((aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.api_key) && aiConfig.api_key.startsWith("AIzaSy"));
         if (isGemini && geminiKey) {
             try {

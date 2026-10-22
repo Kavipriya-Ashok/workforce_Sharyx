@@ -267,9 +267,9 @@ export class PromptEngineService {
     const customPrompt = aiConfig?.system_prompt;
     const systemPrompt = this.buildSystemPrompt(ctx, customPrompt);
 
-    // API Key priority: UI saved key -> process.env
-    const openAiKey = aiConfig?.api_key || process.env.OPENAI_API_KEY;
-    const geminiKey = aiConfig?.api_key || process.env.GEMINI_API_KEY;
+    // API Key priority: backend env key -> UI saved key
+    const openAiKey = process.env.OPENAI_API_KEY || aiConfig?.api_key;
+    const geminiKey = process.env.GEMINI_API_KEY || aiConfig?.api_key;
     const isGemini =
       aiConfig?.llm_provider === "gemini" || (aiConfig?.api_key && aiConfig.api_key.startsWith("AIzaSy"));
 

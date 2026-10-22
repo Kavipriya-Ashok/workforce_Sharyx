@@ -10,4 +10,8 @@ export declare class WhatsAppTemplate extends BaseTable {
     buttons: any[];
     approval_status: string;
     is_active: boolean;
+    outcome_filter: string;
+    attach_pdf: boolean;
+    pdf_template_type: string;
+    pdf_title: string;
 }

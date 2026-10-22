@@ -3,14 +3,16 @@ import { lead } from "@Database/Table/Lead/lead";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
 import { EmailService } from "./Email.service";
+import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
 export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     private readonly encryptionService;
     private readonly emailService;
     private readonly aiService;
+    private readonly orchestrator;
     private readonly logger;
     private timer;
     private isPolling;
-    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService);
+    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService, orchestrator: AgentOrchestratorService);
     onModuleInit(): void;
     onModuleDestroy(): void;
     extractPhoneNumber(text: string): string | null;
@@ -30,6 +32,7 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
         provider: string;
         status?: undefined;
     }>;
+    private isSystemOrAutomatedEmail;
     pollInbox(): Promise<{
         synced: number;
         status: string;

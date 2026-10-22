@@ -67,3 +67,21 @@ export interface EmailCampaign {
   campaign_status: 'draft' | 'scheduled' | 'sending' | 'sent';
   created_on: string;
 }
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  category: string;
+  subject: string;
+  body_html: string;
+  body_text?: string;
+  preview_text?: string;
+  variables?: string[];
+  is_active: boolean;
+  outcome_filter?: string;
+  attach_pdf?: boolean;
+  pdf_template_type?: string;
+  pdf_title?: string;
+  created_on: string;
+}
+

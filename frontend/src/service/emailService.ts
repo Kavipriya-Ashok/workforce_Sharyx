@@ -6,6 +6,7 @@ import {
   EmailLog,
   OAuthStatus,
   EmailValidationResult,
+  EmailTemplate,
 } from '@/types/email';
 
 const API_BASE = '/api/v1/Email';
@@ -226,4 +227,40 @@ export const emailService = {
     const res = await axios.post(`${API_BASE}/Campaign`, campaign);
     return res.data;
   },
+
+  // Email Templates
+  getEmailTemplates: async (): Promise<EmailTemplate[]> => {
+    try {
+      const res = await axios.get(`${API_BASE}/Templates`);
+      const payload = res.data?.AddtionalData || res.data;
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.data)) return payload.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  createEmailTemplate: async (template: Partial<EmailTemplate>): Promise<EmailTemplate> => {
+    const res = await axios.post(`${API_BASE}/Templates/Create`, template);
+    return res.data?.AddtionalData || res.data;
+  },
+
+  updateEmailTemplate: async (id: string, template: Partial<EmailTemplate>): Promise<EmailTemplate> => {
+    const res = await axios.put(`${API_BASE}/Templates/Update/${id}`, template);
+    return res.data?.AddtionalData || res.data;
+  },
+
+  deleteEmailTemplate: async (id: string): Promise<void> => {
+    await axios.delete(`${API_BASE}/Templates/Delete/${id}`);
+  },
+
+  previewEmailTemplate: async (
+    id: string,
+    variables: Record<string, string>
+  ): Promise<{ subject: string; body_html: string; preview_text: string }> => {
+    const res = await axios.post(`${API_BASE}/Templates/Preview/${id}`, variables);
+    return res.data?.AddtionalData || res.data;
+  },
 };
+

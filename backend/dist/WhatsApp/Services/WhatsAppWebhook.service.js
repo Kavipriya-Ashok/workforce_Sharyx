@@ -147,7 +147,10 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             await inboundMsg.save();
             if (messageType === "text") {
                 this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
-                const aiReply = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id);
+                const aiReply = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
+                    customerName: customerProfileName,
+                    leadId: existingLead === null || existingLead === void 0 ? void 0 : existingLead.id,
+                });
                 if (aiReply) {
                     this.logger.log(`🤖 [AI AUTO-REPLY] Replying to ${senderPhone}: "${aiReply}"`);
                     await this.whatsAppService.sendMessage({

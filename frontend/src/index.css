@@ -1,21 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 224 71% 6%;
-  --card-foreground: 213 31% 91%;
-  --border: 216 34% 17%;
+@variant dark (.dark &);
+
+@theme {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* ── Light Theme HSL Colors ── */
+  --color-background: hsl(260 100% 98%);
+  --color-foreground: #4B5563;
+  --color-heading: #1A1A2E;
+  --color-text-light: #FFFFFF;
+
+  --color-card: #ffffff;
+  --color-card-foreground: var(--color-heading);
+
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-heading);
+
+  /* ── Branding Gradients & Accents ── */
+  --color-primary: hsl(262 83% 58%);
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  --color-secondary: hsl(300 60% 96%);
+  --color-secondary-foreground: hsl(262 50% 30%);
+
+  --color-muted: hsl(260 20% 96%);
+  --color-muted-foreground: hsl(260 20% 45%);
+
+  --color-accent: hsl(328 75% 59%);
+  --color-accent-foreground: hsl(0 0% 100%);
+
+  --color-cancel: #ef4444;
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --color-border: #e2e8f0;
+  --color-primary-border: hsla(262, 83%, 50%, 0.2);
+  --color-secondary-border: hsla(300, 60%, 80%, 0.3);
+  --color-destructive-border: hsla(348, 83%, 40%, 0.2);
+  --color-input: #ffffff;
+  --color-ring: hsl(270 70% 60%);
+
+  /* ── Chart & Analytics Palette ── */
+  --color-chart-1: hsl(270 70% 60%);
+  --color-chart-2: hsl(320 80% 65%);
+  --color-chart-3: hsl(190 80% 60%);
+  --color-chart-4: hsl(30 80% 60%);
+  --color-chart-5: hsl(210 60% 50%);
+  
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'Plus Jakarta Sans', monospace;
+
+  --radius: 1.5rem;
 }
 
-body {
-  background-color: #0b0f19;
-  color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  overflow-x: hidden;
+/* ── Base Styles & Dark Theme Overrides ── */
+@layer base {
+  /* Premium Dark Theme */
+  :root.dark {
+    --color-background: hsl(260 40% 10%);
+    --color-foreground: var(--color-text-light);
+    --color-heading: var(--color-text-light);
+
+    --color-card: hsl(260 40% 12%); 
+    --color-card-foreground: hsl(260 20% 90%);
+
+    --color-popover: hsl(260 40% 14%);
+    --color-popover-foreground: hsl(260 20% 90%);
+
+    --color-primary: hsl(262 83% 65%);
+    --color-primary-foreground: hsl(0 0% 100%);
+
+    --color-secondary: hsla(260, 40%, 20%, 0.4);
+    --color-secondary-foreground: hsl(260 20% 90%);
+
+    --color-muted: hsla(260, 20%, 20%, 0.3);
+    --color-muted-foreground: hsl(260 20% 65%);
+
+    --color-accent: hsl(328 75% 70%);
+    --color-accent-foreground: hsl(0 0% 100%);
+
+    --color-destructive: hsl(348 83% 55%);
+    --color-destructive-foreground: hsl(0 0% 98%);
+
+    --color-border: #2e2836;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  html {
+    @apply scroll-smooth;
+    scroll-padding-top: 6rem;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* ── Animated Ambient Radial Mesh Background (Light) ── */
+  body {
+    @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+    
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(260, 80%, 70%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(320, 80%, 70%, 0.1) 0px, transparent 50%);
+    
+    background-attachment: fixed;
+    background-size: 100% 100%;
+    animation: mesh-shimmer 30s ease infinite alternate;
+  }
+
+  /* ── Deep Space Dark Mesh Background ── */
+  :root.dark body {
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(260, 80%, 60%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(320, 80%, 55%, 0.12) 0px, transparent 50%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-heading font-semibold;
+  }
 }
 
-/* Glassmorphism Classes */
+/* ── Keyframe Animations ── */
+@keyframes mesh-shimmer {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 100%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes border-beam-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .7; transform: scale(1.05); }
+}
+
+/* ── Glassmorphism & Custom Utilities ── */
 .glass {
   background: rgba(17, 24, 39, 0.7);
   backdrop-filter: blur(12px);
@@ -23,26 +162,119 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.glass-card {
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-}
+@layer utilities {
+  .bg-gradient-primary {
+    @apply bg-linear-to-r from-accent to-primary bg-[length:200%_auto] animate-[gradient_3s_ease_infinite];
+  }
+  
+  .text-gradient-primary {
+    @apply bg-linear-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_3s_ease_infinite] bg-clip-text text-transparent;
+  }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  .text-gradient-premium {
+    @apply bg-linear-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient_8s_ease_infinite] bg-clip-text text-transparent;
+  }
+
+  .bg-mesh-premium {
+    background: radial-gradient(circle at 50% 50%, rgba(var(--color-primary), 0.1), transparent 50%),
+                radial-gradient(circle at 100% 0%, rgba(var(--color-accent), 0.05), transparent 50%);
+  }
+
+  .hover-elevate {
+    @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+  }
+
+  .active-elevate-2 {
+    @apply active:scale-95 active:translate-y-0 transition-all duration-150;
+  }
+  
+  /* Glass Card */
+  .glass-card {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl opacity-100;
+  }
+  
+  .glass-card::before {
+    content: '';
+    @apply absolute inset-0 rounded-[inherit] border border-slate-200/60 dark:border-slate-800/40 pointer-events-none;
+    mask-image: linear-gradient(to bottom, white, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, white, transparent);
+  }
+
+  .glass-card-hover {
+    @apply hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all duration-300;
+  }
+  
+  /* Glass Form Elements */
+  .glass-input {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200;
+  }
+  
+  .glass-button {
+    @apply relative overflow-hidden bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/20 border border-slate-200 dark:border-slate-800 backdrop-blur-xl shadow-sm active:scale-95 transition-all text-foreground;
+  }
+
+  /* Glossy Brand Button with Shimmer Sweep */
+  .glossy-button-primary {
+    @apply relative overflow-hidden bg-linear-to-r from-accent to-primary bg-[length:200%_auto] animate-[gradient_3s_ease_infinite] text-white shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98] transition-all border-none;
+  }
+
+  .glossy-button-primary::after, .glass-button::after {
+    content: '';
+    @apply absolute top-0 -left-[100%] w-1/2 h-full bg-linear-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] transition-all duration-700 ease-out;
+  }
+
+  .glossy-button-primary:hover::after, .glass-button:hover::after {
+    @apply left-[200%];
+  }
+
+  /* ── Custom Premium Scrollbars ── */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none, .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-premium::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-premium::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-premium::-webkit-scrollbar-thumb {
+    @apply bg-black/10 dark:bg-white/10 rounded-full hover:bg-black/20 dark:hover:bg-white/20 transition-colors;
+  }
+
+  /* ── Adaptive Typography ── */
+  .text-adaptive-elite {
+    @apply text-slate-900 dark:text-white transition-colors duration-300;
+  }
+  
+  .text-adaptive-elite-muted {
+    @apply text-slate-500 dark:text-white/70 transition-colors duration-300;
+  }
+
+  .glass-panel-elite {
+    @apply bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-slate-200 dark:border-slate-800 shadow-sm rounded-2xl;
+  }
+
+  .glass-card-strong {
+    @apply bg-white/90 dark:bg-zinc-950/80 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)];
+  }
+
+  /* ── Glowing Border Beams & Accents ── */
+  .elite-border {
+    @apply relative border border-slate-200 dark:border-slate-800 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_4px_rgba(0,0,0,0.05),0_12px_24px_rgba(0,0,0,0.05)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_2px_4px_rgba(0,0,0,0.2),0_12px_24px_rgba(0,0,0,0.3)];
+  }
+
+  .text-glow-sm {
+    text-shadow: 0 0 15px var(--color-primary);
+    opacity: 0.8;
+  }
+
+  .pulse-primary {
+    animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }

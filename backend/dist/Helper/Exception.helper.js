@@ -60,8 +60,8 @@ let ExceptionHelper = class ExceptionHelper {
             created_on: new Date(),
         });
         response
-            .json({ Type: ResponseEnum_1.ResponseEnum.Error, Message: MessageText })
-            .status(500);
+            .status(500)
+            .json({ Type: ResponseEnum_1.ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
     }
 };
 exports.ExceptionHelper = ExceptionHelper;

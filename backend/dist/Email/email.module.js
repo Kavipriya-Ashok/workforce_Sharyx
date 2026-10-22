@@ -11,21 +11,31 @@ const common_1 = require("@nestjs/common");
 const Email_controller_1 = require("./Controllers/Email.controller");
 const EmailAI_controller_1 = require("./Controllers/EmailAI.controller");
 const EmailCampaign_controller_1 = require("./Controllers/EmailCampaign.controller");
+const EmailTemplate_controller_1 = require("./Controllers/EmailTemplate.controller");
+const EmailTrigger_controller_1 = require("./Controllers/EmailTrigger.controller");
 const Email_service_1 = require("./Services/Email.service");
 const EmailAI_service_1 = require("./Services/EmailAI.service");
 const EmailCampaign_service_1 = require("./Services/EmailCampaign.service");
 const EmailImap_service_1 = require("./Services/EmailImap.service");
 const EmailValidation_service_1 = require("./Services/EmailValidation.service");
+const EmailTemplate_service_1 = require("./Services/EmailTemplate.service");
 const Encryption_service_1 = require("../Service/Encryption.service");
+const PdfGenerator_service_1 = require("../Service/PdfGenerator.service");
+const OutcomeTrigger_service_1 = require("../Service/OutcomeTrigger.service");
+const agent_orchestrator_module_1 = require("../AgentOrchestrator/agent-orchestrator.module");
+const AgentOutcome_listener_1 = require("./Services/AgentOutcome.listener");
 let EmailModule = class EmailModule {
 };
 exports.EmailModule = EmailModule;
 exports.EmailModule = EmailModule = __decorate([
     (0, common_1.Module)({
+        imports: [agent_orchestrator_module_1.AgentOrchestratorModule],
         controllers: [
             Email_controller_1.EmailController,
             EmailAI_controller_1.EmailAIController,
             EmailCampaign_controller_1.EmailCampaignController,
+            EmailTemplate_controller_1.EmailTemplateController,
+            EmailTrigger_controller_1.EmailTriggerController,
         ],
         providers: [
             Email_service_1.EmailService,
@@ -33,7 +43,11 @@ exports.EmailModule = EmailModule = __decorate([
             EmailCampaign_service_1.EmailCampaignService,
             EmailImap_service_1.EmailImapService,
             EmailValidation_service_1.EmailValidationService,
+            EmailTemplate_service_1.EmailTemplateService,
             Encryption_service_1.EncryptionService,
+            PdfGenerator_service_1.PdfGeneratorService,
+            OutcomeTrigger_service_1.OutcomeTriggerService,
+            AgentOutcome_listener_1.AgentOutcomeListener,
         ],
         exports: [
             Email_service_1.EmailService,
@@ -41,6 +55,9 @@ exports.EmailModule = EmailModule = __decorate([
             EmailCampaign_service_1.EmailCampaignService,
             EmailImap_service_1.EmailImapService,
             EmailValidation_service_1.EmailValidationService,
+            EmailTemplate_service_1.EmailTemplateService,
+            PdfGenerator_service_1.PdfGeneratorService,
+            OutcomeTrigger_service_1.OutcomeTriggerService,
         ],
     })
 ], EmailModule);

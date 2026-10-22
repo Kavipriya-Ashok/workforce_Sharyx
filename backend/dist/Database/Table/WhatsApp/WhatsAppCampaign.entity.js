@@ -67,6 +67,22 @@ __decorate([
     (0, typeorm_1.Column)({ type: "timestamp with time zone", nullable: true }),
     __metadata("design:type", Date)
 ], WhatsAppCampaign.prototype, "scheduled_at", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 200, default: "ALL" }),
+    __metadata("design:type", String)
+], WhatsAppCampaign.prototype, "outcome_filter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], WhatsAppCampaign.prototype, "attach_pdf", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
+    __metadata("design:type", String)
+], WhatsAppCampaign.prototype, "pdf_template_type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255, nullable: true }),
+    __metadata("design:type", String)
+], WhatsAppCampaign.prototype, "pdf_title", void 0);
 exports.WhatsAppCampaign = WhatsAppCampaign = __decorate([
     (0, typeorm_1.Entity)("wa_campaign")
 ], WhatsAppCampaign);

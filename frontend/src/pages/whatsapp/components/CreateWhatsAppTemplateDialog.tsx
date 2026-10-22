@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { WhatsAppService } from "@/service/whatsappService";
 import { Smartphone, CheckCheck, Sparkles } from "lucide-react";
+import { PdfTemplateSelector, OutcomeFilterSelector } from "@/components/PdfTemplateSelector";
 
 interface Props {
   open: boolean;
@@ -45,6 +46,10 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
     header_text: "",
     body_text: "Hi {{1}}, thank you for contacting Sharyx AI! Your requested details: {{2}}.",
     footer_text: "Sharyx AI • Reply STOP to unsubscribe",
+    outcome_filter: "ALL",
+    attach_pdf: false,
+    pdf_template_type: "",
+    pdf_title: "",
   });
 
   React.useEffect(() => {
@@ -57,6 +62,10 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
           header_text: templateToEdit.header_text || "",
           body_text: templateToEdit.body_text || "",
           footer_text: templateToEdit.footer_text || "",
+          outcome_filter: templateToEdit.outcome_filter || "ALL",
+          attach_pdf: templateToEdit.attach_pdf || false,
+          pdf_template_type: templateToEdit.pdf_template_type || "",
+          pdf_title: templateToEdit.pdf_title || "",
         });
       } else {
         setForm({
@@ -66,6 +75,10 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
           header_text: "",
           body_text: "Hi {{1}}, thank you for contacting Sharyx AI! Your requested details: {{2}}.",
           footer_text: "Sharyx AI • Reply STOP to unsubscribe",
+          outcome_filter: "ALL",
+          attach_pdf: false,
+          pdf_template_type: "",
+          pdf_title: "",
         });
       }
     }
@@ -212,6 +225,22 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
                   className="bg-slate-950 border-slate-800 text-white"
                 />
               </div>
+
+              {/* Outcome Filter */}
+              <OutcomeFilterSelector
+                value={form.outcome_filter}
+                onChange={(val) => setForm({ ...form, outcome_filter: val })}
+              />
+
+              {/* PDF Attachment */}
+              <PdfTemplateSelector
+                attachPdf={form.attach_pdf}
+                pdfTemplateType={form.pdf_template_type}
+                pdfTitle={form.pdf_title}
+                onAttachPdfChange={(val) => setForm({ ...form, attach_pdf: val })}
+                onPdfTemplateTypeChange={(val) => setForm({ ...form, pdf_template_type: val })}
+                onPdfTitleChange={(val) => setForm({ ...form, pdf_title: val })}
+              />
             </div>
 
             {/* Live WhatsApp Simulator (5 Columns) */}

@@ -19,11 +19,13 @@ const WhatsAppWebhook_service_1 = require("./Services/WhatsAppWebhook.service");
 const WhatsAppCampaign_service_1 = require("./Services/WhatsAppCampaign.service");
 const WhatsAppTemplate_service_1 = require("./Services/WhatsAppTemplate.service");
 const PromptEngine_service_1 = require("./Services/PromptEngine.service");
+const agent_orchestrator_module_1 = require("../AgentOrchestrator/agent-orchestrator.module");
 let WhatsAppModule = class WhatsAppModule {
 };
 exports.WhatsAppModule = WhatsAppModule;
 exports.WhatsAppModule = WhatsAppModule = __decorate([
     (0, common_1.Module)({
+        imports: [agent_orchestrator_module_1.AgentOrchestratorModule],
         controllers: [
             WhatsApp_controller_1.WhatsAppController,
             WhatsAppWebhook_controller_1.WhatsAppWebhookController,

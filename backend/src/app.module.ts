@@ -37,12 +37,17 @@ import { ExceptionHelper } from "./Helper/Exception.helper";
 import { MailerService } from "./Service/Mailer.service";
 import { EncryptionService } from "./Service/Encryption.service";
 import { CommonSeederService } from "./Database/Seeds/CommonSeeder.service";
+import { PdfGeneratorService } from "./Service/PdfGenerator.service";
 import { WhatsAppModule } from "./WhatsApp/whatsapp.module";
 import { EmailModule } from "./Email/email.module";
 import { LeadModule } from "./Module/Lead.module";
+import { AgentOrchestratorModule } from "./AgentOrchestrator/agent-orchestrator.module";
+import { VoiceModule } from "./Voice/voice.module";
 
 @Module({
   imports: [
+    VoiceModule,
+    AgentOrchestratorModule,
     WhatsAppModule,
     EmailModule,
     LeadModule,
@@ -121,6 +126,7 @@ import { LeadModule } from "./Module/Lead.module";
     MailerService,
     EncryptionService,
     CommonSeederService,
+    PdfGeneratorService,
     CacheService,
     {
       provide: "REDIS_CLIENT",
@@ -149,6 +155,6 @@ import { LeadModule } from "./Module/Lead.module";
       },
     },
   ],
-  exports: [AuthService, EncryptionService],
+  exports: [AuthService, EncryptionService, PdfGeneratorService],
 })
 export class AppModule {}

@@ -11,4 +11,9 @@ export declare class EmailCampaign extends BaseTable {
     trigger_event: string;
     is_active: boolean;
     delay_seconds: number;
+    outcome_filter: string;
+    recipient_type: string;
+    attach_pdf: boolean;
+    pdf_template_type: string;
+    pdf_title: string;
 }

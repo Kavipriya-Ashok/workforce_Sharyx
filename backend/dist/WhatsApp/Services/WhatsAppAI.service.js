@@ -14,9 +14,11 @@ exports.WhatsAppAIService = void 0;
 const common_1 = require("@nestjs/common");
 const WhatsAppAIConfig_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppAIConfig.entity");
 const PromptEngine_service_1 = require("./PromptEngine.service");
+const AgentOrchestrator_service_1 = require("../../AgentOrchestrator/Services/AgentOrchestrator.service");
 let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
-    constructor(promptEngineService) {
+    constructor(promptEngineService, orchestrator) {
         this.promptEngineService = promptEngineService;
+        this.orchestrator = orchestrator;
         this.logger = new common_1.Logger(WhatsAppAIService_1.name);
     }
     async getConfig(tenantId = "default") {
@@ -36,8 +38,8 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         config.system_prompt = data.system_prompt || null;
         config.welcome_message = data.welcome_message || null;
         config.fallback_message = data.fallback_message || null;
-        config.llm_provider = data.llm_provider || "openai";
-        config.llm_model = data.llm_model || "gpt-4o-mini";
+        config.llm_provider = data.llm_provider || "gemini";
+        config.llm_model = data.llm_model || "gemini-2.5-flash";
         if (data.api_key !== undefined) {
             config.api_key = data.api_key;
         }
@@ -49,7 +51,7 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         config.updated_on = new Date();
         return await config.save();
     }
-    async generateResponse(customerMessage, customerPhone, tenantId = "default", conversationId) {
+    async generateResponse(customerMessage, customerPhone, tenantId = "default", conversationId, extras) {
         const config = await this.getConfig(tenantId);
         if (!config || !config.is_ai_enabled) {
             return null;
@@ -57,6 +59,34 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         const upperMsg = customerMessage.trim().toUpperCase();
         if (config.stop_words && config.stop_words.some((w) => upperMsg.includes(w.toUpperCase()))) {
             return "You have successfully unsubscribed. Reply START anytime to re-enable messages.";
+        }
+        if (conversationId) {
+            try {
+                const result = await this.orchestrator.handle({
+                    channel: "whatsapp",
+                    tenantId,
+                    conversationRef: conversationId,
+                    message: customerMessage,
+                    phone: customerPhone,
+                    name: extras === null || extras === void 0 ? void 0 : extras.customerName,
+                    leadId: extras === null || extras === void 0 ? void 0 : extras.leadId,
+                    llm: {
+                        provider: config.llm_provider,
+                        model: config.llm_model,
+                        apiKey: config.api_key || undefined,
+                    },
+                });
+                if (result) {
+                    if (result.humanTakeover && !result.reply)
+                        return null;
+                    this.logger.log(`🤝 [MULTI-AGENT] ${result.agentName}${result.handoffs.length ? ` (via ${result.handoffs.map((h) => `${h.from}→${h.to}`).join(", ")})` : ""}`);
+                    if (result.reply)
+                        return result.reply;
+                }
+            }
+            catch (err) {
+                this.logger.error(`Multi-agent orchestrator failed, using legacy pipeline: ${err.message}`);
+            }
         }
         try {
             const ctx = await this.promptEngineService.buildAutoContext(tenantId, customerPhone, customerPhone, customerMessage, conversationId);
@@ -74,6 +104,7 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
 exports.WhatsAppAIService = WhatsAppAIService;
 exports.WhatsAppAIService = WhatsAppAIService = WhatsAppAIService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [PromptEngine_service_1.PromptEngineService])
+    __metadata("design:paramtypes", [PromptEngine_service_1.PromptEngineService,
+        AgentOrchestrator_service_1.AgentOrchestratorService])
 ], WhatsAppAIService);
 //# sourceMappingURL=WhatsAppAI.service.js.map

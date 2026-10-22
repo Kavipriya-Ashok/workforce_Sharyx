@@ -4,4 +4,9 @@ export declare class SendEmailModel {
     html: string;
     lead_id?: string;
     bypassValidation?: boolean;
+    attachments?: Array<{
+        filename: string;
+        content: Buffer | string;
+        contentType?: string;
+    }>;
 }

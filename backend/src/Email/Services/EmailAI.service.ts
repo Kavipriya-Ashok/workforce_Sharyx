@@ -40,8 +40,8 @@ export class EmailAIService {
     config.auto_reply_enabled = data.auto_reply_enabled ?? true;
     config.system_prompt = data.system_prompt || null;
     config.tone = data.tone || "professional";
-    config.llm_provider = data.llm_provider || "openai";
-    config.llm_model = data.llm_model || "gpt-4o-mini";
+    config.llm_provider = data.llm_provider || "gemini";
+    config.llm_model = data.llm_model || "gemini-2.5-flash";
     config.updated_by_id = userId || "system";
     config.updated_on = new Date();
     return await config.save();

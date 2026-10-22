@@ -13,4 +13,8 @@ export declare class WhatsAppCampaign extends BaseTable {
     read_count: number;
     campaign_status: string;
     scheduled_at: Date;
+    outcome_filter: string;
+    attach_pdf: boolean;
+    pdf_template_type: string;
+    pdf_title: string;
 }

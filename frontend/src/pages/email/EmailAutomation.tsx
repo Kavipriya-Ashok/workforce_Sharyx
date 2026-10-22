@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmailInbox } from './components/EmailInbox';
 import { EmailAISettingsView } from './components/EmailAISettingsView';
 import { CreateCampaignView } from './components/CreateCampaignView';
+import { EmailTemplatesTab } from './components/EmailTemplatesTab';
 import { ComposeEmailDialog } from './components/ComposeEmailDialog';
 import { EmailSettingsDialog } from './components/EmailSettingsDialog';
 import { emailService } from '@/service/emailService';
@@ -18,6 +19,7 @@ import {
   Inbox,
   Sparkles,
   RefreshCw,
+  LayoutTemplate,
 } from 'lucide-react';
 
 export const EmailAutomation: React.FC = () => {
@@ -40,7 +42,7 @@ export const EmailAutomation: React.FC = () => {
             </Badge>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Two-way email synchronization, autonomous AI email copilot, and multi-recipient sequences.
+            Two-way email synchronization, autonomous AI email copilot, template library, and multi-recipient sequences.
           </p>
         </div>
 
@@ -86,10 +88,14 @@ export const EmailAutomation: React.FC = () => {
 
       {/* Tabs Hub */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 max-w-md">
+        <TabsList className="grid grid-cols-4 max-w-xl">
           <TabsTrigger value="inbox" className="gap-2 text-xs">
             <Inbox className="h-3.5 w-3.5" />
             Two-Way Inbox
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-2 text-xs">
+            <LayoutTemplate className="h-3.5 w-3.5 text-indigo-400" />
+            Templates
           </TabsTrigger>
           <TabsTrigger value="ai_settings" className="gap-2 text-xs">
             <Bot className="h-3.5 w-3.5 text-indigo-400" />
@@ -103,6 +109,10 @@ export const EmailAutomation: React.FC = () => {
 
         <TabsContent value="inbox">
           <EmailInbox />
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <EmailTemplatesTab />
         </TabsContent>
 
         <TabsContent value="ai_settings">

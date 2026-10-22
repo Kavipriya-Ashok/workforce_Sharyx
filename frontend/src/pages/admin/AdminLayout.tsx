@@ -4,7 +4,10 @@ import { useAuth } from '@/lib/auth';
 import { AdminDashboard } from './AdminDashboard';
 import { WhatsAppAutomation } from '@/pages/whatsapp/WhatsAppAutomation';
 import { EmailAutomation } from '@/pages/email/EmailAutomation';
+import { VoiceAutomation } from '@/pages/voice/VoiceAutomation';
+import { AiAgentsPage } from '@/pages/agents/AiAgentsPage';
 import Leads from '@/pages/lead/Leads';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -21,6 +24,7 @@ import {
   X,
   Building2,
   Check,
+  PhoneCall,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -28,9 +32,19 @@ export const AdminLayout: React.FC = () => {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'whatsapp' | 'email' | 'leads'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'whatsapp' | 'email' | 'voice' | 'agents' | 'leads'>('dashboard');
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
+  const [agentsSubmenuOpen, setAgentsSubmenuOpen] = useState(true);
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const [activeTenant, setActiveTenant] = useState(user?.company_name || 'Sharyx Enterprise Inc');
+
+  const SIDEBAR_AGENTS = [
+    { key: 'receptionist', name: 'Receptionist', emoji: '🛎️', role: 'Welcome & Routing', color: 'text-amber-400' },
+    { key: 'sales', name: 'Sales Specialist', emoji: '💼', role: 'Pricing & Deals', color: 'text-emerald-400' },
+    { key: 'recruitment', name: 'Recruitment', emoji: '🎓', role: 'Hiring & Screening', color: 'text-rose-400' },
+    { key: 'support', name: 'Support & 360°', emoji: '🛟', role: 'Issues & History', color: 'text-violet-400' },
+    { key: 'appointment', name: 'Appointment', emoji: '📅', role: 'Meet Booking', color: 'text-cyan-400' },
+  ];
 
   const tenants = [
     activeTenant,
@@ -109,6 +123,89 @@ export const AdminLayout: React.FC = () => {
             {!sidebarCollapsed && <span>Email Automation</span>}
           </button>
 
+          <button
+            onClick={() => setActiveTab('voice')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'voice'
+                ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-600/25 font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <PhoneCall className="h-4 w-4 shrink-0 text-cyan-400" />
+            {!sidebarCollapsed && <span>Voice AI & Phone Calls</span>}
+          </button>
+
+          {/* AI AGENTS MENU & 5 DEFAULT AGENTS */}
+          <div className="space-y-1">
+            <button
+              onClick={() => {
+                setActiveTab('agents');
+                setAgentsSubmenuOpen(!agentsSubmenuOpen);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                activeTab === 'agents'
+                  ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Bot className="h-4 w-4 shrink-0 text-purple-400" />
+                {!sidebarCollapsed && <span>Chat Agents (WA/Email)</span>}
+              </div>
+              {!sidebarCollapsed && (
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                    agentsSubmenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* 5 DEFAULT AGENTS LIST */}
+            {!sidebarCollapsed && agentsSubmenuOpen && (
+              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-slate-800 ml-5 my-1">
+                <button
+                  onClick={() => {
+                    setActiveTab('agents');
+                    setSelectedAgentKey(null);
+                  }}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                    activeTab === 'agents' && !selectedAgentKey
+                      ? 'bg-purple-500/20 text-purple-200 font-semibold'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-900/50'
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3 text-purple-400 shrink-0" />
+                  <span>All Agents Overview</span>
+                </button>
+
+                {SIDEBAR_AGENTS.map((ag) => {
+                  const isSelected = activeTab === 'agents' && selectedAgentKey === ag.key;
+                  return (
+                    <button
+                      key={ag.key}
+                      onClick={() => {
+                        setActiveTab('agents');
+                        setSelectedAgentKey(ag.key);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                        isSelected
+                          ? 'bg-indigo-600/30 text-white font-semibold border border-indigo-500/40 shadow-sm'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-900/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-xs">{ag.emoji}</span>
+                        <span className="truncate">{ag.name}</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 uppercase tracking-wider">{ag.key.slice(0, 3)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="pt-4 pb-1">
             {!sidebarCollapsed && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
@@ -118,11 +215,15 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-900/60"
+            onClick={() => setActiveTab('voice')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === 'voice'
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
           >
-            <Bot className="h-4 w-4 shrink-0 text-cyan-400" />
-            {!sidebarCollapsed && <span>AI Voice Agents</span>}
+            <PhoneCall className="h-4 w-4 shrink-0 text-cyan-400" />
+            {!sidebarCollapsed && <span>Voice Dispatch & Logs</span>}
           </button>
 
           <button
@@ -216,28 +317,38 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           {/* Search Bar & Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="relative hidden sm:block w-64">
               <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
               <input
                 type="text"
                 placeholder="Search leads, calls, messages..."
-                className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-800 bg-slate-900/60 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-800 bg-slate-900/60 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
               />
             </div>
 
+            <ThemeToggle />
+
             <button className="relative text-slate-400 hover:text-white p-2 rounded-xl bg-slate-900/50 border border-slate-800">
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-500" />
             </button>
           </div>
         </header>
 
         {/* CONTENT BODY */}
-        <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
           {activeTab === 'dashboard' && <AdminDashboard />}
           {activeTab === 'whatsapp' && <WhatsAppAutomation />}
           {activeTab === 'email' && <EmailAutomation />}
+          {activeTab === 'voice' && <VoiceAutomation />}
+          {activeTab === 'agents' && (
+            <AiAgentsPage
+              selectedAgentKey={selectedAgentKey}
+              onSelectAgent={setSelectedAgentKey}
+              onNavigateVoice={() => setActiveTab('voice')}
+            />
+          )}
           {activeTab === 'leads' && <Leads />}
         </main>
       </div>

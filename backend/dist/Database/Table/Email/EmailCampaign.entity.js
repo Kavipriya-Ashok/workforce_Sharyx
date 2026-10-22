@@ -59,6 +59,26 @@ __decorate([
     (0, typeorm_1.Column)({ type: "int", default: 0 }),
     __metadata("design:type", Number)
 ], EmailCampaign.prototype, "delay_seconds", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 200, default: "ALL" }),
+    __metadata("design:type", String)
+], EmailCampaign.prototype, "outcome_filter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 50, default: "lead_or_customer" }),
+    __metadata("design:type", String)
+], EmailCampaign.prototype, "recipient_type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], EmailCampaign.prototype, "attach_pdf", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
+    __metadata("design:type", String)
+], EmailCampaign.prototype, "pdf_template_type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255, nullable: true }),
+    __metadata("design:type", String)
+], EmailCampaign.prototype, "pdf_title", void 0);
 exports.EmailCampaign = EmailCampaign = __decorate([
     (0, typeorm_1.Entity)("email_campaign")
 ], EmailCampaign);

@@ -49,15 +49,20 @@ const Exception_helper_1 = require("./Helper/Exception.helper");
 const Mailer_service_1 = require("./Service/Mailer.service");
 const Encryption_service_1 = require("./Service/Encryption.service");
 const CommonSeeder_service_1 = require("./Database/Seeds/CommonSeeder.service");
+const PdfGenerator_service_1 = require("./Service/PdfGenerator.service");
 const whatsapp_module_1 = require("./WhatsApp/whatsapp.module");
 const email_module_1 = require("./Email/email.module");
 const Lead_module_1 = require("./Module/Lead.module");
+const agent_orchestrator_module_1 = require("./AgentOrchestrator/agent-orchestrator.module");
+const voice_module_1 = require("./Voice/voice.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            voice_module_1.VoiceModule,
+            agent_orchestrator_module_1.AgentOrchestratorModule,
             whatsapp_module_1.WhatsAppModule,
             email_module_1.EmailModule,
             Lead_module_1.LeadModule,
@@ -139,6 +144,7 @@ exports.AppModule = AppModule = __decorate([
             Mailer_service_1.MailerService,
             Encryption_service_1.EncryptionService,
             CommonSeeder_service_1.CommonSeederService,
+            PdfGenerator_service_1.PdfGeneratorService,
             Cache_service_1.CacheService,
             {
                 provide: "REDIS_CLIENT",
@@ -164,7 +170,7 @@ exports.AppModule = AppModule = __decorate([
                 },
             },
         ],
-        exports: [Auth_service_1.AuthService, Encryption_service_1.EncryptionService],
+        exports: [Auth_service_1.AuthService, Encryption_service_1.EncryptionService, PdfGenerator_service_1.PdfGeneratorService],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

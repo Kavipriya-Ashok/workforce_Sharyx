@@ -41,4 +41,16 @@ export class WhatsAppCampaign extends BaseTable {
 
   @Column({ type: "timestamp with time zone", nullable: true })
   scheduled_at: Date;
+
+  @Column({ length: 200, default: "ALL" })
+  outcome_filter: string; // 'ALL' | 'Interested' | 'Demo Booked' etc.
+
+  @Column({ type: "boolean", default: false })
+  attach_pdf: boolean;
+
+  @Column({ length: 100, nullable: true })
+  pdf_template_type: string; // 'executive_proposal' | 'corporate_gold' | 'call_summary'
+
+  @Column({ length: 255, nullable: true })
+  pdf_title: string;
 }

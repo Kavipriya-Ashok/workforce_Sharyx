@@ -10,8 +10,10 @@ import { WhatsAppWebhookService } from "./Services/WhatsAppWebhook.service";
 import { WhatsAppCampaignService } from "./Services/WhatsAppCampaign.service";
 import { WhatsAppTemplateService } from "./Services/WhatsAppTemplate.service";
 import { PromptEngineService } from "./Services/PromptEngine.service";
+import { AgentOrchestratorModule } from "../AgentOrchestrator/agent-orchestrator.module";
 
 @Module({
+  imports: [AgentOrchestratorModule],
   controllers: [
     WhatsAppController,
     WhatsAppWebhookController,

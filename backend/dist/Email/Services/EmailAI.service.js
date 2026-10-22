@@ -85,8 +85,8 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
         config.auto_reply_enabled = (_a = data.auto_reply_enabled) !== null && _a !== void 0 ? _a : true;
         config.system_prompt = data.system_prompt || null;
         config.tone = data.tone || "professional";
-        config.llm_provider = data.llm_provider || "openai";
-        config.llm_model = data.llm_model || "gpt-4o-mini";
+        config.llm_provider = data.llm_provider || "gemini";
+        config.llm_model = data.llm_model || "gemini-2.5-flash";
         config.updated_by_id = userId || "system";
         config.updated_on = new Date();
         return await config.save();

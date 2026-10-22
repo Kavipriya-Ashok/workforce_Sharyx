@@ -10,6 +10,7 @@ import { lead_activity } from "@Database/Table/Lead/lead_activity";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
 import { EmailService } from "./Email.service";
+import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
 
 @Injectable()
 export class EmailImapService implements OnModuleInit, OnModuleDestroy {
@@ -20,7 +21,8 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly encryptionService: EncryptionService,
     private readonly emailService: EmailService,
-    private readonly aiService: EmailAIService
+    private readonly aiService: EmailAIService,
+    private readonly orchestrator: AgentOrchestratorService
   ) {}
 
   onModuleInit() {
@@ -240,24 +242,60 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         replySubject = activeCampaign.subject.replace(/{{name}}/g, recipientName);
         replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${templated}</div>`;
       } else {
-        // Use intelligent AI Copilot with thread context
-        const draft = await this.aiService.generateDraft(
-          {
-            from_email: fromEmail,
+        // 2a. Multi-agent team (Receptionist -> Sales / Appointment / Support)
+        let agentReply: string | null = null;
+        try {
+          const result = await this.orchestrator.handle({
+            channel: "email",
+            tenantId,
+            conversationRef: fromEmail.toLowerCase(),
+            message: bodyText,
             subject,
-            incoming_body: bodyText,
-            lead_name: leadRecord?.name || fromEmail.split("@")[0],
-            conversation_history: conversationHistory,
-            has_phone: hasPhone,
-            phone_number: leadRecord?.phone || undefined,
-            company_name: leadRecord?.company_name || undefined,
-          },
-          tenantId
-        );
+            email: fromEmail,
+            phone: leadRecord?.phone || undefined,
+            name: leadRecord?.name || undefined,
+            leadId: leadRecord?.id,
+            llm: { provider: aiConfig.llm_provider, model: aiConfig.llm_model },
+          });
+          if (result?.humanTakeover && !result.reply) {
+            this.logger.log(`👨‍💼 [EMAIL] ${fromEmail} is with a human agent - skipping AI reply`);
+            return;
+          }
+          if (result?.reply) {
+            agentReply = result.reply;
+            this.logger.log(`🤝 [MULTI-AGENT EMAIL] ${result.agentName} replied to ${fromEmail}`);
+          }
+        } catch (err: any) {
+          this.logger.warn(`Multi-agent email failed, using legacy draft: ${err.message}`);
+        }
 
-        if (!draft?.draft) return;
-        replySubject = draft.subject;
-        replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
+        if (agentReply) {
+          replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${agentReply
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')
+            .replace(/\n/g, "<br/>")}</div>`;
+        } else {
+          // 2b. Legacy single-prompt AI Copilot with thread context
+          const draft = await this.aiService.generateDraft(
+            {
+              from_email: fromEmail,
+              subject,
+              incoming_body: bodyText,
+              lead_name: leadRecord?.name || fromEmail.split("@")[0],
+              conversation_history: conversationHistory,
+              has_phone: hasPhone,
+              phone_number: leadRecord?.phone || undefined,
+              company_name: leadRecord?.company_name || undefined,
+            },
+            tenantId
+          );
+
+          if (!draft?.draft) return;
+          replySubject = draft.subject;
+          replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
+        }
       }
 
       // 3. Dispatch outbound reply via Gmail REST API
@@ -282,6 +320,70 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
   // Public sync endpoint method
   async syncNow(tenantId: string = "default") {
     return await this.pollInbox();
+  }
+
+  // Helper to filter out bounce notifications, system bots, daemons, and no-reply emails
+  private isSystemOrAutomatedEmail(
+    fromEmail: string,
+    subject: string,
+    headers: Array<{ name?: string; value?: string }> = []
+  ): boolean {
+    const emailLower = (fromEmail || "").toLowerCase();
+    const subjectLower = (subject || "").toLowerCase();
+
+    // 1. Senders to ignore
+    const systemSenders = [
+      "mailer-daemon",
+      "postmaster",
+      "no-reply",
+      "noreply",
+      "donotreply",
+      "do-not-reply",
+      "bounce",
+      "notifications@",
+      "notification@",
+      "alert@",
+      "alerts@",
+      "automated@",
+      "system@",
+    ];
+    if (systemSenders.some((s) => emailLower.includes(s))) {
+      return true;
+    }
+
+    // 2. Subject keywords indicating delivery failures / system notices / vacation
+    const systemSubjects = [
+      "delivery status notification",
+      "undeliverable",
+      "returned mail",
+      "failure notice",
+      "mail delivery failed",
+      "automatic reply",
+      "out of office",
+      "auto-reply",
+      "delivery failure",
+    ];
+    if (systemSubjects.some((s) => subjectLower.includes(s))) {
+      return true;
+    }
+
+    // 3. Automated headers
+    const autoSubmitted = headers.find((h) => h.name?.toLowerCase() === "auto-submitted")?.value?.toLowerCase();
+    if (autoSubmitted && autoSubmitted !== "no") {
+      return true;
+    }
+
+    const precedence = headers.find((h) => h.name?.toLowerCase() === "precedence")?.value?.toLowerCase();
+    if (precedence && ["bulk", "junk", "auto_reply"].includes(precedence)) {
+      return true;
+    }
+
+    const xAutoReply = headers.find((h) => h.name?.toLowerCase() === "x-autoreply")?.value?.toLowerCase();
+    if (xAutoReply === "yes") {
+      return true;
+    }
+
+    return false;
   }
 
   // Master Inbox Polling: Supports Google Gmail API and IMAP
@@ -346,6 +448,20 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
 
             // Skip self-sent emails
             if (fromEmail.toLowerCase() === config.email_address.toLowerCase()) {
+              continue;
+            }
+
+            // Skip bounces, system alerts, mailer-daemon, and no-reply messages
+            if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
+              this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subjectHeader}"`);
+              // Mark as read so we don't process it every poll
+              try {
+                await gmail.users.messages.modify({
+                  userId: "me",
+                  id: item.id,
+                  requestBody: { removeLabelIds: ["UNREAD"] },
+                });
+              } catch {}
               continue;
             }
 
@@ -468,6 +584,17 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
             const bodyText = parsed.text || "";
             const bodyHtml = (parsed.html as string) || `<p>${bodyText}</p>`;
             const messageId = parsed.messageId || `${idHeader}`;
+
+            // Skip self-sent emails
+            if (fromEmail.toLowerCase() === config.email_address?.toLowerCase()) {
+              continue;
+            }
+
+            // Skip bounces, system alerts, mailer-daemon, and no-reply messages
+            if (this.isSystemOrAutomatedEmail(fromEmail, subject)) {
+              this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subject}"`);
+              continue;
+            }
 
             // Check if already processed
             const exists = await EmailLog.findOne({ where: { message_id: messageId } });

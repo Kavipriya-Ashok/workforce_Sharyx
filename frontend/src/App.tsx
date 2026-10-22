@@ -10,6 +10,8 @@ import { OnboardingWizard } from '@/pages/onboarding/OnboardingWizard';
 import { AdminLayout } from '@/pages/admin/AdminLayout';
 import { OAuthCallback } from '@/pages/auth/OAuthCallback';
 
+import { ThemeProvider } from '@/components/theme-provider';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -30,9 +32,10 @@ function RedirectToLogin() {
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-emerald-500 selection:text-black">
-          <Switch>
+      <ThemeProvider defaultTheme="dark" storageKey="sharyx-theme">
+        <AuthProvider>
+          <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-white transition-colors duration-300">
+            <Switch>
             {/* Public Auth Routes */}
             <Route path="/login">
               <PublicOnlyRoute component={LoginPage} />
@@ -67,9 +70,10 @@ export function App() {
           </Switch>
 
           {/* Global Toast Provider */}
-          <Toaster richColors position="top-right" theme="dark" />
+          <Toaster richColors position="top-right" />
         </div>
       </AuthProvider>
+    </ThemeProvider>
     </QueryClientProvider>
   );
 }

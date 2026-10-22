@@ -44,7 +44,7 @@ export class ExceptionHelper implements ExceptionFilter {
       created_on: new Date(),
     });
     response
-      .json({ Type: ResponseEnum.Error, Message: MessageText })
-      .status(500);
+      .status(500)
+      .json({ Type: ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
   }
 }

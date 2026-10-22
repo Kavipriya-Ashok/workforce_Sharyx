@@ -25,4 +25,8 @@ export class SendEmailModel {
   @ApiProperty({ required: false, default: false })
   @IsOptional()
   bypassValidation?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }>;
 }

@@ -24,12 +24,20 @@ async function bootstrap() {
   app.enableVersioning({
     type: VersioningType.URI,
   });
-  // Auto-rewrite any external Meta webhook variations to internal /api/v1/WhatsApp/Webhook
+  // Auto-rewrite external webhooks and /api/voice to /api/v1/...
   app.use((req: any, res: any, next: any) => {
     if (req.url && (req.url.startsWith("/api/webhook/whatsapp") || req.url.startsWith("/webhook/whatsapp"))) {
       req.url = req.url
         .replace("/api/webhook/whatsapp", "/api/v1/WhatsApp/Webhook")
         .replace("/webhook/whatsapp", "/api/v1/WhatsApp/Webhook");
+    }
+    if (req.url && (req.url.startsWith("/api/webhook/voice") || req.url.startsWith("/webhook/voice"))) {
+      req.url = req.url
+        .replace("/api/webhook/voice", "/api/v1/Voice/Webhook")
+        .replace("/webhook/voice", "/api/v1/Voice/Webhook");
+    }
+    if (req.url && req.url.toLowerCase().startsWith("/api/voice") && !req.url.toLowerCase().startsWith("/api/v1/voice")) {
+      req.url = req.url.replace(/\/api\/voice/i, "/api/v1/Voice");
     }
     next();
   });

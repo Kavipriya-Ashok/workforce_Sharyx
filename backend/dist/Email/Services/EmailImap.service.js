@@ -56,11 +56,13 @@ const lead_activity_1 = require("../../Database/Table/Lead/lead_activity");
 const Encryption_service_1 = require("../../Service/Encryption.service");
 const EmailAI_service_1 = require("./EmailAI.service");
 const Email_service_1 = require("./Email.service");
+const AgentOrchestrator_service_1 = require("../../AgentOrchestrator/Services/AgentOrchestrator.service");
 let EmailImapService = EmailImapService_1 = class EmailImapService {
-    constructor(encryptionService, emailService, aiService) {
+    constructor(encryptionService, emailService, aiService, orchestrator) {
         this.encryptionService = encryptionService;
         this.emailService = emailService;
         this.aiService = aiService;
+        this.orchestrator = orchestrator;
         this.logger = new common_1.Logger(EmailImapService_1.name);
         this.timer = null;
         this.isPolling = false;
@@ -236,20 +238,56 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${templated}</div>`;
             }
             else {
-                const draft = await this.aiService.generateDraft({
-                    from_email: fromEmail,
-                    subject,
-                    incoming_body: bodyText,
-                    lead_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
-                    conversation_history: conversationHistory,
-                    has_phone: hasPhone,
-                    phone_number: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
-                    company_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.company_name) || undefined,
-                }, tenantId);
-                if (!(draft === null || draft === void 0 ? void 0 : draft.draft))
-                    return;
-                replySubject = draft.subject;
-                replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
+                let agentReply = null;
+                try {
+                    const result = await this.orchestrator.handle({
+                        channel: "email",
+                        tenantId,
+                        conversationRef: fromEmail.toLowerCase(),
+                        message: bodyText,
+                        subject,
+                        email: fromEmail,
+                        phone: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
+                        name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || undefined,
+                        leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                        llm: { provider: aiConfig.llm_provider, model: aiConfig.llm_model },
+                    });
+                    if ((result === null || result === void 0 ? void 0 : result.humanTakeover) && !result.reply) {
+                        this.logger.log(`👨‍💼 [EMAIL] ${fromEmail} is with a human agent - skipping AI reply`);
+                        return;
+                    }
+                    if (result === null || result === void 0 ? void 0 : result.reply) {
+                        agentReply = result.reply;
+                        this.logger.log(`🤝 [MULTI-AGENT EMAIL] ${result.agentName} replied to ${fromEmail}`);
+                    }
+                }
+                catch (err) {
+                    this.logger.warn(`Multi-agent email failed, using legacy draft: ${err.message}`);
+                }
+                if (agentReply) {
+                    replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${agentReply
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')
+                        .replace(/\n/g, "<br/>")}</div>`;
+                }
+                else {
+                    const draft = await this.aiService.generateDraft({
+                        from_email: fromEmail,
+                        subject,
+                        incoming_body: bodyText,
+                        lead_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
+                        conversation_history: conversationHistory,
+                        has_phone: hasPhone,
+                        phone_number: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
+                        company_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.company_name) || undefined,
+                    }, tenantId);
+                    if (!(draft === null || draft === void 0 ? void 0 : draft.draft))
+                        return;
+                    replySubject = draft.subject;
+                    replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
+                }
             }
             await this.emailService.sendEmail({
                 to: fromEmail,
@@ -266,8 +304,58 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
     async syncNow(tenantId = "default") {
         return await this.pollInbox();
     }
+    isSystemOrAutomatedEmail(fromEmail, subject, headers = []) {
+        var _a, _b, _c, _d, _e, _f;
+        const emailLower = (fromEmail || "").toLowerCase();
+        const subjectLower = (subject || "").toLowerCase();
+        const systemSenders = [
+            "mailer-daemon",
+            "postmaster",
+            "no-reply",
+            "noreply",
+            "donotreply",
+            "do-not-reply",
+            "bounce",
+            "notifications@",
+            "notification@",
+            "alert@",
+            "alerts@",
+            "automated@",
+            "system@",
+        ];
+        if (systemSenders.some((s) => emailLower.includes(s))) {
+            return true;
+        }
+        const systemSubjects = [
+            "delivery status notification",
+            "undeliverable",
+            "returned mail",
+            "failure notice",
+            "mail delivery failed",
+            "automatic reply",
+            "out of office",
+            "auto-reply",
+            "delivery failure",
+        ];
+        if (systemSubjects.some((s) => subjectLower.includes(s))) {
+            return true;
+        }
+        const autoSubmitted = (_b = (_a = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "auto-submitted"; })) === null || _a === void 0 ? void 0 : _a.value) === null || _b === void 0 ? void 0 : _b.toLowerCase();
+        if (autoSubmitted && autoSubmitted !== "no") {
+            return true;
+        }
+        const precedence = (_d = (_c = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "precedence"; })) === null || _c === void 0 ? void 0 : _c.value) === null || _d === void 0 ? void 0 : _d.toLowerCase();
+        if (precedence && ["bulk", "junk", "auto_reply"].includes(precedence)) {
+            return true;
+        }
+        const xAutoReply = (_f = (_e = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "x-autoreply"; })) === null || _e === void 0 ? void 0 : _e.value) === null || _f === void 0 ? void 0 : _f.toLowerCase();
+        if (xAutoReply === "yes") {
+            return true;
+        }
+        return false;
+    }
     async pollInbox() {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
         if (this.isPolling)
             return { synced: 0, status: "already_running" };
         this.isPolling = true;
@@ -282,7 +370,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 try {
                     decryptedRefreshToken = this.encryptionService.Decrypt(config.refresh_token);
                 }
-                catch (_s) {
+                catch (_t) {
                     decryptedRefreshToken = config.refresh_token;
                 }
                 const oauth2Client = new googleapis_1.google.auth.OAuth2(config.client_id || process.env.GOOGLE_CLIENT_ID, config.client_secret || process.env.GOOGLE_CLIENT_SECRET);
@@ -315,6 +403,18 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                             fromEmail = match[2].trim();
                         }
                         if (fromEmail.toLowerCase() === config.email_address.toLowerCase()) {
+                            continue;
+                        }
+                        if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
+                            this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subjectHeader}"`);
+                            try {
+                                await gmail.users.messages.modify({
+                                    userId: "me",
+                                    id: item.id,
+                                    requestBody: { removeLabelIds: ["UNREAD"] },
+                                });
+                            }
+                            catch (_u) { }
                             continue;
                         }
                         let bodyText = "";
@@ -375,7 +475,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 try {
                     password = this.encryptionService.Decrypt(config.smtp_password);
                 }
-                catch (_t) {
+                catch (_v) {
                 }
                 const imapConfig = {
                     imap: {
@@ -407,6 +507,13 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                         const bodyText = parsed.text || "";
                         const bodyHtml = parsed.html || `<p>${bodyText}</p>`;
                         const messageId = parsed.messageId || `${idHeader}`;
+                        if (fromEmail.toLowerCase() === ((_s = config.email_address) === null || _s === void 0 ? void 0 : _s.toLowerCase())) {
+                            continue;
+                        }
+                        if (this.isSystemOrAutomatedEmail(fromEmail, subject)) {
+                            this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subject}"`);
+                            continue;
+                        }
                         const exists = await EmailLog_entity_1.EmailLog.findOne({ where: { message_id: messageId } });
                         if (!exists) {
                             const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(fromEmail, fromName, bodyText, subject, config.tenant_id);
@@ -447,6 +554,7 @@ exports.EmailImapService = EmailImapService = EmailImapService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [Encryption_service_1.EncryptionService,
         Email_service_1.EmailService,
-        EmailAI_service_1.EmailAIService])
+        EmailAI_service_1.EmailAIService,
+        AgentOrchestrator_service_1.AgentOrchestratorService])
 ], EmailImapService);
 //# sourceMappingURL=EmailImap.service.js.map

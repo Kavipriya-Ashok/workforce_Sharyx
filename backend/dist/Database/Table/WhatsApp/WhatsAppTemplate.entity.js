@@ -55,6 +55,22 @@ __decorate([
     (0, typeorm_1.Column)({ type: "boolean", default: true }),
     __metadata("design:type", Boolean)
 ], WhatsAppTemplate.prototype, "is_active", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 200, default: "ALL" }),
+    __metadata("design:type", String)
+], WhatsAppTemplate.prototype, "outcome_filter", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], WhatsAppTemplate.prototype, "attach_pdf", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
+    __metadata("design:type", String)
+], WhatsAppTemplate.prototype, "pdf_template_type", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 255, nullable: true }),
+    __metadata("design:type", String)
+], WhatsAppTemplate.prototype, "pdf_title", void 0);
 exports.WhatsAppTemplate = WhatsAppTemplate = __decorate([
     (0, typeorm_1.Entity)("wa_template")
 ], WhatsAppTemplate);
