@@ -13,10 +13,17 @@ export class VoiceCallController {
   }
 
   @Get("logs")
-  async getLogs(@Query("tenantId") tenantId?: string, @Query("limit") limit?: string) {
+  async getLogs(
+    @Query("tenantId") tenantId?: string,
+    @Query("limit") limit?: string,
+    @Query("agentId") agentId?: string,
+    @Query("skipSync") skipSync?: string
+  ) {
     const logs = await this.callService.getCallLogs(
       tenantId || "default",
-      limit ? parseInt(limit, 10) : 50
+      limit ? parseInt(limit, 10) : 50,
+      agentId || undefined,
+      skipSync === "true"
     );
     return { ok: true, data: logs };
   }
@@ -26,4 +33,25 @@ export class VoiceCallController {
     const stats = await this.callService.getCallStats(tenantId || "default");
     return { ok: true, data: stats };
   }
+
+  /**
+   * Manually sync call logs from SaaS platform — pulls from fallback-voice.sharyx.ai/api/call/list
+   * and upserts them into local VoiceCallLog table.
+   */
+  @Post("sync-saas")
+  async syncFromSaas(@Query("tenantId") tenantId?: string) {
+    const synced = await this.callService.syncCallLogsFromSaas(tenantId || "default");
+    return { ok: true, synced, message: `Synced ${synced} call logs from Sharyx SaaS platform` };
+  }
+
+  /**
+   * Manually sync call logs from Vapi platform — pulls from api.vapi.ai/call
+   * and upserts them into local VoiceCallLog table with recordings, durations and transcripts.
+   */
+  @Post("sync-vapi")
+  async syncFromVapi(@Query("tenantId") tenantId?: string) {
+    const synced = await this.callService.syncCallLogsFromVapi(tenantId || "default");
+    return { ok: true, synced, message: `Synced ${synced} call logs from Vapi platform` };
+  }
 }
+

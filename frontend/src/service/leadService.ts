@@ -135,4 +135,37 @@ export class LeadService {
     const res = await axios.post(`${API_BASE}/ApproveInterview/${id}`, data);
     return res.data?.AddtionalData || res.data;
   }
+
+  public static async triggerVoiceCall(
+    id: string,
+    data?: {
+      scheduledType?: "demo" | "interview" | string;
+      slot?: string;
+      meetUrl?: string;
+      agentId?: string;
+      agentKey?: string;
+    }
+  ): Promise<any> {
+    const res = await axios.post(`${API_BASE}/TriggerVoiceCall/${id}`, data || {});
+    return res.data?.AddtionalData || res.data;
+  }
+
+  public static async checkDuplicateEmail(
+    email: string,
+    excludeId?: string
+  ): Promise<{ is_duplicate: boolean; existing_lead?: any }> {
+    if (!email || !email.includes("@")) return { is_duplicate: false };
+    const params = new URLSearchParams({ email });
+    if (excludeId) params.append("exclude_id", excludeId);
+    const res = await axios.get(`${API_BASE}/CheckDuplicateEmail?${params.toString()}`);
+    return res.data?.AddtionalData || res.data || { is_duplicate: false };
+  }
+
+  public static async updateCandidateStage(
+    id: string,
+    candidate_stage: string
+  ): Promise<any> {
+    const res = await axios.patch(`${API_BASE}/UpdateCandidateStage/${id}`, { candidate_stage });
+    return res.data?.AddtionalData || res.data;
+  }
 }

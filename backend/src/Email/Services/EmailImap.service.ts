@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { simpleParser } from "mailparser";
 import * as imaps from "imap-simple";
 import { google } from "googleapis";
@@ -22,7 +23,8 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     private readonly encryptionService: EncryptionService,
     private readonly emailService: EmailService,
     private readonly aiService: EmailAIService,
-    private readonly orchestrator: AgentOrchestratorService
+    private readonly orchestrator: AgentOrchestratorService,
+    private readonly events: EventEmitter2
   ) {}
 
   onModuleInit() {
@@ -312,6 +314,31 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
       );
 
       this.logger.log(`🤖 [AFTER-REPLY AUTOMATION DISPATCHED] To: ${fromEmail} | Subject: "${replySubject}"`);
+
+      // After final GMeet email message: trigger automated call via connected voice platform (Vapi / SaaS)
+      const hasGMeet = /meet\.google\.com/i.test(replyHtml);
+      const isInterview = /(?:interview|candidate|job|applicant|hiring)/i.test(`${subject} ${bodyText} ${replySubject}`);
+      const targetPhone = leadRecord?.phone || this.extractPhoneNumber(bodyText);
+
+      if (hasGMeet && targetPhone) {
+        const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
+        const meetUrl = meetMatch ? meetMatch[0] : "https://meet.google.com";
+
+        this.events.emit("voice.call.requested", {
+          tenantId,
+          phone: targetPhone,
+          customerName: leadRecord?.name || fromEmail.split("@")[0],
+          scheduledType: isInterview ? "interview" : "demo",
+          reason: isInterview ? "Interview scheduled" : "You scheduled demo",
+          meetingSlot: "Scheduled Session",
+          meetUrl,
+          leadId: leadRecord?.id,
+          agentKey: isInterview ? "recruitment" : "sales",
+        });
+        this.logger.log(
+          `📞 [VOICE CALL TRIGGERED AFTER EMAIL GMEET] Dispatched call to ${targetPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`
+        );
+      }
     } catch (err: any) {
       this.logger.warn(`After-reply automation could not be sent: ${err.message}`);
     }

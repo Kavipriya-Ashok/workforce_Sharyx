@@ -72,25 +72,25 @@ export const WhatsAppTemplatesTab: React.FC = () => {
     switch (status?.toUpperCase()) {
       case "APPROVED":
         return (
-          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1 text-[11px]">
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 text-[11px] font-semibold">
             <CheckCircle2 className="h-3 w-3" /> Approved
           </Badge>
         );
       case "PENDING":
         return (
-          <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 gap-1 text-[11px]">
-            <Clock className="h-3 w-3" /> Meta Review Pending
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1 text-[11px] font-semibold">
+            <Clock className="h-3 w-3" /> Review Pending
           </Badge>
         );
       case "REJECTED":
         return (
-          <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/30 gap-1 text-[11px]">
-            <AlertTriangle className="h-3 w-3" /> Rejected by Meta
+          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 gap-1 text-[11px] font-semibold">
+            <AlertTriangle className="h-3 w-3" /> Rejected
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="bg-slate-800 text-slate-300 border-slate-700 text-[11px]">
+          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[11px] font-semibold">
             {status || "Active"}
           </Badge>
         );
@@ -100,15 +100,19 @@ export const WhatsAppTemplatesTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm">
-        <div>
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <LayoutTemplate className="h-5 w-5 text-emerald-400" />
-            Meta Message Templates
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Pre-approved Meta templates for outbound notification triggers and re-engagements outside 24h window.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-blue-150 bg-white shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+            <LayoutTemplate className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              Meta WhatsApp Message Templates
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pre-approved Meta templates for outbound notification triggers, interview scheduling, and re-engagements outside the 24h window.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -117,9 +121,9 @@ export const WhatsAppTemplatesTab: React.FC = () => {
             size="sm"
             onClick={handleSyncMeta}
             disabled={syncing}
-            className="gap-1.5 border-slate-700 hover:bg-slate-800 text-slate-200"
+            className="text-xs font-semibold text-blue-700 border-blue-200 hover:bg-blue-50 gap-1.5"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin text-emerald-400" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin text-blue-600" : ""}`} />
             {syncing ? "Syncing..." : "Sync from Meta"}
           </Button>
 
@@ -129,7 +133,7 @@ export const WhatsAppTemplatesTab: React.FC = () => {
               setEditingTemplate(null);
               setDialogOpen(true);
             }}
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white"
+            className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm shadow-blue-500/20"
           >
             <PlusCircle className="h-4 w-4" />
             Create Template
@@ -141,14 +145,14 @@ export const WhatsAppTemplatesTab: React.FC = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-48 rounded-xl bg-slate-900/40 border border-slate-800 animate-pulse" />
+            <div key={i} className="h-48 rounded-2xl bg-white border border-blue-100 animate-pulse" />
           ))}
         </div>
       ) : templates.length === 0 ? (
-        <div className="text-center py-16 px-4 rounded-xl border border-dashed border-slate-800 bg-slate-900/30">
-          <Sparkles className="h-10 w-10 text-emerald-400/50 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-slate-200">No WhatsApp Templates Found</h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-4">
+        <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-blue-200 bg-white shadow-xs">
+          <Sparkles className="h-10 w-10 text-blue-400 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-900">No WhatsApp Templates Found</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
             Create your first pre-approved Meta template or sync existing templates from your Meta Business Account.
           </p>
           <div className="flex justify-center gap-3">
@@ -158,12 +162,18 @@ export const WhatsAppTemplatesTab: React.FC = () => {
                 setEditingTemplate(null);
                 setDialogOpen(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5"
             >
-              <PlusCircle className="mr-1.5 h-4 w-4" />
+              <PlusCircle className="h-4 w-4" />
               Create First Template
             </Button>
-            <Button size="sm" variant="outline" onClick={handleSyncMeta} disabled={syncing}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSyncMeta}
+              disabled={syncing}
+              className="text-slate-700 border-slate-200 hover:bg-slate-50 text-xs"
+            >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Sync from Meta
             </Button>
@@ -174,17 +184,17 @@ export const WhatsAppTemplatesTab: React.FC = () => {
           {templates.map((tpl) => (
             <div
               key={tpl.id || tpl.name}
-              className="flex flex-col justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-slate-700 transition-all shadow-sm"
+              className="flex flex-col justify-between p-5 rounded-2xl border border-blue-150 bg-white hover:border-blue-300 transition-all shadow-xs"
             >
               <div>
                 {/* Card Top */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-white truncate font-mono">
+                <div className="flex items-start justify-between gap-2 mb-2.5">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 font-mono">
                       {tpl.name}
                     </h3>
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider block mt-0.5">
-                      {tpl.category || "UTILITY"} • {tpl.language || "en_US"}
+                      {tpl.category} • {tpl.language || "en_US"}
                     </span>
                   </div>
                   {getStatusBadge(tpl.approval_status)}
@@ -192,52 +202,50 @@ export const WhatsAppTemplatesTab: React.FC = () => {
 
                 {/* Header Preview */}
                 {tpl.header_text && (
-                  <div className="text-xs font-semibold text-emerald-400 mb-1.5 pb-1 border-b border-slate-800">
+                  <div className="text-[11px] font-bold text-blue-700 mb-1.5">
                     {tpl.header_text}
                   </div>
                 )}
 
-                {/* Body Preview */}
-                <div className="bg-slate-950/80 rounded-lg p-3 border border-slate-800/80 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-sans max-h-36 overflow-y-auto">
-                  {tpl.body_text || tpl.components?.find((c) => c.type === "BODY")?.text || "No preview"}
+                {/* Body Text Bubble */}
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-150 text-xs text-slate-700 leading-relaxed font-sans mb-3">
+                  {tpl.body_text}
                 </div>
 
                 {/* Footer Preview */}
                 {tpl.footer_text && (
-                  <p className="text-[10px] text-slate-500 mt-2 italic truncate">
+                  <div className="text-[10px] text-slate-400 italic mb-3">
                     {tpl.footer_text}
-                  </p>
+                  </div>
                 )}
               </div>
 
               {/* Card Footer Actions */}
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-800/80">
-                <span className="text-[10px] text-slate-500">
-                  {tpl.is_active ? "🟢 Active for triggers" : "⚪ Disabled"}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
+                <span className="text-[10px] text-slate-400">
+                  {tpl.is_active ? "Enabled for automation" : "Inactive"}
                 </span>
 
                 <div className="flex items-center gap-1">
                   <Button
-                    size="sm"
                     variant="ghost"
+                    size="icon"
                     onClick={() => {
                       setEditingTemplate(tpl);
                       setDialogOpen(true);
                     }}
-                    className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                    className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-50"
                   >
                     <Edit className="h-3.5 w-3.5" />
                   </Button>
-                  {tpl.id && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(tpl.id!, tpl.name)}
-                      className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(tpl.id || '', tpl.name)}
+                    className="h-7 w-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -245,7 +253,7 @@ export const WhatsAppTemplatesTab: React.FC = () => {
         </div>
       )}
 
-      {/* Template Dialog */}
+      {/* Dialog for Creating/Editing Template */}
       <CreateWhatsAppTemplateDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

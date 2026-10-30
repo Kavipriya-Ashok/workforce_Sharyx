@@ -35,7 +35,7 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
         this.bizCache = null;
     }
     async handle(input) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
         const tenantId = input.tenantId || "default";
         const agents = await this.agentService.getActiveMap(tenantId, input.channel);
         const receptionist = agents.get("receptionist");
@@ -70,10 +70,20 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
         for (let hop = 0; hop <= MAX_HANDOFFS_PER_TURN; hop++) {
             current = agents.get(state.active_agent) || receptionist;
             let out = null;
-            if (llmAvailable) {
+            const lowerMsg = userMessage.toLowerCase();
+            const hasPhone = /(?:\+?\d{1,4}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(userMessage) || /(?:\+?\d[\d\s-]{8,14}\d)/.test(userMessage);
+            const isCandidateQuery = /(?:job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment|interview|recruitment)/i.test(lowerMsg);
+            const isExplicitSalesCall = /(?:sales.*(?:call|speak|talk|phone|connect|ring|contact)|(?:call|speak|talk|phone|connect|ring|contact).*(?:sales)|sales.*(?:rep|person|team|executive|agent)|talk to sales|speak with sales|speak to sales|connect.*sales|sales.*callback|request.*sales|call pannunga.*sales|sales kitta pesanum|sales.*pesa|sales.*direct call|direct call.*sales)/i.test(lowerMsg) ||
+                (/(?:call me|call back|request.*call|can you call|need a call|phone call|call pannunga|direct call)/i.test(lowerMsg) && !isCandidateQuery);
+            const histText = (normalizedHistory || []).slice(-3).map((h) => h.content).join(" ").toLowerCase();
+            const isSalesCallbackFollowup = hasPhone && !isCandidateQuery && (((_b = state.collected_slots) === null || _b === void 0 ? void 0 : _b.sales_call_requested) || /sales|call you|phone number|call back|callback/i.test(histText));
+            if (isExplicitSalesCall || isSalesCallbackFollowup) {
+                out = await this.dynamicTurn(current, userMessage, state, agents, hop);
+            }
+            else if (llmAvailable) {
                 try {
                     const systemPrompt = await this.buildPrompt(current, agents, state, input, hop > 0);
-                    out = await this.llm.completeJson(systemPrompt, normalizedHistory, userMessage, Object.assign(Object.assign({}, input.llm), { provider: current.llm_provider || ((_b = input.llm) === null || _b === void 0 ? void 0 : _b.provider), model: current.llm_model || ((_c = input.llm) === null || _c === void 0 ? void 0 : _c.model), temperature: (_d = current.temperature) !== null && _d !== void 0 ? _d : (_e = input.llm) === null || _e === void 0 ? void 0 : _e.temperature }));
+                    out = await this.llm.completeJson(systemPrompt, normalizedHistory, userMessage, Object.assign(Object.assign({}, input.llm), { provider: current.llm_provider || ((_c = input.llm) === null || _c === void 0 ? void 0 : _c.provider), model: current.llm_model || ((_d = input.llm) === null || _d === void 0 ? void 0 : _d.model), temperature: (_e = current.temperature) !== null && _e !== void 0 ? _e : (_f = input.llm) === null || _f === void 0 ? void 0 : _f.temperature }));
                     if (out) {
                         usedLlm = true;
                     }
@@ -98,34 +108,34 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
                     }
                 }
             }
-            if ((_f = out.tool) === null || _f === void 0 ? void 0 : _f.name) {
+            if ((_g = out.tool) === null || _g === void 0 ? void 0 : _g.name) {
                 if ((current.allowed_tools || []).includes(out.tool.name)) {
                     const res = await this.tools.execute(out.tool, state, current.agent_key, current.display_name);
                     this.logger.log(`🛠️ [${current.agent_key}] tool ${out.tool.name} -> ${res.note}`);
                     if (res.appendText)
                         appendTexts.push(res.appendText);
                     if (out.tool.name === "transfer_to_human") {
-                        await this.recordHandoff(state, current.agent_key, "human", ((_g = out.tool.inputs) === null || _g === void 0 ? void 0 : _g.reason) || "requested", input.message);
-                        handoffs.push({ from: current.agent_key, to: "human", reason: ((_h = out.tool.inputs) === null || _h === void 0 ? void 0 : _h.reason) || "requested" });
+                        await this.recordHandoff(state, current.agent_key, "human", ((_h = out.tool.inputs) === null || _h === void 0 ? void 0 : _h.reason) || "requested", input.message);
+                        handoffs.push({ from: current.agent_key, to: "human", reason: ((_j = out.tool.inputs) === null || _j === void 0 ? void 0 : _j.reason) || "requested" });
                     }
                 }
                 else {
                     this.logger.warn(`Agent ${current.agent_key} tried disallowed tool ${out.tool.name}`);
                 }
             }
-            const target = ((_j = out.handoff) === null || _j === void 0 ? void 0 : _j.to) ? String(out.handoff.to).toLowerCase().trim() : "";
+            const target = ((_k = out.handoff) === null || _k === void 0 ? void 0 : _k.to) ? String(out.handoff.to).toLowerCase().trim() : "";
             const lastPair = handoffs[handoffs.length - 1];
             const isPingPong = lastPair && lastPair.from === target && lastPair.to === current.agent_key;
             const canHandoff = target &&
                 target !== current.agent_key &&
                 agents.has(target) &&
-                (((_k = current.handoff_targets) === null || _k === void 0 ? void 0 : _k.length) ? current.handoff_targets.includes(target) : true) &&
+                (((_l = current.handoff_targets) === null || _l === void 0 ? void 0 : _l.length) ? current.handoff_targets.includes(target) : true) &&
                 hop < MAX_HANDOFFS_PER_TURN &&
                 !isPingPong &&
                 !state.human_takeover;
             if (canHandoff) {
-                const reason = ((_l = out.handoff) === null || _l === void 0 ? void 0 : _l.reason) || "intent change";
-                state.handoff_brief = ((_m = out.handoff) === null || _m === void 0 ? void 0 : _m.brief) || `${current.display_name}: customer asked "${input.message.slice(0, 200)}" (${reason})`;
+                const reason = ((_m = out.handoff) === null || _m === void 0 ? void 0 : _m.reason) || "intent change";
+                state.handoff_brief = ((_o = out.handoff) === null || _o === void 0 ? void 0 : _o.brief) || `${current.display_name}: customer asked "${input.message.slice(0, 200)}" (${reason})`;
                 await this.recordHandoff(state, current.agent_key, target, reason, input.message);
                 handoffs.push({ from: current.agent_key, to: target, reason });
                 const next = agents.get(target);
@@ -134,17 +144,25 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
                 const nameGreeting = state.customer_name ? ` ${state.customer_name}` : "";
                 const transition = (out.reply || "").trim() || (next.handoff_message ? next.handoff_message : `Please wait a moment${nameGreeting}, let me connect you with our ${next.display_name}...`);
                 announcement = transition;
+                if (((_p = out.tool) === null || _p === void 0 ? void 0 : _p.name) === "dispatch_voice_call") {
+                    reply = (out.reply || "").trim();
+                    break;
+                }
                 continue;
             }
             reply = (out.reply || "").trim() || current.fallback_message || "";
             break;
         }
-        const extras = appendTexts.filter((t) => !t.split("\n").some((line) => {
+        const uniqueExtras = Array.from(new Set(appendTexts.filter(Boolean)));
+        const extras = uniqueExtras.filter((t) => {
             var _a;
-            const url = (_a = line.match(/https?:\/\/\S+/)) === null || _a === void 0 ? void 0 : _a[0];
-            return url ? reply.includes(url) : false;
-        }));
-        let finalReply = [announcement, reply, ...extras].filter(Boolean).join(input.channel === "email" ? "\n\n" : "\n\n");
+            const url = (_a = t.match(/https?:\/\/\S+/)) === null || _a === void 0 ? void 0 : _a[0];
+            return url ? !reply.includes(url) : !reply.includes(t.trim());
+        });
+        const replyBody = [reply, ...extras].filter(Boolean).join("\n\n");
+        let finalReply = input.channel === "whatsapp"
+            ? replyBody
+            : [announcement, replyBody].filter(Boolean).join("\n\n");
         if (state.human_takeover && !finalReply) {
             finalReply = "👨‍💼 I'm connecting you with a member of our team. They'll be with you shortly.";
         }
@@ -154,6 +172,7 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
         await state.save();
         return {
             reply: finalReply || null,
+            announcement: announcement || null,
             agentKey: current.agent_key,
             agentName: current.display_name,
             handoffs,
@@ -213,6 +232,8 @@ ${agent.persona_prompt}
         p += `- Reply in the customer's language (English / Tamil / Tanglish).\n`;
         p += `\n═══ TOOLS YOU MAY CALL (at most one per turn) ═══\n${allowedTools}\n`;
         p += `- When the customer asks to receive or share the meeting link via email (e.g. "send meeting link in email", "email me the link"), call "email_meeting_link". If their email is unknown, ask for their email address.\n`;
+        p += `- When the customer explicitly asks to speak with a sales agent, talk to sales, connect with sales, or requests a sales call / callback: call "dispatch_voice_call" and handoff to "sales". If their phone number is unknown, ask for their phone number.\n`;
+        p += `- When the customer asks about job openings, recruitment, career opportunities, candidate status, or interviews: answer using recruitment knowledge or handoff to "recruitment". Under NO circumstances trigger a sales call for candidate questions.\n`;
         p += `
 ═══ OUTPUT: STRICT JSON ONLY ═══
 {
@@ -397,13 +418,20 @@ RULES:
         return out;
     }
     async dynamicTurn(agent, message, state, agents, hop) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
         const m = (message || "").toLowerCase().trim();
         const memory = {};
+        const leadRec = await this.findLead(state);
+        const phoneMatch = message.match(/(?:\+?\d{1,4}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/) || message.match(/(?:\+?\d[\d\s-]{8,14}\d)/);
+        if (phoneMatch) {
+            memory.phone = phoneMatch[0].replace(/[\s-]/g, "");
+            if (!state.customer_phone)
+                state.customer_phone = memory.phone;
+        }
         const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
         if (emailMatch)
             memory.email = emailMatch[0];
-        const explicitNameMatch = message.match(/(?:my name is|i am|i'm|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+        const explicitNameMatch = message.match(/(?:my name is|i am|i'm|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
         if (explicitNameMatch) {
             memory.name = explicitNameMatch[1];
         }
@@ -453,6 +481,76 @@ RULES:
         if (agent.agent_key === "receptionist") {
             const cust = memory.name || state.customer_name || "";
             const namePart = cust ? ` ${cust}` : "";
+            const customerPhone = memory.phone || state.customer_phone || ((_h = state.collected_slots) === null || _h === void 0 ? void 0 : _h.phone) || "";
+            const isSalesCallRequest = /(?:sales.*(?:call|speak|talk|phone|connect|ring|contact)|(?:call|speak|talk|phone|connect|ring|contact).*(?:sales)|sales.*(?:rep|person|team|executive|agent)|talk to sales|speak with sales|speak to sales|connect.*sales|sales.*callback|request.*sales|call pannunga.*sales|sales kitta pesanum|sales.*pesa)/i.test(m) ||
+                (/(?:call me|call back|request.*call|can you call|need a call|phone call|call pannunga|direct call)/i.test(m) && !/(?:interview|job|application|hr|career)/i.test(m));
+            if (isSalesCallRequest) {
+                if (customerPhone) {
+                    return {
+                        reply: `I'm connecting you with our Sales Specialist right away${namePart}! 💼\n\n📞 I've just initiated an outbound telephone call to your number (*${customerPhone}*). Please pick up your phone in a moment — our AI Sales Specialist is ready to discuss plans, pricing, and answer all your questions!`,
+                        tool: {
+                            name: "dispatch_voice_call",
+                            inputs: {
+                                phone: customerPhone,
+                                name: cust || undefined,
+                                reason: "Customer requested a direct telephone call with Sales on WhatsApp",
+                                agentKey: "sales",
+                            },
+                        },
+                        handoff: {
+                            to: "sales",
+                            reason: "requested sales call",
+                            brief: `${cust ? `Customer ${cust}` : "Customer"} requested an outbound sales call to ${customerPhone}: "${message.slice(0, 150)}"`,
+                        },
+                        memory,
+                    };
+                }
+                else {
+                    return {
+                        reply: `I would be delighted to connect you with our Sales Specialist${namePart}! 💼\n\nCould you please share your phone number (with country code, e.g. +91) so our Sales Agent can call you immediately? 📱`,
+                        handoff: {
+                            to: "sales",
+                            reason: "requested sales call (pending phone number)",
+                            brief: `${cust ? `Customer ${cust}` : "Customer"} requested a sales call but phone number is needed`,
+                        },
+                        memory: Object.assign(Object.assign({}, memory), { sales_call_requested: true }),
+                    };
+                }
+            }
+            const isCandidateQuestion = /(job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment|interview|recruitment|fresher|salary|ctc|velai|opening irukka)/i.test(m);
+            if (isCandidateQuestion) {
+                if (/(opening|position|role|vacancy|what job|any job|hiring)/i.test(m)) {
+                    return {
+                        reply: `We currently have open opportunities at Sharyx for:\n• AI Solutions Engineer (2-5 yrs Python/Node.js, NLP/AI)\n• Business Development Executive (1-3 yrs B2B SaaS Sales)\n• Frontend Developer (2+ yrs React/TypeScript)\n\nLet me connect you with our Recruitment Specialist${namePart} 🎓 who can assist with your application and schedule your interview!`,
+                        handoff: {
+                            to: "recruitment",
+                            reason: "job openings inquiry",
+                            brief: `${cust ? `Candidate ${cust}` : "Candidate"} inquired about open roles: "${message.slice(0, 150)}"`,
+                        },
+                        memory,
+                    };
+                }
+                if (/(status|result|selection|interview.*when|update|round)/i.test(m)) {
+                    return {
+                        reply: `Let me connect you with our Recruitment Specialist${namePart} 🎓 to check your interview and application status right away!`,
+                        handoff: {
+                            to: "recruitment",
+                            reason: "candidate status inquiry",
+                            brief: `${cust ? `Candidate ${cust}` : "Candidate"} asked about interview/application status: "${message.slice(0, 150)}"`,
+                        },
+                        memory,
+                    };
+                }
+                return {
+                    reply: `Thank you for your interest in joining Sharyx! Let me connect you with our Recruitment Specialist${namePart} 🎓 to review your profile and experience.`,
+                    handoff: {
+                        to: "recruitment",
+                        reason: "career application",
+                        brief: `${cust ? `Candidate ${cust}` : "Candidate"} wants to apply: "${message.slice(0, 150)}"`,
+                    },
+                    memory,
+                };
+            }
             if (/(price|pricing|cost|plan|quote|quotation|how much|buy|purchase|discount|package|rate|evlo)/i.test(m)) {
                 return {
                     reply: `Please wait a moment${namePart}, let me connect you with our Sales Specialist 💼...`,
@@ -464,7 +562,7 @@ RULES:
                     memory,
                 };
             }
-            if (/(demo|book|appointment|schedule|meeting|slot|reschedule|call me|meet)/i.test(m)) {
+            if (/(demo|book|appointment|schedule|meeting|slot|reschedule|meet)/i.test(m)) {
                 return {
                     reply: `I'll connect you to our Appointment Desk${namePart} 📅!`,
                     handoff: {
@@ -475,24 +573,13 @@ RULES:
                     memory,
                 };
             }
-            if (/(not working|issue|problem|error|bug|complain|complaint|refund|broken|support|human|real person|talk to|manager)/i.test(m)) {
+            if (/(not working|issue|problem|error|bug|complain|complaint|refund|broken|support|human|real person|manager)/i.test(m)) {
                 return {
                     reply: `Let me connect you to our Support Lead${namePart} 🛟!`,
                     handoff: {
                         to: "support",
                         reason: "support request",
                         brief: `${cust ? `Customer ${cust}` : "Customer"} reported support issue: "${message.slice(0, 150)}"`,
-                    },
-                    memory,
-                };
-            }
-            if (/(job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment)/i.test(m)) {
-                return {
-                    reply: `Let me connect you with our Recruitment Specialist${namePart} 🎓!`,
-                    handoff: {
-                        to: "recruitment",
-                        reason: "job inquiry",
-                        brief: `${cust ? `Customer ${cust}` : "Candidate"} inquired about careers: "${message.slice(0, 150)}"`,
                     },
                     memory,
                 };
@@ -513,17 +600,45 @@ RULES:
             }
             if (/(product|feature|service|what do you|tell me about|info|email automation|voice agent|whatsapp)/i.test(m)) {
                 return {
-                    reply: `We provide an Autonomous AI Workforce platform featuring:\n🎙️ AI Voice Agent: 24/7 autonomous phone calling & lead qualification\n💬 WhatsApp AI Copilot: Meta Cloud API smart messaging & support\n✉️ Email AI Copilot: Inbox auto-replies & campaign workflows\n📊 Real-Time CRM: Automated lead tracking\n\nWould you like to explore our pricing plans, or schedule a live Google Meet demo?`,
+                    reply: `We provide an Autonomous AI Workforce platform featuring:\n🎙️ AI Voice Agent: 24/7 autonomous phone calling & lead qualification\n💬 WhatsApp AI Copilot: Meta Cloud API smart messaging & support\n✉️ Email AI Copilot: Inbox auto-replies & campaign workflows\n📊 Real-Time CRM: Automated lead tracking\n\nWould you like to explore our pricing plans, speak with our Sales Specialist, or schedule a live Google Meet demo?`,
                     memory,
                 };
             }
             return {
-                reply: "Hi 👋 Welcome to Sharyx! May I know your name and company name, and your email address so we can register your inquiry and share our product guide with you?",
+                reply: "Hi 👋 Welcome to Sharyx! I can assist you with product details, connect you with our Sales team, answer recruitment questions, or schedule a live Google Meet demo. May I know your name and how I can help you today?",
                 memory,
             };
         }
         if (agent.agent_key === "sales") {
             const custName = memory.name || state.customer_name || "";
+            const customerPhone = memory.phone || state.customer_phone || ((_j = state.collected_slots) === null || _j === void 0 ? void 0 : _j.phone) || "";
+            const hasPhoneInMessage = memory.phone || /(?:\+?\d[\d\s-]{8,14}\d)/.test(message);
+            const isCallPending = ((_k = state.collected_slots) === null || _k === void 0 ? void 0 : _k.sales_call_requested) || /(?:call me|call back|phone call|call.*phone|speak.*phone|talk.*phone|call pannunga)/i.test(m);
+            if ((isCallPending && hasPhoneInMessage) || (/(?:call me|call back|phone call|call.*phone|speak.*phone|talk.*phone|call pannunga)/i.test(m))) {
+                const phoneToCall = memory.phone || customerPhone || (((_m = (_l = message.match(/(?:\+?\d[\d\s-]{8,14}\d)/)) === null || _l === void 0 ? void 0 : _l[0]) === null || _m === void 0 ? void 0 : _m.replace(/[\s-]/g, "")) || "");
+                if (phoneToCall) {
+                    const updatedMemory = Object.assign(Object.assign({}, memory), { phone: phoneToCall, sales_call_requested: false });
+                    return {
+                        reply: `I'd be glad to speak with you directly! 📞\n\nI've initiated an outbound phone call to *${phoneToCall}*. Please pick up your phone in a moment — our AI Sales Specialist is dialing.`,
+                        tool: {
+                            name: "dispatch_voice_call",
+                            inputs: {
+                                phone: phoneToCall,
+                                name: custName || undefined,
+                                reason: "Customer requested live phone call in Sales chat",
+                                agentKey: "sales",
+                            },
+                        },
+                        memory: updatedMemory,
+                    };
+                }
+                else {
+                    return {
+                        reply: "I would be happy to call you! Could you please share your phone number (with country code, e.g. +91) so I can ring you immediately? 📱",
+                        memory: Object.assign(Object.assign({}, memory), { sales_call_requested: true }),
+                    };
+                }
+            }
             const seatsMatch = message.match(/(\d+)\s*(users?|seats?|agents?|people|members?)/i) || message.match(/^\s*(\d+)\s*$/);
             if (seatsMatch) {
                 const count = parseInt(seatsMatch[1]);
@@ -549,7 +664,7 @@ RULES:
                     handoff: {
                         to: "appointment",
                         reason: "demo booking",
-                        brief: `Customer agreed to demo for ${((_h = state.collected_slots) === null || _h === void 0 ? void 0 : _h.seats) || "their team"}`,
+                        brief: `Customer agreed to demo for ${((_o = state.collected_slots) === null || _o === void 0 ? void 0 : _o.seats) || "their team"}`,
                     },
                     memory,
                 };
@@ -582,7 +697,7 @@ RULES:
                     memory,
                 };
             }
-            const appt = (_j = state.collected_slots) === null || _j === void 0 ? void 0 : _j.appointment;
+            const appt = (_p = state.collected_slots) === null || _p === void 0 ? void 0 : _p.appointment;
             if (appt === null || appt === void 0 ? void 0 : appt.meet_url) {
                 return {
                     reply: `Your demo is confirmed for ${appt.slot || "Tomorrow 10:00 AM"}!\n🎥 Google Meet: ${appt.meet_url}\n${state.customer_email ? `✉️ An invitation has also been sent to ${state.customer_email}` : "✉️ What is your email address so I can send the invitation directly to your inbox?"}`,
@@ -595,24 +710,126 @@ RULES:
             };
         }
         if (agent.agent_key === "recruitment") {
-            const expMatch = message.match(/(\d+)\s*(yrs?|years?)/i);
-            if (expMatch) {
-                memory.experience = expMatch[0];
+            const candName = memory.name || state.customer_name || ((leadRec === null || leadRec === void 0 ? void 0 : leadRec.name) && !leadRec.name.startsWith("+") ? leadRec.name : "there");
+            const candEmail = memory.email || state.customer_email || ((leadRec === null || leadRec === void 0 ? void 0 : leadRec.email) && !leadRec.email.includes("example.com") ? leadRec.email : null);
+            const isFrontend = /(frontend|react|typescript|ui|nextjs|web developer)/i.test(m);
+            const isAiEng = /(ai solutions|python|nlp|ml|backend|engineer|machine learning|langchain)/i.test(m);
+            const isBde = /(bde|business development|sales executive|b2b sales|marketing)/i.test(m);
+            if (isFrontend)
+                state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { applied_role: "Frontend Developer" });
+            else if (isAiEng)
+                state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { applied_role: "AI Solutions Engineer" });
+            else if (isBde)
+                state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { applied_role: "Business Development Executive" });
+            const currentRole = ((_q = state.collected_slots) === null || _q === void 0 ? void 0 : _q.applied_role) || (isFrontend ? "Frontend Developer" : isAiEng ? "AI Solutions Engineer" : isBde ? "Business Development Executive" : null);
+            const isPdfUploaded = /\[Candidate (?:uploaded|shared) (?:resume )?PDF:.*?\]/i.test(message) || /(?:drive\.google\.com|dropbox\.com|onedrive|\.pdf)/i.test(message);
+            const isNonPdfUploaded = /\[Candidate (?:uploaded|sent) non-PDF (?:attachment|document):.*?\]|\[Candidate uploaded an image instead of a PDF resume\]/i.test(message) || /(https?:\/\/[^\s]+(\.docx?|\.png|\.jpg|\.jpeg)|[^\s]+(\.docx?|\.png|\.jpg|\.jpeg))/i.test(message);
+            if (isNonPdfUploaded) {
                 return {
-                    reply: `Thank you! Noted ${expMatch[0]} of experience. What is your current employment status, notice period, and expected CTC?`,
+                    reply: `Thank you, ${candName}! However, our hiring system specifically requires your resume in *PDF format (.pdf)* 📄.\n\nCould you please upload your resume as a PDF file or share a Google Drive / Dropbox PDF link?`,
                     memory,
                 };
             }
-            if (/(ctc|lpa|notice|immediate|serving)/i.test(m)) {
+            if (/(?:can i share|how to send|submit|upload|where to send|share).*?(?:resume|cv)/i.test(m) || (/^(?:resume|cv|my resume)$/i.test(m.trim()) && !isPdfUploaded && !isNonPdfUploaded)) {
                 return {
-                    reply: "Got it! Let me connect you with our Appointment Desk to schedule your interview round on Google Meet 📅!",
-                    handoff: { to: "appointment", reason: "interview booking", brief: "Candidate screened for interview" },
-                    tool: { name: "capture_contact", inputs: memory },
+                    reply: `Please share your *Resume / CV in PDF format (.pdf)* 📄! You can attach the PDF document directly here in WhatsApp or paste a Google Drive / accessible PDF link.`,
+                    memory,
+                };
+            }
+            if (isPdfUploaded) {
+                const urlMatch = message.match(/https?:\/\/[^\s]+/i);
+                const fileNameMatch = message.match(/"([^"]+\.pdf)"/i);
+                const resumeUrl = urlMatch ? urlMatch[0] : fileNameMatch ? fileNameMatch[1] : "candidate_resume.pdf";
+                state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { resume_url: resumeUrl });
+                memory.resume_url = resumeUrl;
+                return {
+                    reply: `Thank you, ${candName}! I've verified and received your resume (PDF) 📄.\n\nLet's get your 30-minute Google Meet interview scheduled! 📅\n\nWould any of these slots work for you?\n1. Tomorrow (Oct 29) at 11:00 AM\n2. Tomorrow (Oct 29) at 3:00 PM\n3. Friday (Oct 30) at 11:00 AM`,
+                    tool: { name: "capture_contact", inputs: Object.assign({ resume_url: resumeUrl }, memory) },
+                    memory,
+                };
+            }
+            const slotMatch = message.match(/(tomorrow|today|morning|afternoon|11(?::00)?\s*am|3(?::00)?\s*pm|10(?::00)?\s*am|friday|\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+            if (slotMatch && (((_r = state.collected_slots) === null || _r === void 0 ? void 0 : _r.applied_role) || /(?:developer|engineer|role|opening|interview|slot)/i.test(m) || ((_s = state.collected_slots) === null || _s === void 0 ? void 0 : _s.experience))) {
+                let confirmedSlot = "Tomorrow at 11:00 AM";
+                if (/(?:11|11:00|11am|11 am)/i.test(m))
+                    confirmedSlot = "Tomorrow at 11:00 AM";
+                else if (/(?:3|3:00|3pm|3 pm)/i.test(m))
+                    confirmedSlot = "Tomorrow at 3:00 PM";
+                else if (/(?:friday)/i.test(m))
+                    confirmedSlot = "Friday at 11:00 AM";
+                else
+                    confirmedSlot = message.trim();
+                if (!candEmail) {
+                    state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { pending_interview_slot: confirmedSlot });
+                    return {
+                        reply: `Awesome! ${confirmedSlot} works great 🗓️.\n\nCould you please share your email address so I can send the Google Meet calendar invite and link directly to your inbox? ✉️`,
+                        memory,
+                    };
+                }
+                return {
+                    reply: `You're all set, ${candName}! Your interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${confirmedSlot}* 🚀.`,
+                    tool: {
+                        name: "book_appointment",
+                        inputs: {
+                            slot: confirmedSlot,
+                            type: "interview",
+                            email: candEmail,
+                            role: currentRole || "Frontend Developer",
+                        },
+                    },
+                    memory,
+                };
+            }
+            if (memory.email && ((_t = state.collected_slots) === null || _t === void 0 ? void 0 : _t.pending_interview_slot)) {
+                const slot = state.collected_slots.pending_interview_slot;
+                return {
+                    reply: `Thank you! I've registered your email (*${memory.email}*).\n\nYour interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${slot}* 🚀.`,
+                    tool: {
+                        name: "book_appointment",
+                        inputs: {
+                            slot,
+                            type: "interview",
+                            email: memory.email,
+                            role: currentRole || "Frontend Developer",
+                        },
+                    },
+                    memory,
+                };
+            }
+            const expMatch = message.match(/(\d+)\s*(yrs?|years?)/i) || (m.length <= 10 && /^\d+$/.test(m) ? [m + " years", m] : null);
+            if (expMatch) {
+                memory.experience = expMatch[0];
+                state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { experience: expMatch[0] });
+                return {
+                    reply: `That's great! 🌟 Are you currently working, serving notice, or already relieved? Also, what is your expected CTC (e.g. 5 LPA)?`,
+                    memory,
+                };
+            }
+            if (/(notice|relieved|serving|working|immediate|lpa|ctc|lakh|\d+\s*days)/i.test(m)) {
+                if (/(serving|notice|\d+\s*days)/i.test(m)) {
+                    memory.employment_status = message.trim();
+                    state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { employment_status: message.trim() });
+                }
+                if (/(lpa|ctc|lakh|\d+)/i.test(m)) {
+                    memory.expected_ctc = message.trim();
+                    state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { expected_ctc: message.trim() });
+                }
+                if (!((_u = state.collected_slots) === null || _u === void 0 ? void 0 : _u.resume_url)) {
+                    return {
+                        reply: `Got it! Thanks for sharing those details, ${candName} 📋.\n\nCould you please share your *Resume / CV in PDF format*? You can upload the PDF file directly here or share an accessible PDF link 📄.`,
+                        tool: { name: "capture_contact", inputs: memory },
+                        memory,
+                    };
+                }
+            }
+            if (currentRole && !((_v = state.collected_slots) === null || _v === void 0 ? void 0 : _v.experience)) {
+                return {
+                    reply: `Awesome! Our ${currentRole} role focuses on modern, scalable applications 💻. How many years of total and relevant experience do you have?`,
                     memory,
                 };
             }
             return {
-                reply: "Welcome to Sharyx Careers! We are hiring for AI Solutions Engineer, Business Development Executive, and Frontend Developer. Which role are you applying for?",
+                reply: `Hi ${candName}! I am Priya, your Recruitment Specialist at Sharyx 🎓.\n\nWe currently have openings for:\n• *AI Solutions Engineer* (Python, Node.js, NLP)\n• *Business Development Executive* (B2B SaaS)\n• *Frontend Developer* (React, TypeScript)\n\nWhich of these roles are you interested in?`,
                 memory,
             };
         }
@@ -640,14 +857,20 @@ RULES:
             if (state.lead_id)
                 return await lead_1.lead.findOne({ where: { id: state.lead_id } });
             if (state.customer_phone) {
-                const l = await lead_1.lead.findOne({ where: { phone: state.customer_phone, status: true } });
+                const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
+                const withPlus = "+" + cleanPhone;
+                let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone } });
+                if (!l)
+                    l = await lead_1.lead.findOne({ where: { phone: withPlus } });
+                if (!l)
+                    l = await lead_1.lead.findOne({ where: { phone: cleanPhone } });
                 if (l) {
                     state.lead_id = l.id;
                     return l;
                 }
             }
             if (state.customer_email) {
-                const l = await lead_1.lead.findOne({ where: { email: state.customer_email, status: true } });
+                const l = await lead_1.lead.findOne({ where: { email: state.customer_email } });
                 if (l) {
                     state.lead_id = l.id;
                     return l;

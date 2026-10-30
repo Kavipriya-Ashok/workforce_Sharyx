@@ -1,43 +1,10 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -53,6 +20,7 @@ const EmailLog_entity_1 = require("../Database/Table/Email/EmailLog.entity");
 const lead_1 = require("../Database/Table/Lead/lead");
 const WhatsAppCampaign_entity_1 = require("../Database/Table/WhatsApp/WhatsAppCampaign.entity");
 const WhatsAppTemplate_entity_1 = require("../Database/Table/WhatsApp/WhatsAppTemplate.entity");
+const WhatsAppConfig_entity_1 = require("../Database/Table/WhatsApp/WhatsAppConfig.entity");
 const PdfGenerator_service_1 = require("./PdfGenerator.service");
 const typeorm_1 = require("typeorm");
 const axios_1 = __importDefault(require("axios"));
@@ -85,8 +53,8 @@ function isOutcomeMatch(filterOutcome, currentOutcome) {
         return true;
     if ((f.includes("transfer") || f.includes("handoff")) && (o.includes("transfer") || o.includes("handoff") || o.includes("handed")))
         return true;
-    if ((f.includes("proposal") || f.includes("quote") || f.includes("quotation")) &&
-        (o.includes("proposal") || o.includes("quote") || o.includes("quotation") || o.includes("pricing sheet")))
+    if ((f.includes("proposal") || f.includes("quote") || f.includes("quotation") || f.includes("pricing")) &&
+        (o.includes("proposal") || o.includes("quote") || o.includes("quotation") || o.includes("pricing") || o.includes("cost") || o.includes("pricing sheet")))
         return true;
     if ((f.includes("invoice") || f.includes("billing")) && (o.includes("invoice") || o.includes("bill") || o.includes("receipt") || o.includes("payment")))
         return true;
@@ -164,7 +132,8 @@ let OutcomeTriggerService = OutcomeTriggerService_1 = class OutcomeTriggerServic
             const campaigns = await WhatsAppCampaign_entity_1.WhatsAppCampaign.find({
                 where: { tenant_id: ctx.tenantId, is_active: true, status: true },
             });
-            const matching = campaigns.filter(c => c.trigger_event === event && isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || ""));
+            const matching = campaigns.filter(c => (c.trigger_event === event || c.trigger_event === "after_call_ends" || c.trigger_event === "ALL") &&
+                isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || ""));
             if (matching.length === 0) {
                 this.logger.debug(`[WA Trigger] No matching campaigns for event="${event}" outcome="${ctx.outcome}"`);
                 return { sent: 0, failed: 0, details: [] };
@@ -175,8 +144,7 @@ let OutcomeTriggerService = OutcomeTriggerService_1 = class OutcomeTriggerServic
                 this.logger.warn("[WA Trigger] No phone available — aborting WA send");
                 return { sent: 0, failed: 1, details: ["No lead phone number available"] };
             }
-            const { WhatsAppConfig } = await Promise.resolve().then(() => __importStar(require("@Database/Table/WhatsApp/WhatsAppConfig.entity")));
-            const waConfig = await WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } });
+            const waConfig = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } });
             if (!(waConfig === null || waConfig === void 0 ? void 0 : waConfig.access_token) || !(waConfig === null || waConfig === void 0 ? void 0 : waConfig.phone_number_id)) {
                 this.logger.warn("[WA Trigger] WhatsApp not configured for tenant");
                 return { sent: 0, failed: 1, details: ["WhatsApp not configured"] };
@@ -244,15 +212,50 @@ let OutcomeTriggerService = OutcomeTriggerService_1 = class OutcomeTriggerServic
         const failed = [];
         try {
             const campaigns = await EmailCampaign_entity_1.EmailCampaign.find({
-                where: { tenant_id: ctx.tenantId, is_active: true, status: true, trigger_event: event },
+                where: { tenant_id: ctx.tenantId, is_active: true, status: true },
             });
-            const matching = campaigns.filter(c => isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || ""));
+            const matching = campaigns.filter(c => (c.trigger_event === event || c.trigger_event === "after_call_ends" || c.trigger_event === "ALL") &&
+                isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || ""));
             const leadRecord = ctx.phone ? await resolveLeadByPhone(ctx.phone, ctx.tenantId) : null;
             const recipientEmail = ctx.email ||
                 (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.email) ||
                 null;
             const recipientName = ctx.leadName || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || "Valued Lead";
             if (matching.length === 0) {
+                if (recipientEmail && (event === "quotation_requested" || (ctx.outcome && ctx.outcome.toLowerCase().includes("quot")))) {
+                    try {
+                        const quotationSubject = `Official Quotation & Proposal for ${ctx.company || recipientName} — Sharyx AI`;
+                        const quotationHtml = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 24px 28px; text-align: left;">
+                  <h2 style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700;">Sharyx AI Workforce</h2>
+                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 13px;">Official Quotation & Solutions Estimate</p>
+                </div>
+                <div style="padding: 28px;">
+                  <p style="color: #334155; font-size: 14px; margin-top: 0;">Hi <strong>${recipientName}</strong>,</p>
+                  <p style="color: #475569; font-size: 13px; line-height: 1.6;">Thank you for speaking with our AI representative today! As requested, here is your customized workforce automation quotation:</p>
+                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 20px 0;">
+                    <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Estimated Investment</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0284c7; margin: 6px 0;">${ctx.currency || "INR"} ${ctx.dealValue || "15,000"}</div>
+                    <div style="font-size: 12px; color: #475569; margin-top: 4px;">Includes Autonomous Voice Agents, WhatsApp AI Copilot, and Lead Qualification CRM.</div>
+                  </div>
+                  <p style="color: #475569; font-size: 13px; line-height: 1.6;">Our specialist team will follow up to finalize the onboarding schedule. Feel free to reply to this email anytime!</p>
+                </div>
+              </div>
+            `;
+                        await this.emailService.sendEmail({
+                            to: recipientEmail,
+                            subject: quotationSubject,
+                            html: quotationHtml,
+                        });
+                        this.logger.log(`⚡ [Email Trigger] Default quotation email sent to ${recipientEmail}`);
+                        sent.push(`Quotation email sent to ${recipientEmail}`);
+                        return { sent: 1, failed: 0, details: sent };
+                    }
+                    catch (quotErr) {
+                        this.logger.warn(`Failed to dispatch fallback quotation email: ${quotErr.message}`);
+                    }
+                }
                 if (recipientEmail && (event === "appointment_booked" || event === "meeting_link_requested" || ctx.meetUrl)) {
                     try {
                         const defaultSubject = `Google Meet Invitation: Sharyx Session with ${recipientName}`;

@@ -27,10 +27,88 @@ export class VoiceAgentController {
     return { ok: true, count: agents.length, data: agents };
   }
 
+  @Post("deploy-workforce-team")
+  async deployWorkforceTeam(
+    @Query("tenantId") tenantId?: string,
+    @Body() body?: { provider?: string }
+  ) {
+    const result = await this.agentService.deployWorkforceTeam(
+      tenantId || "default",
+      body?.provider
+    );
+    return result;
+  }
+
+  @Post("deploy-to-vapi")
+  async deployToVapi(@Query("tenantId") tenantId?: string) {
+    const result = await this.agentService.deployWorkforceTeam(
+      tenantId || "default",
+      "vapi"
+    );
+    return result;
+  }
+
   @Post("sync/:provider")
   async syncFromProvider(@Param("provider") provider: string, @Query("tenantId") tenantId?: string) {
     const agents = await this.agentService.syncFromProvider(provider || "vapi", tenantId || "default");
     return { ok: true, count: agents.length, data: agents };
+  }
+
+  @Get("catalog")
+  async getCatalog(
+    @Query("provider") provider?: string,
+    @Query("tenantId") tenantId?: string
+  ) {
+    const data = await this.agentService.getCatalog(provider || "vapi", tenantId || "default");
+    return { ok: true, data };
+  }
+
+  @Post("catalog/:key/enable")
+  async enableCatalogAgent(
+    @Param("key") key: string,
+    @Body() body?: { provider?: string; tenantId?: string }
+  ) {
+    const result = await this.agentService.enableCatalogAgent(
+      key,
+      body?.provider || "vapi",
+      body?.tenantId || "default"
+    );
+    return result;
+  }
+
+  @Post("catalog/:key/disable")
+  async disableCatalogAgent(
+    @Param("key") key: string,
+    @Body() body?: { provider?: string; tenantId?: string }
+  ) {
+    const result = await this.agentService.disableCatalogAgent(
+      key,
+      body?.provider || "vapi",
+      body?.tenantId || "default"
+    );
+    return result;
+  }
+
+  @Post("catalog/enable-all")
+  async enableAllCatalogAgents(
+    @Body() body?: { provider?: string; tenantId?: string }
+  ) {
+    const result = await this.agentService.enableAllCatalogAgents(
+      body?.provider || "vapi",
+      body?.tenantId || "default"
+    );
+    return result;
+  }
+
+  @Post("catalog/disable-all")
+  async disableAllCatalogAgents(
+    @Body() body?: { provider?: string; tenantId?: string }
+  ) {
+    const result = await this.agentService.disableAllCatalogAgents(
+      body?.provider || "vapi",
+      body?.tenantId || "default"
+    );
+    return result;
   }
 
   @Get(":id")

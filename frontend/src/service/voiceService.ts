@@ -6,6 +6,7 @@ export interface MaskedVoiceConfig {
   provider: VoiceProviderType;
   has_key: boolean;
   masked_key?: string;
+  api_key?: string;
   phone_number_id?: string;
   caller_id?: string;
   base_url?: string;
@@ -41,7 +42,29 @@ export interface VoiceAgentDto {
   status: boolean;
   transfer_agent_id?: string;
   transfer_phone_number?: string;
+  template_key?: string;
+  is_enabled?: boolean;
+  last_sync_error?: string;
   created_on: string;
+}
+
+export interface CatalogAgentDto {
+  key: string;
+  name: string;
+  role: string;
+  system_prompt: string;
+  first_message: string;
+  voice_id: string;
+  voice_provider: string;
+  llm_model: string;
+  temperature: number;
+  allowed_tools: string[];
+  provider: VoiceProviderType;
+  is_enabled: boolean;
+  agent_id: string | null;
+  remote_agent_id: string | null;
+  last_sync_error: string | null;
+  status: 'enabled' | 'disabled' | 'not_created';
 }
 
 export interface CreateVoiceAgentPayload {
@@ -63,6 +86,7 @@ export interface MakeVoiceCallPayload {
   agent_id: string;
   phone_number: string;
   customer_name?: string;
+  lead_id?: string;
   tenantId?: string;
   custom_variables?: Record<string, any>;
 }
@@ -160,6 +184,46 @@ export class VoiceService {
     return Array.isArray(res.data?.data) ? res.data.data : [];
   }
 
+  public static async deployWorkforceTeam(tenantId: string = 'default', provider?: string): Promise<any> {
+    const res = await axios.post('/api/v1/Voice/Agents/deploy-workforce-team', { provider }, { params: { tenantId } });
+    return res.data;
+  }
+
+  public static async deployToVapi(tenantId: string = 'default'): Promise<any> {
+    const res = await axios.post('/api/v1/Voice/Agents/deploy-to-vapi', {}, { params: { tenantId } });
+    return res.data;
+  }
+
+  // 5 Default Agents Catalog
+  public static async getCatalog(provider: VoiceProviderType = 'vapi', tenantId: string = 'default'): Promise<CatalogAgentDto[]> {
+    try {
+      const res = await axios.get('/api/v1/Voice/Agents/catalog', { params: { provider, tenantId } });
+      return Array.isArray(res.data?.data) ? res.data.data : [];
+    } catch {
+      return [];
+    }
+  }
+
+  public static async enableCatalogAgent(key: string, provider: VoiceProviderType = 'vapi', tenantId: string = 'default'): Promise<any> {
+    const res = await axios.post(`/api/v1/Voice/Agents/catalog/${key}/enable`, { provider, tenantId });
+    return res.data;
+  }
+
+  public static async disableCatalogAgent(key: string, provider: VoiceProviderType = 'vapi', tenantId: string = 'default'): Promise<any> {
+    const res = await axios.post(`/api/v1/Voice/Agents/catalog/${key}/disable`, { provider, tenantId });
+    return res.data;
+  }
+
+  public static async enableAllCatalogAgents(provider: VoiceProviderType = 'vapi', tenantId: string = 'default'): Promise<any> {
+    const res = await axios.post('/api/v1/Voice/Agents/catalog/enable-all', { provider, tenantId });
+    return res.data;
+  }
+
+  public static async disableAllCatalogAgents(provider: VoiceProviderType = 'vapi', tenantId: string = 'default'): Promise<any> {
+    const res = await axios.post('/api/v1/Voice/Agents/catalog/disable-all', { provider, tenantId });
+    return res.data;
+  }
+
   public static async getProvidersList(): Promise<{ id: VoiceProviderType; name: string; description: string }[]> {
     try {
       const res = await axios.get('/api/v1/Voice/Agents/providers');
@@ -182,9 +246,16 @@ export class VoiceService {
     return data;
   }
 
-  public static async getCallLogs(tenantId: string = 'default', limit: number = 50): Promise<VoiceCallLogItem[]> {
+  public static async getCallLogs(
+    tenantId: string = 'default',
+    limit: number = 50,
+    agentId?: string,
+    skipSync: boolean = false
+  ): Promise<VoiceCallLogItem[]> {
     try {
-      const res = await axios.get('/api/v1/Voice/Calls/logs', { params: { tenantId, limit } });
+      const res = await axios.get('/api/v1/Voice/Calls/logs', {
+        params: { tenantId, limit, agentId: agentId || undefined, skipSync: skipSync ? 'true' : undefined },
+      });
       return Array.isArray(res.data?.data) ? res.data.data : [];
     } catch {
       return [];
@@ -199,4 +270,17 @@ export class VoiceService {
       return { totalCalls: 0, completedCalls: 0, avgDurationSeconds: 0, completionRate: 0 };
     }
   }
+
+  /** Pull call history from Sharyx SaaS (fallback-voice.sharyx.ai) and sync to local DB */
+  public static async syncCallLogsFromSaas(tenantId: string = 'default'): Promise<{ synced: number; message: string }> {
+    const res = await axios.post('/api/v1/Voice/Calls/sync-saas', {}, { params: { tenantId } });
+    return { synced: res.data?.synced || 0, message: res.data?.message || 'Synced' };
+  }
+
+  /** Pull call history directly from Vapi API (api.vapi.ai/call) and sync to local DB */
+  public static async syncCallLogsFromVapi(tenantId: string = 'default'): Promise<{ synced: number; message: string }> {
+    const res = await axios.post('/api/v1/Voice/Calls/sync-vapi', {}, { params: { tenantId } });
+    return { synced: res.data?.synced || 0, message: res.data?.message || 'Synced' };
+  }
 }
+

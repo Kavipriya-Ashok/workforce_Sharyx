@@ -14,7 +14,7 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "dark",
+  theme: "light",
   setTheme: () => null,
 };
 
@@ -22,12 +22,17 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
 export function ThemeProvider({
   children,
-  defaultTheme = "dark",
+  defaultTheme = "light",
   storageKey = "app-theme",
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem(storageKey) as Theme;
+    if (saved === "dark") {
+      localStorage.setItem(storageKey, "light");
+      return "light";
+    }
+    return saved || defaultTheme;
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;

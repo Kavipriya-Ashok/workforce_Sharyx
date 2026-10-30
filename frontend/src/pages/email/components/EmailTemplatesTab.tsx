@@ -23,12 +23,12 @@ import {
 import { toast } from 'sonner';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Sales: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  Recruitment: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-  Onboarding: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
-  'Follow-up': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  Support: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
-  General: 'bg-slate-700/60 text-slate-300 border-slate-600',
+  Sales: 'bg-blue-50 text-blue-700 border-blue-200',
+  Recruitment: 'bg-purple-50 text-purple-700 border-purple-200',
+  Onboarding: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  'Follow-up': 'bg-amber-50 text-amber-700 border-amber-200',
+  Support: 'bg-rose-50 text-rose-700 border-rose-200',
+  General: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
 const ALL_CATEGORIES = ['All', 'Sales', 'Recruitment', 'Onboarding', 'Follow-up', 'Support', 'General'];
@@ -93,10 +93,10 @@ export const EmailTemplatesTab: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <LayoutTemplate className="h-5 w-5 text-indigo-400" />
+          <LayoutTemplate className="h-5 w-5 text-blue-600" />
           <div>
-            <h2 className="text-base font-semibold text-white">Email Templates</h2>
-            <p className="text-xs text-slate-400">{templates.length} template{templates.length !== 1 ? 's' : ''} · reusable HTML templates with dynamic variables</p>
+            <h2 className="text-base font-bold text-slate-900">Email Templates</h2>
+            <p className="text-xs text-slate-500">{templates.length} template{templates.length !== 1 ? 's' : ''} · reusable HTML templates with dynamic placeholders & PDF attachments</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export const EmailTemplatesTab: React.FC = () => {
             size="sm"
             onClick={fetchTemplates}
             disabled={loading}
-            className="gap-1.5 border-slate-700 bg-slate-800 text-slate-300 hover:text-white"
+            className="gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 rounded-xl"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -113,7 +113,7 @@ export const EmailTemplatesTab: React.FC = () => {
           <Button
             size="sm"
             onClick={() => { setEditingTemplate(null); setDialogOpen(true); }}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5"
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 rounded-xl font-semibold shadow-sm"
           >
             <PlusCircle className="h-4 w-4" />
             New Template
@@ -124,12 +124,12 @@ export const EmailTemplatesTab: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
             placeholder="Search templates..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-slate-900 border-slate-700 text-white text-xs h-8"
+            className="pl-9 bg-slate-50 border-slate-200 text-slate-900 text-xs h-8 rounded-xl focus:bg-white"
           />
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -137,10 +137,10 @@ export const EmailTemplatesTab: React.FC = () => {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`text-xs px-3 py-1 rounded-full border font-medium transition-all ${
+              className={`text-xs px-3 py-1 rounded-full border font-semibold transition-all ${
                 activeCategory === cat
-                  ? 'bg-indigo-600 text-white border-indigo-500'
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-600'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
               }`}
             >
               {cat}
@@ -153,16 +153,16 @@ export const EmailTemplatesTab: React.FC = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-52 rounded-xl bg-slate-800/50 animate-pulse border border-slate-700/50" />
+            <div key={i} className="h-52 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <LayoutTemplate className="h-12 w-12 text-slate-700 mb-3" />
-          <p className="text-slate-400 font-medium">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
+          <LayoutTemplate className="h-10 w-10 text-slate-300 mb-2" />
+          <p className="text-slate-700 font-semibold text-sm">
             {search || activeCategory !== 'All' ? 'No templates match your filter' : 'No templates yet'}
           </p>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-400 text-xs mt-1">
             {search || activeCategory !== 'All'
               ? 'Try clearing your search or selecting a different category'
               : 'Click "New Template" to create your first reusable email template'}
@@ -173,27 +173,26 @@ export const EmailTemplatesTab: React.FC = () => {
           {filtered.map(tpl => (
             <div
               key={tpl.id}
-              className="group relative bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-900/20 transition-all duration-200 flex flex-col gap-3"
+              className="group relative bg-white border border-slate-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 flex flex-col gap-3 shadow-xs"
             >
               {/* Card Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] font-medium px-2 py-0 ${CATEGORY_COLORS[tpl.category] || CATEGORY_COLORS['General']}`}
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[tpl.category] || CATEGORY_COLORS['General']}`}
                     >
                       {tpl.category}
-                    </Badge>
+                    </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white truncate">{tpl.name}</h3>
+                  <h3 className="text-sm font-bold text-slate-900 truncate">{tpl.name}</h3>
                 </div>
               </div>
 
               {/* Subject */}
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Subject</p>
-                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{tpl.subject}</p>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subject</p>
+                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-medium">{tpl.subject}</p>
               </div>
 
               {/* Variables */}
@@ -202,13 +201,13 @@ export const EmailTemplatesTab: React.FC = () => {
                   {tpl.variables.slice(0, 4).map(v => (
                     <span
                       key={v}
-                      className="text-[10px] px-1.5 py-0.5 bg-slate-800 text-slate-400 border border-slate-700 rounded font-mono"
+                      className="text-[10px] px-1.5 py-0.5 bg-slate-50 text-slate-600 border border-slate-200 rounded font-mono"
                     >
                       {`{{${v}}}`}
                     </span>
                   ))}
                   {tpl.variables.length > 4 && (
-                    <span className="text-[10px] text-slate-500">+{tpl.variables.length - 4} more</span>
+                    <span className="text-[10px] text-slate-400">+{tpl.variables.length - 4} more</span>
                   )}
                 </div>
               )}
@@ -216,12 +215,12 @@ export const EmailTemplatesTab: React.FC = () => {
               {/* Outcome + PDF badges */}
               <div className="flex flex-wrap gap-1.5">
                 {tpl.outcome_filter && tpl.outcome_filter !== 'ALL' && (
-                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full">
+                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-semibold">
                     <Zap className="h-2.5 w-2.5" /> {tpl.outcome_filter}
                   </span>
                 )}
                 {tpl.attach_pdf && tpl.pdf_template_type && (
-                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 rounded-full">
+                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full font-semibold">
                     <FileText className="h-2.5 w-2.5" /> PDF: {tpl.pdf_template_type.replace(/_/g, ' ')}
                   </span>
                 )}
@@ -229,36 +228,36 @@ export const EmailTemplatesTab: React.FC = () => {
 
               {/* Preview snippet */}
               {tpl.preview_text && (
-                <p className="text-[11px] text-slate-500 italic line-clamp-1 border-t border-slate-800 pt-2">
+                <p className="text-[11px] text-slate-400 italic line-clamp-1 border-t border-slate-100 pt-2">
                   "{tpl.preview_text}"
                 </p>
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-slate-800">
+              <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-slate-100">
                 <button
                   onClick={() => { setPreviewTemplate(tpl); }}
-                  className="flex-1 flex items-center justify-center gap-1 text-[11px] py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all"
+                  className="flex-1 flex items-center justify-center gap-1 text-[11px] py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all font-semibold"
                 >
                   <Eye className="h-3 w-3" /> Preview
                 </button>
                 <button
                   onClick={() => handleCopyHTML(tpl)}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   title="Copy HTML body"
                 >
-                  {copiedId === tpl.id ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedId === tpl.id ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                 </button>
                 <button
                   onClick={() => { setEditingTemplate(tpl); setDialogOpen(true); }}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
                   title="Edit"
                 >
                   <Edit className="h-3 w-3" />
                 </button>
                 <button
                   onClick={() => handleDelete(tpl.id, tpl.name)}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-rose-600 hover:text-white transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -269,58 +268,24 @@ export const EmailTemplatesTab: React.FC = () => {
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* Preview Dialog */}
       {previewTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)}>
-          <div
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Email Client Header */}
-            <div className="bg-slate-100 px-5 py-3 border-b border-slate-200 flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <Badge variant="outline" className={`text-[10px] ${CATEGORY_COLORS[previewTemplate.category] || ''}`}>
-                    {previewTemplate.category}
-                  </Badge>
-                  <span className="text-xs font-bold text-slate-700">{previewTemplate.name}</span>
-                </div>
-                <p className="text-sm font-semibold text-slate-800">{previewTemplate.subject}</p>
-                {previewTemplate.preview_text && (
-                  <p className="text-xs text-slate-400 mt-0.5">{previewTemplate.preview_text}</p>
-                )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">{previewTemplate.name}</h3>
+                <p className="text-xs text-slate-500">{previewTemplate.subject}</p>
               </div>
-              <button
-                onClick={() => setPreviewTemplate(null)}
-                className="text-slate-400 hover:text-slate-700 text-xl leading-none p-1"
-              >×</button>
+              <Button size="sm" variant="outline" onClick={() => setPreviewTemplate(null)} className="rounded-xl">
+                Close
+              </Button>
             </div>
-            <div
-              className="flex-1 overflow-y-auto p-6 text-sm text-slate-800 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: previewTemplate.body_html }}
-            />
-            <div className="bg-slate-50 border-t border-slate-200 px-5 py-3 flex items-center justify-between">
-              <div className="flex gap-1 flex-wrap">
-                {(previewTemplate.variables || []).map(v => (
-                  <span key={v} className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded font-mono">
-                    {`{{${v}}}`}
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleCopyHTML(previewTemplate)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 flex items-center gap-1"
-                >
-                  <Copy className="h-3 w-3" /> Copy HTML
-                </button>
-                <button
-                  onClick={() => { setPreviewTemplate(null); setEditingTemplate(previewTemplate); setDialogOpen(true); }}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 flex items-center gap-1"
-                >
-                  <Edit className="h-3 w-3" /> Edit
-                </button>
-              </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div
+                className="prose prose-sm max-w-none text-slate-800"
+                dangerouslySetInnerHTML={{ __html: previewTemplate.body_html || '' }}
+              />
             </div>
           </div>
         </div>
@@ -330,8 +295,8 @@ export const EmailTemplatesTab: React.FC = () => {
       <CreateEmailTemplateDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        templateToEdit={editingTemplate}
         onSuccess={fetchTemplates}
+        templateToEdit={editingTemplate}
       />
     </div>
   );

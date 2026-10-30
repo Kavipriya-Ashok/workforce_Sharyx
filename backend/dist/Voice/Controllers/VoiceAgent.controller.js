@@ -32,9 +32,37 @@ let VoiceAgentController = class VoiceAgentController {
         const agents = await this.agentService.list(tenantId || "default");
         return { ok: true, count: agents.length, data: agents };
     }
+    async deployWorkforceTeam(tenantId, body) {
+        const result = await this.agentService.deployWorkforceTeam(tenantId || "default", body === null || body === void 0 ? void 0 : body.provider);
+        return result;
+    }
+    async deployToVapi(tenantId) {
+        const result = await this.agentService.deployWorkforceTeam(tenantId || "default", "vapi");
+        return result;
+    }
     async syncFromProvider(provider, tenantId) {
         const agents = await this.agentService.syncFromProvider(provider || "vapi", tenantId || "default");
         return { ok: true, count: agents.length, data: agents };
+    }
+    async getCatalog(provider, tenantId) {
+        const data = await this.agentService.getCatalog(provider || "vapi", tenantId || "default");
+        return { ok: true, data };
+    }
+    async enableCatalogAgent(key, body) {
+        const result = await this.agentService.enableCatalogAgent(key, (body === null || body === void 0 ? void 0 : body.provider) || "vapi", (body === null || body === void 0 ? void 0 : body.tenantId) || "default");
+        return result;
+    }
+    async disableCatalogAgent(key, body) {
+        const result = await this.agentService.disableCatalogAgent(key, (body === null || body === void 0 ? void 0 : body.provider) || "vapi", (body === null || body === void 0 ? void 0 : body.tenantId) || "default");
+        return result;
+    }
+    async enableAllCatalogAgents(body) {
+        const result = await this.agentService.enableAllCatalogAgents((body === null || body === void 0 ? void 0 : body.provider) || "vapi", (body === null || body === void 0 ? void 0 : body.tenantId) || "default");
+        return result;
+    }
+    async disableAllCatalogAgents(body) {
+        const result = await this.agentService.disableAllCatalogAgents((body === null || body === void 0 ? void 0 : body.provider) || "vapi", (body === null || body === void 0 ? void 0 : body.tenantId) || "default");
+        return result;
     }
     async getOne(id, tenantId) {
         const agent = await this.agentService.getOne(id, tenantId || "default");
@@ -75,6 +103,21 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VoiceAgentController.prototype, "syncAll", null);
 __decorate([
+    (0, common_1.Post)("deploy-workforce-team"),
+    __param(0, (0, common_1.Query)("tenantId")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "deployWorkforceTeam", null);
+__decorate([
+    (0, common_1.Post)("deploy-to-vapi"),
+    __param(0, (0, common_1.Query)("tenantId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "deployToVapi", null);
+__decorate([
     (0, common_1.Post)("sync/:provider"),
     __param(0, (0, common_1.Param)("provider")),
     __param(1, (0, common_1.Query)("tenantId")),
@@ -82,6 +125,44 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], VoiceAgentController.prototype, "syncFromProvider", null);
+__decorate([
+    (0, common_1.Get)("catalog"),
+    __param(0, (0, common_1.Query)("provider")),
+    __param(1, (0, common_1.Query)("tenantId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "getCatalog", null);
+__decorate([
+    (0, common_1.Post)("catalog/:key/enable"),
+    __param(0, (0, common_1.Param)("key")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "enableCatalogAgent", null);
+__decorate([
+    (0, common_1.Post)("catalog/:key/disable"),
+    __param(0, (0, common_1.Param)("key")),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "disableCatalogAgent", null);
+__decorate([
+    (0, common_1.Post)("catalog/enable-all"),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "enableAllCatalogAgents", null);
+__decorate([
+    (0, common_1.Post)("catalog/disable-all"),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], VoiceAgentController.prototype, "disableAllCatalogAgents", null);
 __decorate([
     (0, common_1.Get)(":id"),
     __param(0, (0, common_1.Param)("id")),

@@ -25,6 +25,30 @@ export enum LeadSource {
   OTHER = "OTHER",
 }
 
+/** Recruitment-specific candidate pipeline stage */
+export enum CandidateStage {
+  NEW = "new",
+  SCREENING = "screening",
+  SCHEDULED = "scheduled",
+  OFFERED = "offered",
+  JOINED = "joined",
+  REJECTED = "rejected",
+}
+
+/** Employment status at time of application */
+export enum EmploymentStatus {
+  WORKING = "working",
+  NOTICE = "notice",
+  RELIEVED = "relieved",
+}
+
+/** Relocation availability */
+export enum RelocationAvailability {
+  YES = "yes",
+  NO = "no",
+  CONDITIONAL = "conditional",
+}
+
 @Entity({ name: "lead" })
 export class lead extends BaseTable {
   @Column({ type: "varchar", length: 150, nullable: true })
@@ -90,4 +114,67 @@ export class lead extends BaseTable {
   @Index()
   @Column({ type: "boolean", default: false })
   is_candidate: boolean;
+
+  // ─── Recruitment-specific fields ─────────────────────────────────────────
+
+  /** Total years of experience */
+  @Column({ type: "numeric", precision: 5, scale: 1, nullable: true })
+  total_experience: number;
+
+  /** Relevant years of experience for the applied role */
+  @Column({ type: "numeric", precision: 5, scale: 1, nullable: true })
+  relevant_experience: number;
+
+  /** Current employment status */
+  @Column({ type: "varchar", length: 30, nullable: true })
+  employment_status: string; // CandidateEmploymentStatus enum values
+
+  /** Relieving / last working date (conditional on employment_status) */
+  @Column({ type: "timestamptz", nullable: true })
+  relieving_date: Date;
+
+  /** Current / last drawn CTC (annual) */
+  @Column({ type: "numeric", precision: 14, scale: 2, nullable: true })
+  current_ctc: number;
+
+  /** Expected CTC (annual) */
+  @Column({ type: "numeric", precision: 14, scale: 2, nullable: true })
+  expected_ctc: number;
+
+  /** CTC basis: monthly or annual */
+  @Column({ type: "varchar", length: 10, nullable: true, default: "annual" })
+  ctc_basis: string;
+
+  /** Relocation availability */
+  @Column({ type: "varchar", length: 20, nullable: true })
+  relocation: string; // RelocationAvailability enum values
+
+  /** Candidate's preferred interview date/time (free text captured from chat) */
+  @Column({ type: "varchar", length: 200, nullable: true })
+  preferred_interview_slot: string;
+
+  /** Resume / CV URL (S3 / Drive link or uploaded path) */
+  @Column({ type: "text", nullable: true })
+  resume_url: string;
+
+  /** Candidate pipeline stage (independent from lead_status) */
+  @Index()
+  @Column({ type: "varchar", length: 30, nullable: true, default: CandidateStage.NEW })
+  candidate_stage: string;
+
+  /** Scheduled interview date */
+  @Column({ type: "timestamptz", nullable: true })
+  interview_date: Date;
+
+  /** Google Meet or interview link */
+  @Column({ type: "text", nullable: true })
+  interview_link: string;
+
+  /** Reminder sent flag for 1-day-before reminder */
+  @Column({ type: "boolean", default: false })
+  reminder_sent: boolean;
+
+  /** Post-interview follow-up sent flag */
+  @Column({ type: "boolean", default: false })
+  followup_sent: boolean;
 }

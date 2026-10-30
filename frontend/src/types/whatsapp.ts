@@ -68,6 +68,10 @@ export interface WhatsAppCampaign {
   sent_count?: number;
   delivered_count?: number;
   read_count?: number;
+  outcome_filter?: string;
+  attach_pdf?: boolean;
+  pdf_template_type?: string;
+  pdf_title?: string;
   campaign_status?: 'draft' | 'active' | 'paused' | 'scheduled' | 'running' | 'completed' | 'failed';
   scheduled_at?: string;
   created_on?: string;
@@ -86,6 +90,10 @@ export interface WhatsAppTemplate {
   buttons?: any[];
   approval_status?: 'APPROVED' | 'PENDING' | 'REJECTED' | string;
   is_active?: boolean;
+  outcome_filter?: string;
+  attach_pdf?: boolean;
+  pdf_template_type?: string;
+  pdf_title?: string;
   created_on?: string;
   updated_on?: string;
   components?: Array<{

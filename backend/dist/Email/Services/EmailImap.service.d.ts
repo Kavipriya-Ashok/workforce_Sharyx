@@ -1,4 +1,5 @@
 import { OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { lead } from "@Database/Table/Lead/lead";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
@@ -9,10 +10,11 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     private readonly emailService;
     private readonly aiService;
     private readonly orchestrator;
+    private readonly events;
     private readonly logger;
     private timer;
     private isPolling;
-    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService, orchestrator: AgentOrchestratorService);
+    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService, orchestrator: AgentOrchestratorService, events: EventEmitter2);
     onModuleInit(): void;
     onModuleDestroy(): void;
     extractPhoneNumber(text: string): string | null;

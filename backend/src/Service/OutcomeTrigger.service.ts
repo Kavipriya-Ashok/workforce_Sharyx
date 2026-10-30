@@ -5,6 +5,7 @@ import { EmailLog } from "@Database/Table/Email/EmailLog.entity";
 import { lead } from "@Database/Table/Lead/lead";
 import { WhatsAppCampaign } from "@Database/Table/WhatsApp/WhatsAppCampaign.entity";
 import { WhatsAppTemplate } from "@Database/Table/WhatsApp/WhatsAppTemplate.entity";
+import { WhatsAppConfig } from "@Database/Table/WhatsApp/WhatsAppConfig.entity";
 import { PdfGeneratorService, PdfData, PdfTemplateType } from "@Service/PdfGenerator.service";
 import { Like } from "typeorm";
 import axios from "axios";
@@ -61,9 +62,9 @@ function isOutcomeMatch(filterOutcome: string, currentOutcome: string): boolean 
   // Tier 6: Transfer / Handoff
   if ((f.includes("transfer") || f.includes("handoff")) && (o.includes("transfer") || o.includes("handoff") || o.includes("handed"))) return true;
 
-  // Tier 7: Proposal / Quote
-  if ((f.includes("proposal") || f.includes("quote") || f.includes("quotation")) &&
-      (o.includes("proposal") || o.includes("quote") || o.includes("quotation") || o.includes("pricing sheet"))) return true;
+  // Tier 7: Proposal / Quote / Pricing / Quotation
+  if ((f.includes("proposal") || f.includes("quote") || f.includes("quotation") || f.includes("pricing")) &&
+      (o.includes("proposal") || o.includes("quote") || o.includes("quotation") || o.includes("pricing") || o.includes("cost") || o.includes("pricing sheet"))) return true;
 
   // Tier 8: Invoice / Billing
   if ((f.includes("invoice") || f.includes("billing")) && (o.includes("invoice") || o.includes("bill") || o.includes("receipt") || o.includes("payment"))) return true;
@@ -168,7 +169,8 @@ export class OutcomeTriggerService {
       });
 
       const matching = campaigns.filter(
-        c => c.trigger_event === event && isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || "")
+        c => (c.trigger_event === event || c.trigger_event === "after_call_ends" || c.trigger_event === "ALL") &&
+             isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || "")
       );
 
       if (matching.length === 0) {
@@ -186,7 +188,6 @@ export class OutcomeTriggerService {
       }
 
       // 3. Load WA Config
-      const { WhatsAppConfig } = await import("@Database/Table/WhatsApp/WhatsAppConfig.entity");
       const waConfig = await WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } });
       if (!waConfig?.access_token || !waConfig?.phone_number_id) {
         this.logger.warn("[WA Trigger] WhatsApp not configured for tenant");
@@ -271,11 +272,12 @@ export class OutcomeTriggerService {
     try {
       // 1. Load matching email campaigns — strict tenant isolation
       const campaigns = await EmailCampaign.find({
-        where: { tenant_id: ctx.tenantId, is_active: true, status: true, trigger_event: event },
+        where: { tenant_id: ctx.tenantId, is_active: true, status: true },
       });
 
       const matching = campaigns.filter(
-        c => isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || "")
+        c => (c.trigger_event === event || c.trigger_event === "after_call_ends" || c.trigger_event === "ALL") &&
+             isOutcomeMatch(c.outcome_filter || "ALL", ctx.outcome || "")
       );
 
       // 2. Resolve lead from DB
@@ -290,6 +292,40 @@ export class OutcomeTriggerService {
       const recipientName = ctx.leadName || leadRecord?.name || "Valued Lead";
 
       if (matching.length === 0) {
+        // Default Quotation Dispatch Fallback
+        if (recipientEmail && (event === "quotation_requested" || (ctx.outcome && ctx.outcome.toLowerCase().includes("quot")))) {
+          try {
+            const quotationSubject = `Official Quotation & Proposal for ${ctx.company || recipientName} — Sharyx AI`;
+            const quotationHtml = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 24px 28px; text-align: left;">
+                  <h2 style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700;">Sharyx AI Workforce</h2>
+                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 13px;">Official Quotation & Solutions Estimate</p>
+                </div>
+                <div style="padding: 28px;">
+                  <p style="color: #334155; font-size: 14px; margin-top: 0;">Hi <strong>${recipientName}</strong>,</p>
+                  <p style="color: #475569; font-size: 13px; line-height: 1.6;">Thank you for speaking with our AI representative today! As requested, here is your customized workforce automation quotation:</p>
+                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 20px 0;">
+                    <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Estimated Investment</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0284c7; margin: 6px 0;">${ctx.currency || "INR"} ${ctx.dealValue || "15,000"}</div>
+                    <div style="font-size: 12px; color: #475569; margin-top: 4px;">Includes Autonomous Voice Agents, WhatsApp AI Copilot, and Lead Qualification CRM.</div>
+                  </div>
+                  <p style="color: #475569; font-size: 13px; line-height: 1.6;">Our specialist team will follow up to finalize the onboarding schedule. Feel free to reply to this email anytime!</p>
+                </div>
+              </div>
+            `;
+            await this.emailService.sendEmail({
+              to: recipientEmail,
+              subject: quotationSubject,
+              html: quotationHtml,
+            });
+            this.logger.log(`⚡ [Email Trigger] Default quotation email sent to ${recipientEmail}`);
+            sent.push(`Quotation email sent to ${recipientEmail}`);
+            return { sent: 1, failed: 0, details: sent };
+          } catch (quotErr: any) {
+            this.logger.warn(`Failed to dispatch fallback quotation email: ${quotErr.message}`);
+          }
+        }
         // Default: If an appointment was booked or meeting link requested and recipient email is known, send default meeting invite email!
         if (recipientEmail && (event === "appointment_booked" || event === "meeting_link_requested" || ctx.meetUrl)) {
           try {

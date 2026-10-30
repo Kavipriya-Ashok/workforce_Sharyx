@@ -4,6 +4,11 @@ import { WhatsAppAIConfigModel } from "../Models/WhatsAppAIConfig.model";
 import { PromptEngineService } from "./PromptEngine.service";
 import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
 
+export interface WhatsAppAiReply {
+  reply: string | null;
+  announcement?: string | null;
+}
+
 @Injectable()
 export class WhatsAppAIService {
   private readonly logger = new Logger(WhatsAppAIService.name);
@@ -14,7 +19,28 @@ export class WhatsAppAIService {
   ) {}
 
   async getConfig(tenantId: string = "default"): Promise<WhatsAppAIConfig | null> {
-    return await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
+    let config = await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
+    if (!config) {
+      config = await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId } });
+    }
+    if (!config) {
+      config = new WhatsAppAIConfig();
+      config.tenant_id = tenantId;
+      config.is_ai_enabled = true;
+      config.ai_mode = "hybrid";
+      config.llm_provider = "gemini";
+      config.llm_model = "gemini-2.5-flash";
+      config.api_key = process.env.GEMINI_API_KEY || null;
+      config.system_prompt =
+        "You are Sharyx AI, an intelligent workforce copilot. Be warm, professional, helpful, and concise (1-3 sentences). Respond naturally in the customer language (Tamil, English, or Tanglish).";
+      config.welcome_message = "Hello! How can I help you today?";
+      config.fallback_message = "Thank you for reaching out! A representative will connect with you shortly.";
+      config.created_by_id = "system";
+      config.created_on = new Date();
+      config.status = true;
+      await config.save().catch(() => null);
+    }
+    return config;
   }
 
   async saveConfig(data: WhatsAppAIConfigModel, userId?: string): Promise<WhatsAppAIConfig> {
@@ -50,7 +76,7 @@ export class WhatsAppAIService {
     tenantId: string = "default",
     conversationId?: string,
     extras?: { customerName?: string; leadId?: string }
-  ): Promise<string | null> {
+  ): Promise<WhatsAppAiReply | string | null> {
     const config = await this.getConfig(tenantId);
     if (!config || !config.is_ai_enabled) {
       return null;
@@ -84,7 +110,12 @@ export class WhatsAppAIService {
           this.logger.log(
             `🤝 [MULTI-AGENT] ${result.agentName}${result.handoffs.length ? ` (via ${result.handoffs.map((h) => `${h.from}→${h.to}`).join(", ")})` : ""}`
           );
-          if (result.reply) return result.reply;
+          if (result.reply) {
+            return {
+              reply: result.reply,
+              announcement: result.announcement || null,
+            };
+          }
         }
       } catch (err: any) {
         this.logger.error(`Multi-agent orchestrator failed, using legacy pipeline: ${err.message}`);

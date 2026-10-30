@@ -18,7 +18,7 @@ export class VoiceAgentService {
     });
 
     const activeProviders = activeConfigs
-      .filter((c) => c.api_key && c.api_key.trim().length > 0)
+      .filter((c) => c.provider === "saas_fallback" || (c.api_key && c.api_key.trim().length > 0))
       .map((c) => c.provider);
 
     // If no provider is active/connected, all agents vanish
@@ -28,7 +28,7 @@ export class VoiceAgentService {
 
     // Auto-sync only active providers
     for (const cfg of activeConfigs) {
-      if (cfg.api_key && cfg.is_active) {
+      if ((cfg.api_key || cfg.provider === "saas_fallback") && cfg.is_active) {
         try {
           await this.syncFromProvider(cfg.provider, tenantId);
         } catch (err: any) {
@@ -37,7 +37,7 @@ export class VoiceAgentService {
       }
     }
 
-    // Return ONLY agents belonging to active, connected provider(s)
+    // Return ONLY agents belonging to active, connected provider(s) and currently enabled
     const agents = await VoiceAgent.find({
       where: {
         tenant_id: tenantId,
@@ -47,7 +47,15 @@ export class VoiceAgentService {
       order: { created_on: "DESC" },
     });
 
-    return agents;
+    const seenRemoteIds = new Set<string>();
+    return agents.filter((a) => {
+      if (a.is_enabled === false) return false;
+      if (a.remote_agent_id) {
+        if (seenRemoteIds.has(a.remote_agent_id)) return false;
+        seenRemoteIds.add(a.remote_agent_id);
+      }
+      return true;
+    });
   }
 
   async syncFromProvider(providerName: string = "vapi", tenantId: string = "default"): Promise<VoiceAgent[]> {
@@ -62,9 +70,21 @@ export class VoiceAgentService {
 
       for (const rem of remotes) {
         const remoteId = String(rem.id || rem.agent_id || rem.remote_id);
-        let existing = await VoiceAgent.findOne({
-          where: { tenant_id: tenantId, remote_agent_id: remoteId },
+        const allMatches = await VoiceAgent.find({
+          where: { tenant_id: tenantId, remote_agent_id: remoteId, provider: providerName as any },
+          order: { created_on: "DESC" },
         });
+
+        let existing = allMatches[0] || null;
+
+        // Clean up duplicate rows if multiple exist
+        if (allMatches.length > 1) {
+          for (let i = 1; i < allMatches.length; i++) {
+            try {
+              await allMatches[i].remove();
+            } catch {}
+          }
+        }
 
         if (!existing && rem.name) {
           existing = await VoiceAgent.findOne({
@@ -82,6 +102,25 @@ export class VoiceAgentService {
         existing.name = rem.name || "Remote Voice Agent";
         existing.provider = providerName as any;
         existing.remote_agent_id = remoteId;
+        existing.status = true;
+        existing.is_enabled = true; // Always enable live assistants returned by provider
+
+        // Smart template_key auto-tagging
+        const lowerName = (existing.name || "").toLowerCase();
+        if (!existing.template_key) {
+          if (lowerName.includes("talent") || lowerName.includes("recruit") || lowerName.includes("interview") || lowerName.includes("maya")) {
+            existing.template_key = "recruitment";
+          } else if (lowerName.includes("sales") || lowerName.includes("closer") || lowerName.includes("alex")) {
+            existing.template_key = "sales";
+          } else if (lowerName.includes("appoint") || lowerName.includes("schedule") || lowerName.includes("rachel")) {
+            existing.template_key = "appointment";
+          } else if (lowerName.includes("support") || lowerName.includes("service") || lowerName.includes("jordan")) {
+            existing.template_key = "support";
+          } else if (lowerName.includes("reception") || lowerName.includes("front") || lowerName.includes("aria")) {
+            existing.template_key = "receptionist";
+          }
+        }
+
         existing.system_prompt =
           rem.model?.messages?.[0]?.content ||
           rem.prompt ||
@@ -111,7 +150,6 @@ export class VoiceAgentService {
           rem.model ||
           existing.llm_model ||
           (providerName === "saas_fallback" ? "gemini-2.0-flash" : "gpt-4o-mini");
-        existing.status = true;
         existing.raw_provider_response = rem;
         existing.updated_on = new Date();
 
@@ -119,8 +157,9 @@ export class VoiceAgentService {
         this.logger.log(`✅ [SYNCED AGENT] ${existing.name} (${existing.remote_agent_id})`);
       }
 
-      // If we have real remote assistants, hide old simulated placeholder agents
+      // If we have real remote assistants, hide old simulated placeholder or deleted agents
       if (remotes.length > 0) {
+        const remoteIdSet = new Set(remotes.map((r: any) => String(r.id || r.agent_id || r.remote_id)));
         const existingList = await VoiceAgent.find({
           where: { tenant_id: tenantId, provider: providerName as any, status: true },
         });
@@ -128,11 +167,13 @@ export class VoiceAgentService {
           if (
             ag.remote_agent_id &&
             (ag.remote_agent_id.startsWith("vapi_asst_") ||
-             ag.remote_agent_id.startsWith("saas_agent_") ||
-             ag.remote_agent_id.startsWith("retell_agent_") ||
-             ag.remote_agent_id.startsWith("bland_agent_"))
+              ag.remote_agent_id.startsWith("saas_") ||
+              ag.remote_agent_id.startsWith("retell_agent_") ||
+              ag.remote_agent_id.startsWith("bland_agent_") ||
+              !remoteIdSet.has(ag.remote_agent_id))
           ) {
             ag.status = false;
+            ag.is_enabled = false;
             await ag.save();
           }
         }
@@ -228,51 +269,429 @@ export class VoiceAgentService {
     return true;
   }
 
+  /**
+   * 5 Default Workforce Voice Agents Blueprint
+   */
+  public static readonly WORKFORCE_5_VOICE_TEMPLATES = [
+    {
+      key: "receptionist",
+      name: "AI Receptionist (Aria)",
+      role: "Front-Desk & Inquiry Intake",
+      system_prompt: `You are Aria, the professional front-desk AI Receptionist for Sharyx AI Workforce. Your job is to warmly greet every caller, understand their inquiry, explain our AI Workforce solutions (Voice Telephony Calling, WhatsApp AI Copilots, and Email Automation), qualify their basic details (name, company, and email), and offer to connect them with a specialist or book a demo. Keep responses concise, conversational, and natural for real-time voice.`,
+      first_message: "Hello! Thank you for calling Sharyx. My name is Aria, your AI receptionist. May I know who I have the pleasure of speaking with today?",
+      voice_id_vapi: "21m00Tcm4TlvDq8ikWAM", // Rachel (ElevenLabs)
+      voice_id_saas: "Priya",
+      llm_model: "gpt-4o-mini",
+      temperature: 0.4,
+      allowed_tools: ["capture_contact", "send_brochure", "email_meeting_link"],
+    },
+    {
+      key: "sales",
+      name: "Sales Specialist (Alex)",
+      role: "Pricing, Qualification & Closing",
+      system_prompt: `You are Alex, Senior Sales Specialist for Sharyx AI Workforce. Your goal is to understand the caller's business size, qualify their requirements for automated customer engagement (Voice Calling, WhatsApp, and Email), explain our Starter (₹4,999/mo) and Growth (₹14,999/mo) plans, uncover their budget and decision timeline, and schedule a 15-minute live Google Meet demo. Ask one question at a time and keep responses punchy and consultative.`,
+      first_message: "Hi there! This is Alex from the Sharyx Sales team. Thanks for your interest in our autonomous AI Workforce. How many customer inquiries or team members are you looking to equip?",
+      voice_id_vapi: "pNInz6obpgDQGcFmaJgB", // Adam (ElevenLabs)
+      voice_id_saas: "Adrian",
+      llm_model: "gpt-4o-mini",
+      temperature: 0.3,
+      allowed_tools: ["qualify_lead", "notify_sales_team", "send_brochure", "book_appointment"],
+    },
+    {
+      key: "appointment",
+      name: "Appointment Desk (Rachel)",
+      role: "Calendar & Google Meet Scheduler",
+      system_prompt: `You are Rachel, the Appointment & Meeting Coordinator for Sharyx. Your goal is to help the caller book or reschedule their personalized 15-minute live product walkthrough. Propose available meeting slots (such as tomorrow at 10:00 AM or 3:00 PM IST), confirm their email address so we can send the Google Meet calendar invite, and confirm the booking immediately.`,
+      first_message: "Hello! I am calling from Sharyx to help you schedule your live product walkthrough. Would tomorrow morning or afternoon work best for you?",
+      voice_id_vapi: "21m00Tcm4TlvDq8ikWAM", // Rachel (ElevenLabs)
+      voice_id_saas: "Rachel",
+      llm_model: "gpt-4o-mini",
+      temperature: 0.2,
+      allowed_tools: ["book_appointment", "email_meeting_link", "cancel_appointment"],
+    },
+    {
+      key: "support",
+      name: "Customer Support (Jordan)",
+      role: "Troubleshooting & Ticket Desk",
+      system_prompt: `You are Jordan, the Customer Support Specialist for Sharyx. Your goal is to warmly listen to existing customers, troubleshoot technical issues with their Voice, WhatsApp, or Email agents, create support ticket summaries, and provide step-by-step guidance. Maintain an empathetic, calm, and solution-oriented voice tone at all times.`,
+      first_message: "Hello! You've reached Sharyx Customer Support. My name is Jordan. I'm here to help you resolve any issues right away. What can I assist you with today?",
+      voice_id_vapi: "ErXwobaYiN019PkySvjV", // Antoni (ElevenLabs)
+      voice_id_saas: "Charlie",
+      llm_model: "gpt-4o-mini",
+      temperature: 0.3,
+      allowed_tools: ["create_ticket", "transfer_to_human"],
+    },
+    {
+      key: "recruitment",
+      name: "Talent Acquisition (Maya)",
+      role: "Candidate Screening & HR",
+      system_prompt: `You are Maya, the Talent Acquisition & Screening specialist for Sharyx. You conduct initial friendly phone screenings for open positions, inquire about candidates' years of experience, primary technical skills, notice period, and salary expectations, answer questions about our company culture, and schedule interviews with our hiring managers.`,
+      first_message: "Hello! This is Maya from the Sharyx Talent Acquisition team. Thank you for your application. Do you have a few minutes for a quick introductory screening?",
+      voice_id_vapi: "EXAVITQu4vr4xnSDxMaL", // Bella (ElevenLabs)
+      voice_id_saas: "Sarah",
+      llm_model: "gpt-4o-mini",
+      temperature: 0.3,
+      allowed_tools: ["book_appointment", "capture_contact"],
+    },
+  ];
+
+  /**
+   * Returns the catalog of 5 default templates along with their enable/disable status for a provider
+   */
+  async getCatalog(providerType: string = "vapi", tenantId: string = "default") {
+    const existingAgents = await VoiceAgent.find({
+      where: {
+        tenant_id: tenantId,
+        provider: providerType as any,
+        status: true,
+      },
+    });
+
+    return VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES.map((tpl) => {
+      const existing = existingAgents.find(
+        (a) =>
+          a.template_key === tpl.key ||
+          a.name.toLowerCase() === tpl.name.toLowerCase() ||
+          a.name.toLowerCase().includes(tpl.key)
+      );
+
+      const isEnabled = existing ? existing.is_enabled !== false : false;
+      const voiceId = providerType === "saas_fallback" ? tpl.voice_id_saas : tpl.voice_id_vapi;
+
+      return {
+        key: tpl.key,
+        name: tpl.name,
+        role: tpl.role,
+        system_prompt: tpl.system_prompt,
+        first_message: tpl.first_message,
+        voice_id: voiceId,
+        voice_provider: "elevenlabs",
+        llm_model: tpl.llm_model,
+        temperature: tpl.temperature,
+        allowed_tools: tpl.allowed_tools,
+        provider: providerType,
+        is_enabled: isEnabled,
+        agent_id: existing?.id || null,
+        remote_agent_id: existing?.remote_agent_id || null,
+        last_sync_error: existing?.last_sync_error || null,
+        status: existing ? (isEnabled ? "enabled" : "disabled") : "not_created",
+      };
+    });
+  }
+
+  /**
+   * Enable a specific catalog agent for a provider.
+   * If remote agent already exists, updates & sets is_enabled = true.
+   * If not created yet, creates it remotely and saves to DB.
+   */
+  async enableCatalogAgent(key: string, providerType: string = "vapi", tenantId: string = "default") {
+    const tpl = VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES.find((t) => t.key === key);
+    if (!tpl) {
+      throw new NotFoundException(`Catalog template '${key}' not found`);
+    }
+
+    const config = await VoiceProviderConfig.findOne({
+      where: { tenant_id: tenantId, provider: providerType as any, is_active: true },
+    });
+
+    const provider = this.factory.getProvider(providerType);
+    const voiceId = providerType === "saas_fallback" ? tpl.voice_id_saas : tpl.voice_id_vapi;
+
+    const dto: CreateVoiceAgentDto = {
+      name: tpl.name,
+      provider: providerType as any,
+      system_prompt: tpl.system_prompt,
+      first_message: tpl.first_message,
+      voice_id: voiceId,
+      voice_provider: "elevenlabs",
+      llm_model: tpl.llm_model,
+      temperature: tpl.temperature,
+      language: "en",
+      allowed_tools: tpl.allowed_tools,
+      tenantId,
+    };
+
+    let existing = await VoiceAgent.findOne({
+      where: { tenant_id: tenantId, provider: providerType as any, template_key: key },
+    });
+    if (!existing) {
+      existing = await VoiceAgent.findOne({
+        where: { tenant_id: tenantId, provider: providerType as any, name: tpl.name },
+      });
+    }
+
+    try {
+      let remoteId = existing?.remote_agent_id;
+      let rawResponse: any = null;
+
+      if (remoteId && !remoteId.startsWith("vapi_asst_") && !remoteId.startsWith("saas_agent_")) {
+        try {
+          rawResponse = await provider.updateAgent(remoteId, dto, config || undefined);
+          this.logger.log(`🔄 [CATALOG ENABLE] Updated remote agent ${remoteId} (${tpl.name}) on ${providerType}`);
+        } catch (updateErr: any) {
+          this.logger.warn(`Could not update remote ${remoteId}, creating fresh: ${updateErr.message}`);
+          const remote = await provider.createAgent(dto, config || undefined);
+          remoteId = remote.remoteAgentId;
+          rawResponse = remote.raw;
+        }
+      } else {
+        const remote = await provider.createAgent(dto, config || undefined);
+        remoteId = remote.remoteAgentId;
+        rawResponse = remote.raw;
+        this.logger.log(`✨ [CATALOG ENABLE] Created remote agent ${remoteId} (${tpl.name}) on ${providerType}`);
+      }
+
+      if (!existing) {
+        existing = new VoiceAgent();
+        existing.tenant_id = tenantId;
+        existing.created_by_id = "catalog_enable";
+        existing.created_on = new Date();
+      }
+
+      existing.name = tpl.name;
+      existing.provider = providerType as any;
+      existing.remote_agent_id = remoteId || `deployed_${Date.now()}`;
+      existing.system_prompt = tpl.system_prompt;
+      existing.first_message = tpl.first_message;
+      existing.voice_id = voiceId;
+      existing.voice_provider = "elevenlabs";
+      existing.llm_model = tpl.llm_model;
+      existing.temperature = tpl.temperature;
+      existing.language = "en";
+      existing.allowed_tools = tpl.allowed_tools;
+      existing.template_key = key;
+      existing.is_enabled = true;
+      existing.status = true;
+      existing.last_sync_error = null;
+      if (rawResponse) existing.raw_provider_response = rawResponse;
+      existing.updated_on = new Date();
+
+      await existing.save();
+      return { ok: true, agent: existing };
+    } catch (err: any) {
+      this.logger.error(`❌ [CATALOG ENABLE] Failed for ${tpl.name} on ${providerType}: ${err.message}`);
+      if (existing) {
+        existing.last_sync_error = err.message;
+        await existing.save();
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Disable a specific catalog agent for a provider.
+   * Soft disable: keeps the remote agent and DB row, but marks is_enabled = false
+   * so it is hidden from the dispatch dropdown.
+   */
+  async disableCatalogAgent(key: string, providerType: string = "vapi", tenantId: string = "default") {
+    const tpl = VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES.find((t) => t.key === key);
+    let existing = await VoiceAgent.findOne({
+      where: { tenant_id: tenantId, provider: providerType as any, template_key: key },
+    });
+    if (!existing && tpl) {
+      existing = await VoiceAgent.findOne({
+        where: { tenant_id: tenantId, provider: providerType as any, name: tpl.name },
+      });
+    }
+
+    if (existing) {
+      existing.is_enabled = false;
+      existing.template_key = key;
+      existing.updated_on = new Date();
+      await existing.save();
+      this.logger.log(`⏸️ [CATALOG DISABLE] Disabled ${existing.name} (${existing.remote_agent_id})`);
+      return { ok: true, agent: existing };
+    }
+
+    return { ok: true, message: `Agent '${key}' was not enabled` };
+  }
+
+  /**
+   * Enable all 5 default catalog agents for a provider
+   */
+  async enableAllCatalogAgents(providerType: string = "vapi", tenantId: string = "default") {
+    const results = [];
+    for (const tpl of VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES) {
+      try {
+        const res = await this.enableCatalogAgent(tpl.key, providerType, tenantId);
+        results.push({ key: tpl.key, ok: true, agent: res.agent });
+      } catch (err: any) {
+        results.push({ key: tpl.key, ok: false, error: err.message });
+      }
+    }
+    return { ok: true, provider: providerType, results };
+  }
+
+  /**
+   * Disable all 5 default catalog agents for a provider
+   */
+  async disableAllCatalogAgents(providerType: string = "vapi", tenantId: string = "default") {
+    const results = [];
+    for (const tpl of VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES) {
+      const res = await this.disableCatalogAgent(tpl.key, providerType, tenantId);
+      results.push({ key: tpl.key, ...res });
+    }
+    return { ok: true, provider: providerType, results };
+  }
+
+  /**
+   * 1-Click Deploy 5 Workforce Agents to requested provider or active provider (Vapi or SaaS)
+   */
+  async deployWorkforceTeam(tenantId: string = "default", requestedProvider?: string) {
+    // 1. Identify active provider
+    let activeConfig: VoiceProviderConfig | null = null;
+    if (requestedProvider) {
+      activeConfig = await VoiceProviderConfig.findOne({
+        where: { tenant_id: tenantId, provider: requestedProvider as any },
+      });
+    }
+
+    if (!activeConfig) {
+      activeConfig = await VoiceProviderConfig.findOne({
+        where: { tenant_id: tenantId, is_active: true },
+      });
+    }
+
+    // Fallback: If not explicitly marked active, find one with a configured API key
+    if (!activeConfig) {
+      activeConfig = await VoiceProviderConfig.findOne({
+        where: { tenant_id: tenantId, provider: "vapi" as any },
+      });
+      if (!activeConfig || !activeConfig.api_key) {
+        activeConfig = await VoiceProviderConfig.findOne({
+          where: { tenant_id: tenantId, provider: "saas_fallback" as any },
+        });
+      }
+    }
+
+    const providerType = activeConfig?.provider || requestedProvider || "vapi";
+    const rawApiKey = (activeConfig?.api_key || "").trim();
+
+    // Mask key for safety in UI display
+    let maskedKey = "Not configured";
+    if (rawApiKey.length > 8) {
+      maskedKey = `${rawApiKey.substring(0, 8)}••••••••${rawApiKey.substring(rawApiKey.length - 4)}`;
+    } else if (rawApiKey.length > 0) {
+      maskedKey = "••••••••";
+    }
+
+    const isSaas = providerType === "saas_fallback";
+    const providerLabel = isSaas ? "Sharyx Voice AI (SaaS)" : "Vapi Voice AI";
+    const baseUrl = activeConfig?.base_url || (isSaas ? process.env.VOICE_BACKEND_URL || "https://fallback-voice.sharyx.ai" : "https://api.vapi.ai");
+    const callerId = activeConfig?.caller_id || process.env.VOICE_CALLER_ID || "+918035454141";
+
+    const sttEngine = isSaas ? "Soniox Realtime v4 (stt-rt-v4)" : "Deepgram Nova-2 (realtime)";
+    const ttsEngine = isSaas ? "ElevenLabs Flash v2 (Priya / Adrian)" : "ElevenLabs (11labs)";
+    const llmEngine = "OpenAI gpt-4o-mini";
+
+    this.logger.log(`⚡ [1-CLICK DEPLOY] Deploying 5 agents to ${providerLabel} [${providerType}]...`);
+
+    const deployedAgents: VoiceAgent[] = [];
+    const provider = this.factory.getProvider(providerType);
+
+    for (const tpl of VoiceAgentService.WORKFORCE_5_VOICE_TEMPLATES) {
+      const voiceId = isSaas ? tpl.voice_id_saas : tpl.voice_id_vapi;
+
+      const dto: CreateVoiceAgentDto = {
+        name: tpl.name,
+        provider: providerType as any,
+        system_prompt: tpl.system_prompt,
+        first_message: tpl.first_message,
+        voice_id: voiceId,
+        voice_provider: "elevenlabs",
+        llm_model: tpl.llm_model,
+        temperature: tpl.temperature,
+        language: "en",
+        allowed_tools: tpl.allowed_tools,
+        tenantId,
+      };
+
+      try {
+        // Check if agent already exists locally
+        let existing = await VoiceAgent.findOne({
+          where: { tenant_id: tenantId, name: tpl.name, provider: providerType as any },
+        });
+
+        let remoteId = existing?.remote_agent_id;
+        let rawResponse: any = null;
+
+        if (remoteId && !remoteId.startsWith("vapi_asst_") && !remoteId.startsWith("saas_agent_")) {
+          // Update existing remote agent
+          try {
+            rawResponse = await provider.updateAgent(remoteId, dto, activeConfig || undefined);
+            this.logger.log(`🔄 [1-CLICK DEPLOY] Updated existing remote agent ${remoteId} (${tpl.name})`);
+          } catch (updateErr: any) {
+            this.logger.warn(`Could not update remote agent ${remoteId}, creating fresh: ${updateErr.message}`);
+            const remote = await provider.createAgent(dto, activeConfig || undefined);
+            remoteId = remote.remoteAgentId;
+            rawResponse = remote.raw;
+          }
+        } else {
+          // Create fresh remote assistant
+          const remote = await provider.createAgent(dto, activeConfig || undefined);
+          remoteId = remote.remoteAgentId;
+          rawResponse = remote.raw;
+        }
+
+        if (!existing) {
+          existing = new VoiceAgent();
+          existing.tenant_id = tenantId;
+          existing.created_by_id = "1click_deploy";
+          existing.created_on = new Date();
+        }
+
+        existing.name = tpl.name;
+        existing.provider = providerType as any;
+        existing.remote_agent_id = remoteId || `deployed_${Date.now()}`;
+        existing.system_prompt = tpl.system_prompt;
+        existing.first_message = tpl.first_message;
+        existing.voice_id = voiceId;
+        existing.voice_provider = "elevenlabs";
+        existing.llm_model = tpl.llm_model;
+        existing.temperature = tpl.temperature;
+        existing.language = "en";
+        existing.allowed_tools = tpl.allowed_tools;
+        existing.template_key = tpl.key;
+        existing.is_enabled = true;
+        existing.last_sync_error = null;
+        existing.status = true;
+        existing.raw_provider_response = rawResponse;
+        existing.updated_on = new Date();
+
+        await existing.save();
+        deployedAgents.push(existing);
+        this.logger.log(`✅ [1-CLICK DEPLOY] Deployed: ${existing.name} [ID: ${existing.remote_agent_id}]`);
+      } catch (err: any) {
+        this.logger.error(`❌ [1-CLICK DEPLOY] Failed for ${tpl.name}: ${err.message}`);
+      }
+    }
+
+    return {
+      ok: true,
+      provider: providerType,
+      providerLabel,
+      configuredApi: {
+        provider: providerType,
+        providerLabel,
+        apiKeyMasked: maskedKey,
+        baseUrl,
+        callerId,
+        sttEngine,
+        ttsEngine,
+        llmEngine,
+      },
+      deployedCount: deployedAgents.length,
+      data: deployedAgents,
+    };
+  }
+
   private async seedDefaults(tenantId: string) {
     const count = await VoiceAgent.count({ where: { tenant_id: tenantId } });
     if (count > 0) return;
-
-    this.logger.log(`🌱 Seeding default multi-provider voice agents for tenant ${tenantId}...`);
-
-    const defaults: Partial<CreateVoiceAgentDto>[] = [
-      {
-        name: "Voice Receptionist (Vapi)",
-        provider: "vapi",
-        system_prompt: `You are the AI Front-Desk Receptionist for Sharyx. Warmly greet the customer, ask for their name and inquiry, explain our AI Workforce solutions (Voice Calling, WhatsApp Copilots, and Email Automation), and offer to connect them with a specialist or book a demo. Keep responses concise and conversational for voice.`,
-        first_message: "Hello! Welcome to Sharyx AI Workforce. My name is Maya, your AI assistant. May I know who I have the pleasure of speaking with?",
-        voice_id: "21m00Tcm4TlvDq8ikWAM",
-        voice_provider: "elevenlabs",
-        llm_model: "gpt-4o-mini",
-        temperature: 0.4,
-      },
-      {
-        name: "Sales Closer (Retell AI)",
-        provider: "retell",
-        system_prompt: `You are the Senior Sales Specialist for Sharyx. Your goal is to understand the customer's business size, qualify their requirements for automated customer engagement, explain our Starter (₹4,999/mo) and Growth (₹14,999/mo) plans, and schedule a 15-minute live Google Meet demo.`,
-        first_message: "Hi there! This is Alex from Sharyx. Thanks for reaching out about our AI sales solutions. How many team members or agents are you looking to equip?",
-        voice_id: "11labs-Adrian",
-        voice_provider: "elevenlabs",
-        llm_model: "gpt-4o-mini",
-        temperature: 0.3,
-      },
-      {
-        name: "Appointment Scheduler (SaaS Fallback)",
-        provider: "saas_fallback",
-        system_prompt: `You are the Appointment Desk Voice Agent for Sharyx. Propose available meeting slots (Tomorrow at 10 AM or 3 PM IST) and confirm the customer's email address to send the Google Meet calendar invite.`,
-        first_message: "Hello! I am calling from Sharyx to help you schedule your personalized product walkthrough. Would tomorrow morning work for you?",
-        voice_id: "en-IN-Wavenet-D",
-        voice_provider: "google",
-        llm_model: "gemini-2.0-flash",
-        temperature: 0.3,
-      },
-    ];
-
-    for (const d of defaults) {
-      try {
-        await this.create(d as CreateVoiceAgentDto, tenantId);
-      } catch (err: any) {
-        this.logger.warn(`Could not seed default voice agent ${d.name}: ${err.message}`);
-      }
+    try {
+      await this.deployWorkforceTeam(tenantId);
+    } catch (err: any) {
+      this.logger.warn(`Could not seed default voice workforce team: ${err.message}`);
     }
   }
 }

@@ -2,6 +2,10 @@ import { WhatsAppAIConfig } from "@Database/Table/WhatsApp/WhatsAppAIConfig.enti
 import { WhatsAppAIConfigModel } from "../Models/WhatsAppAIConfig.model";
 import { PromptEngineService } from "./PromptEngine.service";
 import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
+export interface WhatsAppAiReply {
+    reply: string | null;
+    announcement?: string | null;
+}
 export declare class WhatsAppAIService {
     private readonly promptEngineService;
     private readonly orchestrator;
@@ -12,5 +16,5 @@ export declare class WhatsAppAIService {
     generateResponse(customerMessage: string, customerPhone: string, tenantId?: string, conversationId?: string, extras?: {
         customerName?: string;
         leadId?: string;
-    }): Promise<string | null>;
+    }): Promise<WhatsAppAiReply | string | null>;
 }

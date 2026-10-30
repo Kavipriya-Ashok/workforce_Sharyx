@@ -29,7 +29,7 @@ export function InterviewApprovalModal({
         interview_time: time,
         gmeet_link: mode === "ONLINE" ? gmeetLink : undefined,
       });
-      toast.success("Interview Approved & GMeet link scheduled!");
+      toast.success("Interview Approved & Confirmation Voice Call Dispatched!");
       onSuccess();
       onOpenChange(false);
     } catch (e: any) {
@@ -49,6 +49,17 @@ export function InterviewApprovalModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* AI Voice Call info banner */}
+          <div className="p-3 rounded-xl bg-violet-950/50 border border-violet-800/60 text-violet-200 text-xs flex items-start gap-2.5">
+            <span className="text-base leading-none mt-0.5">📞</span>
+            <div className="space-y-0.5">
+              <span className="font-bold text-violet-100 block">Automated AI Follow-up Call</span>
+              <p className="text-[11px] text-violet-300 leading-relaxed">
+                Approving will immediately trigger an automated confirmation phone call to the candidate via your active platform (<strong>Vapi.ai</strong> or <strong>Sharyx SaaS</strong>) with payload: <code className="bg-violet-900/60 px-1 rounded text-[10px]">Interview scheduled</code>.
+              </p>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             <Button
               type="button"

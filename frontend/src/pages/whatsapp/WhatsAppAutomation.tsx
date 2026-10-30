@@ -7,6 +7,7 @@ import { WhatsAppAIBrainPage } from './components/WhatsAppAIBrainPage';
 import { WhatsAppCampaignFormPage } from './components/WhatsAppCampaignFormPage';
 import { WhatsAppTemplatesTab } from './components/WhatsAppTemplatesTab';
 import { WhatsAppAnalyticsPage } from './components/WhatsAppAnalyticsPage';
+import { WhatsAppSyncSection } from './components/WhatsAppSyncSection';
 import { WhatsAppSettingsDialog } from './components/WhatsAppSettingsDialog';
 import { CreateWhatsAppTemplateDialog } from './components/CreateWhatsAppTemplateDialog';
 import { MultiAgentHub } from './components/MultiAgentHub';
@@ -26,13 +27,24 @@ import {
   Layers,
   LayoutTemplate,
   Users,
+  RefreshCw,
 } from 'lucide-react';
 
-export const WhatsAppAutomation: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('templates');
+interface WhatsAppAutomationProps {
+  initialTab?: string;
+}
+
+export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialTab = 'live_chat' }) => {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   const loadConfig = async () => {
     try {
@@ -40,7 +52,6 @@ export const WhatsAppAutomation: React.FC = () => {
       if (data && (data.phone_number || data.phone_number_id)) {
         setConfig(data);
       } else {
-        // Fallback to onboarding session if present
         const savedUser = localStorage.getItem('sharyx_user');
         if (savedUser) {
           const u = JSON.parse(savedUser);
@@ -63,28 +74,31 @@ export const WhatsAppAutomation: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* WhatsApp Suite Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-blue-100">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
               WhatsApp Automation Suite
             </h1>
             <Badge
-              variant={isConnected ? 'success' : 'warning'}
-              className="gap-1.5 py-1"
+              className={`gap-1.5 py-1 text-xs font-semibold ${
+                isConnected
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}
             >
               <Radio
                 className={`h-3 w-3 ${
-                  isConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'
+                  isConnected ? 'text-emerald-500 animate-pulse' : 'text-amber-500'
                 }`}
               />
               {isConnected
-                ? `${config?.provider === 'qr_gateway' ? 'QR Web Session' : config?.provider === 'custom_gateway' ? 'Custom Gateway' : 'Meta Cloud API v18.0'}`
+                ? `${config?.provider === 'qr_gateway' ? 'QR Web Session' : config?.provider === 'custom_gateway' ? 'Custom Gateway' : 'Meta Cloud API v21.0'}`
                 : 'Not Connected'}
             </Badge>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Omnichannel WhatsApp business messaging, Meta message templates, autonomous AI copilot, and automated campaigns.
+          <p className="text-xs text-slate-500 mt-1">
+            Omnichannel WhatsApp business messaging, Meta message templates, autonomous AI copilot, live DB sync, and automated campaigns.
           </p>
         </div>
 
@@ -93,80 +107,79 @@ export const WhatsAppAutomation: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setTemplateOpen(true)}
-            className="gap-1.5 border-slate-700 text-slate-200 hover:text-white"
+            className="text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50 gap-1.5"
           >
-            <PlusCircle className="h-4 w-4 text-emerald-400" />
+            <PlusCircle className="h-4 w-4 text-blue-600" />
             Meta Template
           </Button>
           <Button
-            variant="secondary"
             size="sm"
             onClick={() => setSettingsOpen(true)}
-            className="gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+            className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm shadow-blue-500/20"
           >
-            <Settings className="h-4 w-4 text-slate-400" />
+            <Settings className="h-4 w-4" />
             API Credentials
           </Button>
         </div>
       </div>
 
       {/* 🟢 Live Telemetry & Connected Account Card */}
-      <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+      <div className="p-4 sm:p-5 rounded-2xl border border-blue-150 bg-white shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
             <Phone className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
               Sender Phone Number
             </span>
-            <span className="text-sm font-semibold text-slate-100 truncate block">
+            <span className="text-xs font-bold text-slate-900 truncate block">
               {config?.phone_number || '+91 93440 78088'}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
               Phone Number ID
             </span>
-            <span className="text-xs font-mono font-semibold text-slate-200 truncate block">
+            <span className="text-xs font-mono font-semibold text-slate-800 truncate block">
               {config?.phone_number_id || '1154030421127355'}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-cyan-600 shrink-0">
             <Layers className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider block">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
               WhatsApp Business (WABA) ID
             </span>
-            <span className="text-xs font-mono font-semibold text-slate-200 truncate block">
+            <span className="text-xs font-mono font-semibold text-slate-800 truncate block">
               {config?.waba_id || '1000898049032550'}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:border-l border-slate-800">
+        <div className="flex items-center justify-between sm:justify-end gap-3 pl-2 sm:border-l border-blue-100">
           <div className="text-right">
-            <span className="text-[10px] text-slate-500 block">Webhook Handshake</span>
-            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1 justify-end">
+            <span className="text-[10px] text-slate-400 block font-medium">Meta Webhook Handshake</span>
+            <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 justify-end">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Active & Verified
             </span>
           </div>
           <Button
             size="sm"
-            variant="ghost"
+            variant="outline"
             onClick={() => setSettingsOpen(true)}
-            className="text-xs text-slate-400 hover:text-white"
+            className="text-xs font-semibold text-blue-700 border-blue-200 hover:bg-blue-50"
           >
             Configure
           </Button>
@@ -175,35 +188,64 @@ export const WhatsAppAutomation: React.FC = () => {
 
       {/* Tabs Hub */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-6 max-w-3xl bg-slate-900 border border-slate-800">
-          <TabsTrigger value="multi_agent" className="gap-2 text-xs">
-            <Users className="h-3.5 w-3.5 text-indigo-400" />
-            AI Squad
+        <TabsList className="flex flex-wrap items-center gap-1.5 p-1.5 bg-white border border-blue-150 rounded-2xl shadow-xs">
+          <TabsTrigger
+            value="live_chat"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Live Chat Inbox
           </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-2 text-xs">
-            <LayoutTemplate className="h-3.5 w-3.5 text-amber-400" />
-            Templates
+          <TabsTrigger
+            value="sync_section"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Live Sync & Diagnostics
           </TabsTrigger>
-          <TabsTrigger value="campaigns" className="gap-2 text-xs">
-            <Megaphone className="h-3.5 w-3.5 text-emerald-400" />
+          <TabsTrigger
+            value="templates"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <LayoutTemplate className="h-3.5 w-3.5" />
+            Meta Templates
+          </TabsTrigger>
+          <TabsTrigger
+            value="campaigns"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <Megaphone className="h-3.5 w-3.5" />
             Campaigns
           </TabsTrigger>
-          <TabsTrigger value="live_chat" className="gap-2 text-xs">
-            <MessageSquare className="h-3.5 w-3.5 text-cyan-400" />
-            Live Chat
+          <TabsTrigger
+            value="ai_brain"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <Bot className="h-3.5 w-3.5" />
+            AI Brain & Copilot
           </TabsTrigger>
-          <TabsTrigger value="ai_brain" className="gap-2 text-xs">
-            <Bot className="h-3.5 w-3.5 text-indigo-400" />
-            AI Brain
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2 text-xs">
-            <BarChart3 className="h-3.5 w-3.5 text-purple-400" />
+          <TabsTrigger
+            value="analytics"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
             Telemetry
+          </TabsTrigger>
+          <TabsTrigger
+            value="multi_agent"
+            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
+          >
+            <Users className="h-3.5 w-3.5" />
+            AI Squad
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="multi_agent" className="mt-4">
-          <MultiAgentHub />
+        <TabsContent value="live_chat" className="mt-4">
+          <WhatsAppLiveChat />
+        </TabsContent>
+
+        <TabsContent value="sync_section" className="mt-4">
+          <WhatsAppSyncSection />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
@@ -214,16 +256,16 @@ export const WhatsAppAutomation: React.FC = () => {
           <WhatsAppCampaignFormPage />
         </TabsContent>
 
-        <TabsContent value="live_chat" className="mt-4">
-          <WhatsAppLiveChat />
-        </TabsContent>
-
         <TabsContent value="ai_brain" className="mt-4">
           <WhatsAppAIBrainPage />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">
           <WhatsAppAnalyticsPage />
+        </TabsContent>
+
+        <TabsContent value="multi_agent" className="mt-4">
+          <MultiAgentHub />
         </TabsContent>
       </Tabs>
 

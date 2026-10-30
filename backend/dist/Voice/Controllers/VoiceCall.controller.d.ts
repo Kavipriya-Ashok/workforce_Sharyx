@@ -7,7 +7,7 @@ export declare class VoiceCallController {
         ok: boolean;
         data: import("../../Database/Table/Voice/VoiceCallLog.entity").VoiceCallLog;
     }>;
-    getLogs(tenantId?: string, limit?: string): Promise<{
+    getLogs(tenantId?: string, limit?: string, agentId?: string, skipSync?: string): Promise<{
         ok: boolean;
         data: import("../../Database/Table/Voice/VoiceCallLog.entity").VoiceCallLog[];
     }>;
@@ -19,5 +19,15 @@ export declare class VoiceCallController {
             avgDurationSeconds: number;
             completionRate: number;
         };
+    }>;
+    syncFromSaas(tenantId?: string): Promise<{
+        ok: boolean;
+        synced: number;
+        message: string;
+    }>;
+    syncFromVapi(tenantId?: string): Promise<{
+        ok: boolean;
+        synced: number;
+        message: string;
     }>;
 }

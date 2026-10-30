@@ -16,4 +16,7 @@ export declare class VoiceAgent extends BaseTable {
     transfer_agent_id: string;
     transfer_phone_number: string;
     raw_provider_response: Record<string, any>;
+    template_key: string;
+    is_enabled: boolean;
+    last_sync_error: string;
 }

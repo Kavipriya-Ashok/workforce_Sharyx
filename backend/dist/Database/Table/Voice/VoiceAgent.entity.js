@@ -75,6 +75,18 @@ __decorate([
     (0, typeorm_1.Column)({ type: "jsonb", nullable: true }),
     __metadata("design:type", Object)
 ], VoiceAgent.prototype, "raw_provider_response", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "varchar", length: 50, nullable: true }),
+    __metadata("design:type", String)
+], VoiceAgent.prototype, "template_key", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: true }),
+    __metadata("design:type", Boolean)
+], VoiceAgent.prototype, "is_enabled", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], VoiceAgent.prototype, "last_sync_error", void 0);
 exports.VoiceAgent = VoiceAgent = __decorate([
     (0, typeorm_1.Entity)("voice_agent")
 ], VoiceAgent);

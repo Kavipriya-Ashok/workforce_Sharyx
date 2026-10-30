@@ -138,10 +138,10 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-800 text-white">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-blue-150 shadow-2xl text-slate-900">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-white">
-            <Sparkles className="h-5 w-5 text-emerald-400" />
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <Sparkles className="h-5 w-5 text-blue-600" />
             {templateToEdit ? "Edit WhatsApp Template" : "Create Meta WhatsApp Template"}
           </DialogTitle>
         </DialogHeader>
@@ -152,26 +152,26 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
             <div className="lg:col-span-7 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-300">Template Name *</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Template Name *</Label>
                   <Input
                     placeholder="interview_invite"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="bg-slate-950 border-slate-800 text-white"
+                    className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                     required
                   />
                   <p className="text-[11px] text-slate-400">Lowercase & underscores only</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-300">Category</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Category</Label>
                   <Select
                     value={form.category}
                     onValueChange={(val) => setForm({ ...form, category: val })}
                   >
-                    <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+                    <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                    <SelectContent className="bg-white border-slate-200">
                       <SelectItem value="UTILITY">Utility (Fast Approval)</SelectItem>
                       <SelectItem value="MARKETING">Marketing</SelectItem>
                       <SelectItem value="AUTHENTICATION">Authentication (OTP)</SelectItem>
@@ -181,25 +181,25 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Header (Optional)</Label>
+                <Label className="text-xs font-semibold text-slate-700">Header (Optional)</Label>
                 <Input
                   placeholder="e.g. 🗓️ Interview Invitation"
                   value={form.header_text}
                   onChange={(e) => setForm({ ...form, header_text: e.target.value })}
-                  className="bg-slate-950 border-slate-800 text-white"
+                  className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-slate-300">Body Text *</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Body Text *</Label>
                   <div className="flex gap-1">
                     {["{{1}}", "{{2}}", "{{3}}"].map((tag) => (
                       <button
                         type="button"
                         key={tag}
                         onClick={() => insertVariable(tag)}
-                        className="text-[11px] px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/30 font-mono transition-colors"
+                        className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 font-mono transition-colors"
                       >
                         + {tag}
                       </button>
@@ -211,18 +211,18 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
                   value={form.body_text}
                   onChange={(e) => setForm({ ...form, body_text: e.target.value })}
                   placeholder="Type your message with {{1}}, {{2}} placeholders..."
-                  className="bg-slate-950 border-slate-800 text-white leading-relaxed"
+                  className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900 leading-relaxed"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">Footer Text (Optional)</Label>
+                <Label className="text-xs font-semibold text-slate-700">Footer Text (Optional)</Label>
                 <Input
                   placeholder="e.g. Sharyx AI • Automated System"
                   value={form.footer_text}
                   onChange={(e) => setForm({ ...form, footer_text: e.target.value })}
-                  className="bg-slate-950 border-slate-800 text-white"
+                  className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 />
               </div>
 
@@ -244,20 +244,20 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
             </div>
 
             {/* Live WhatsApp Simulator (5 Columns) */}
-            <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-950 p-4 rounded-2xl border border-slate-800">
-              <div className="flex items-center gap-2 mb-3 text-xs font-semibold text-slate-400">
-                <Smartphone className="h-4 w-4 text-emerald-400" /> Live WhatsApp Mobile Simulator
+            <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-50 p-4 rounded-2xl border border-blue-100">
+              <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-700">
+                <Smartphone className="h-4 w-4 text-blue-600" /> Live WhatsApp Mobile Simulator
               </div>
 
               {/* Phone Bubble */}
-              <div className="w-full max-w-[280px] bg-[#0b141a] rounded-xl p-3 shadow-xl border border-slate-800 space-y-2 text-[13px]">
-                <div className="bg-[#202c33] rounded-lg p-2.5 shadow-sm text-[#e9edef] space-y-1.5">
+              <div className="w-full max-w-[280px] bg-[#efeae2] rounded-2xl p-3 shadow-md border border-slate-200 space-y-2 text-[13px]">
+                <div className="bg-white rounded-xl p-3 shadow-xs text-slate-800 space-y-1.5 border border-slate-200/70">
                   {form.header_text && (
-                    <div className="font-bold text-xs text-emerald-400 pb-1 border-b border-slate-700/60">
+                    <div className="font-bold text-xs text-blue-700 pb-1 border-b border-slate-100">
                       {form.header_text}
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap leading-relaxed text-xs text-slate-200">
+                  <p className="whitespace-pre-wrap leading-relaxed text-xs text-slate-800">
                     {renderPreviewBody()}
                   </p>
                   {form.footer_text && (
@@ -267,18 +267,18 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
                   )}
                   <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 pt-0.5">
                     <span>12:00 PM</span>
-                    <CheckCheck className="h-3.5 w-3.5 text-cyan-400" />
+                    <CheckCheck className="h-3.5 w-3.5 text-blue-600" />
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="border-t border-slate-800 pt-3">
-            <Button variant="ghost" type="button" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-white">
+          <DialogFooter className="border-t border-slate-100 pt-3">
+            <Button variant="ghost" type="button" onClick={() => onOpenChange(false)} className="text-xs text-slate-600 hover:text-slate-800">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs">
               {loading ? "Submitting to Meta..." : templateToEdit ? "Update Template" : "Create & Submit to Meta"}
             </Button>
           </DialogFooter>

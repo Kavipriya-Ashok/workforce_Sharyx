@@ -20,7 +20,7 @@ export class VapiProvider implements IVoiceProvider {
   }
 
   private getPhoneNumberId(config?: VoiceProviderConfig): string {
-    return (config?.phone_number_id || process.env.VAPI_PHONE_NUMBER_ID || "").trim();
+    return (config?.phone_number_id || config?.caller_id || process.env.VAPI_PHONE_NUMBER_ID || "").trim();
   }
 
   private getWebhookUrl(): string {
@@ -51,6 +51,11 @@ export class VapiProvider implements IVoiceProvider {
         voice: {
           provider: dto.voice_provider === "elevenlabs" ? "11labs" : (dto.voice_provider || "11labs"),
           voiceId: dto.voice_id || "21m00Tcm4TlvDq8ikWAM", // default Rachel / Jennifer
+        },
+        transcriber: {
+          provider: "deepgram",
+          model: "nova-2",
+          language: dto.language || "en",
         },
         firstMessage: dto.first_message || "Hello, thank you for connecting with us! How can I assist you today?",
         serverUrl: this.getWebhookUrl(),
@@ -149,6 +154,15 @@ export class VapiProvider implements IVoiceProvider {
     }
   }
 
+  private normalizeDestinationPhone(phone: string): string {
+    let clean = (phone || "").trim().replace(/[\s\-()]/g, "");
+    if (!clean) return clean;
+    if (clean.startsWith("+")) return clean;
+    if (clean.length === 10) return `+91${clean}`;
+    if (clean.length === 12 && clean.startsWith("91")) return `+${clean}`;
+    return `+${clean}`;
+  }
+
   async makeCall(
     remoteAgentId: string,
     dto: MakeVoiceCallDto,
@@ -164,24 +178,28 @@ export class VapiProvider implements IVoiceProvider {
     }
 
     try {
+      const cleanPhone = this.normalizeDestinationPhone(dto.phone_number);
       const payload: Record<string, any> = {
         assistantId: remoteAgentId,
         customer: {
-          number: dto.phone_number,
+          number: cleanPhone,
           name: dto.customer_name || "Valued Customer",
         },
       };
 
       let resolvedPhoneId = phoneNumberId;
-      if (!resolvedPhoneId) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedPhoneId);
+      if (!resolvedPhoneId || !isUuid) {
         try {
           const listRes = await axios.get("https://api.vapi.ai/phone-number", {
             headers: { Authorization: `Bearer ${apiKey}` },
             timeout: 6000,
           });
           if (Array.isArray(listRes.data) && listRes.data.length > 0) {
-            resolvedPhoneId = listRes.data[0].id;
-            this.logger.log(`📞 [VAPI AUTO-RESOLVED PHONE] Auto-detected caller ID: ${listRes.data[0].number || listRes.data[0].id}`);
+            const rawDigits = (resolvedPhoneId || "").replace(/\D/g, "");
+            const match = listRes.data.find((n: any) => rawDigits && String(n.number || "").replace(/\D/g, "").includes(rawDigits));
+            resolvedPhoneId = match ? match.id : listRes.data[0].id;
+            this.logger.log(`📞 [VAPI AUTO-RESOLVED PHONE] Resolved caller ID to UUID: ${resolvedPhoneId} (${match ? match.number : listRes.data[0].number})`);
           }
         } catch (err: any) {
           this.logger.warn(`Could not auto-fetch Vapi phone numbers: ${err.message}`);
@@ -196,6 +214,16 @@ export class VapiProvider implements IVoiceProvider {
         payload.assistantOverrides = {
           variableValues: dto.custom_variables,
           ...(dto.custom_variables.first_message ? { firstMessage: dto.custom_variables.first_message } : {}),
+          ...(dto.custom_variables.system_prompt
+            ? {
+                model: {
+                  provider: "openai",
+                  model: "gpt-4o-mini",
+                  temperature: 0.7,
+                  messages: [{ role: "system", content: dto.custom_variables.system_prompt }],
+                },
+              }
+            : {}),
         };
       }
 

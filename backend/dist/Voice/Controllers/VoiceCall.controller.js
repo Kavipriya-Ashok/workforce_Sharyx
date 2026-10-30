@@ -23,13 +23,21 @@ let VoiceCallController = class VoiceCallController {
         const callLog = await this.callService.dispatchCall(body);
         return { ok: true, data: callLog };
     }
-    async getLogs(tenantId, limit) {
-        const logs = await this.callService.getCallLogs(tenantId || "default", limit ? parseInt(limit, 10) : 50);
+    async getLogs(tenantId, limit, agentId, skipSync) {
+        const logs = await this.callService.getCallLogs(tenantId || "default", limit ? parseInt(limit, 10) : 50, agentId || undefined, skipSync === "true");
         return { ok: true, data: logs };
     }
     async getStats(tenantId) {
         const stats = await this.callService.getCallStats(tenantId || "default");
         return { ok: true, data: stats };
+    }
+    async syncFromSaas(tenantId) {
+        const synced = await this.callService.syncCallLogsFromSaas(tenantId || "default");
+        return { ok: true, synced, message: `Synced ${synced} call logs from Sharyx SaaS platform` };
+    }
+    async syncFromVapi(tenantId) {
+        const synced = await this.callService.syncCallLogsFromVapi(tenantId || "default");
+        return { ok: true, synced, message: `Synced ${synced} call logs from Vapi platform` };
     }
 };
 exports.VoiceCallController = VoiceCallController;
@@ -44,8 +52,10 @@ __decorate([
     (0, common_1.Get)("logs"),
     __param(0, (0, common_1.Query)("tenantId")),
     __param(1, (0, common_1.Query)("limit")),
+    __param(2, (0, common_1.Query)("agentId")),
+    __param(3, (0, common_1.Query)("skipSync")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "getLogs", null);
 __decorate([
@@ -55,6 +65,20 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Post)("sync-saas"),
+    __param(0, (0, common_1.Query)("tenantId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], VoiceCallController.prototype, "syncFromSaas", null);
+__decorate([
+    (0, common_1.Post)("sync-vapi"),
+    __param(0, (0, common_1.Query)("tenantId")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], VoiceCallController.prototype, "syncFromVapi", null);
 exports.VoiceCallController = VoiceCallController = __decorate([
     (0, common_1.Controller)({ path: "Voice/Calls", version: "1" }),
     __metadata("design:paramtypes", [VoiceCall_service_1.VoiceCallService])

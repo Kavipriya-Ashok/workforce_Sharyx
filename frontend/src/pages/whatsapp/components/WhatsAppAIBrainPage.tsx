@@ -47,24 +47,24 @@ export const WhatsAppAIBrainPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Top Banner */}
-      <div className="flex items-center justify-between p-6 rounded-2xl glass border border-slate-800 bg-gradient-to-r from-emerald-950/20 via-indigo-950/20 to-slate-900/50">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-blue-150 bg-white shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
             <Bot className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              Autonomous WhatsApp Copilot
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              Autonomous WhatsApp Copilot & AI Brain
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 mt-0.5">
               Configure system instructions, intent detection, and automated follow-up sequences.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-slate-300">
+        <div className="flex items-center gap-3 bg-blue-50/70 px-3.5 py-1.5 rounded-xl border border-blue-200">
+          <span className="text-xs font-semibold text-blue-900">
             {config.is_ai_enabled ? 'AI Active' : 'AI Paused'}
           </span>
           <Switch
@@ -76,26 +76,26 @@ export const WhatsAppAIBrainPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left: Model & System Prompt */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-indigo-400" />
+        <Card className="bg-white border-blue-150 shadow-xs">
+          <CardHeader className="pb-3 border-b border-blue-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
+              <Cpu className="h-4 w-4 text-blue-600" />
               Intelligence & Persona
             </CardTitle>
-            <CardDescription>Select LLM engine and prompt behavior</CardDescription>
+            <CardDescription className="text-xs text-slate-500">Select LLM engine and prompt behavior</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">AI Operating Mode</label>
+              <label className="text-xs font-semibold text-slate-700">AI Operating Mode</label>
               <div className="mt-1">
                 <Select
                   value={config.ai_mode}
                   onValueChange={(val: any) => setConfig({ ...config, ai_mode: val })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-slate-50 border-slate-200 text-xs text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="fully_automated">Fully Autonomous (Instant Reply)</SelectItem>
                     <SelectItem value="hybrid">Hybrid (AI Suggestion & Human Takeover)</SelectItem>
                     <SelectItem value="manual">Manual Mode (Human Only)</SelectItem>
@@ -106,7 +106,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-300">LLM Provider</label>
+                <label className="text-xs font-semibold text-slate-700">LLM Provider</label>
                 <div className="mt-1">
                   <Select
                     value={config.llm_provider || 'openai'}
@@ -115,10 +115,10 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                       setConfig({ ...config, llm_provider: val, llm_model: defaultModel });
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-slate-50 border-slate-200 text-xs text-slate-900">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200">
                       <SelectItem value="openai">OpenAI (ChatGPT)</SelectItem>
                       <SelectItem value="gemini">Google Gemini</SelectItem>
                     </SelectContent>
@@ -126,21 +126,22 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-300">Model Name</label>
+                <label className="text-xs font-semibold text-slate-700">Model Name</label>
                 <div className="mt-1">
                   <Select
                     value={config.llm_model || (config.llm_provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini')}
                     onValueChange={(val: string) => setConfig({ ...config, llm_model: val })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-slate-50 border-slate-200 text-xs text-slate-900">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border-slate-200">
                       {config.llm_provider === 'gemini' ? (
                         <>
-                          <SelectItem value="gemini-1.5-flash">gemini-1.5-flash (Fast & Free Tier)</SelectItem>
+                          <SelectItem value="gemini-2.5-flash">gemini-2.5-flash (Fast & Recommended)</SelectItem>
+                          <SelectItem value="gemini-3.8-flash">gemini-3.8-flash (Latest Antigravity)</SelectItem>
+                          <SelectItem value="gemini-1.5-flash">gemini-1.5-flash (Stable Free Tier)</SelectItem>
                           <SelectItem value="gemini-1.5-pro">gemini-1.5-pro (High Reasoning)</SelectItem>
-                          <SelectItem value="gemini-2.0-flash">gemini-2.0-flash (Next Gen)</SelectItem>
                         </>
                       ) : (
                         <>
@@ -157,39 +158,36 @@ export const WhatsAppAIBrainPage: React.FC = () => {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-slate-300">
+                <label className="text-xs font-semibold text-slate-700">
                   {config.llm_provider === 'gemini' ? 'Google Gemini API Key' : 'OpenAI API Key'}
                 </label>
-                <span className="text-[10px] text-emerald-400 font-medium">Saved in Database</span>
+                <span className="text-[10px] text-emerald-700 font-semibold">Saved in Database</span>
               </div>
               <Input
                 type="password"
                 placeholder={config.llm_provider === 'gemini' ? 'AIzaSy...' : 'sk-proj-...'}
-                className="font-mono text-xs"
+                className="font-mono text-xs bg-slate-50 border-slate-200 focus:bg-white text-slate-900"
                 value={config.api_key || ''}
                 onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
               />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Paste your API key directly in this UI. Your WhatsApp AI will use it immediately to reply to customers.
+              <p className="text-[11px] text-slate-500 mt-1">
+                Your WhatsApp AI copilot uses this key to formulate real-time answers.
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-slate-200">
+                <label className="text-xs font-semibold text-slate-700">
                   Master System Prompt (AI Brain Instructions)
                 </label>
-                <span className="text-[10px] text-emerald-400 font-medium">
+                <span className="text-[10px] text-blue-700 font-semibold">
                   Directs how AI responds
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mb-2">
-                The AI reads this prompt for every incoming WhatsApp message to know your business, tone, and answers.
-              </p>
 
               {/* 1-Click Prompt Presets */}
               <div className="space-y-1.5 mb-2.5">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   Quick Prompt Templates:
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -197,7 +195,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] justify-start text-left truncate"
+                    className="h-8 text-[11px] justify-start text-left truncate text-slate-700 border-slate-200 hover:bg-slate-50"
                     onClick={() => {
                       setConfig({
                         ...config,
@@ -217,7 +215,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] justify-start text-left truncate"
+                    className="h-8 text-[11px] justify-start text-left truncate text-slate-700 border-slate-200 hover:bg-slate-50"
                     onClick={() => {
                       setConfig({
                         ...config,
@@ -237,7 +235,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] justify-start text-left truncate"
+                    className="h-8 text-[11px] justify-start text-left truncate text-slate-700 border-slate-200 hover:bg-slate-50"
                     onClick={() => {
                       setConfig({
                         ...config,
@@ -257,7 +255,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 text-[11px] justify-start text-left truncate"
+                    className="h-8 text-[11px] justify-start text-left truncate text-slate-700 border-slate-200 hover:bg-slate-50"
                     onClick={() => {
                       setConfig({
                         ...config,
@@ -278,7 +276,7 @@ export const WhatsAppAIBrainPage: React.FC = () => {
 
               <Textarea
                 rows={6}
-                className="mt-1 font-mono text-xs leading-relaxed"
+                className="mt-1 font-mono text-xs leading-relaxed bg-slate-50 border-slate-200 focus:bg-white text-slate-900"
                 placeholder="Enter system prompt instructions for your AI agent..."
                 value={config.system_prompt || ''}
                 onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
@@ -288,20 +286,20 @@ export const WhatsAppAIBrainPage: React.FC = () => {
         </Card>
 
         {/* Right: Greetings & Fallback */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-emerald-400" />
+        <Card className="bg-white border-blue-150 shadow-xs">
+          <CardHeader className="pb-3 border-b border-blue-100">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
+              <Sparkles className="h-4 w-4 text-blue-600" />
               Greetings & Failover
             </CardTitle>
-            <CardDescription>Initial response and fallback triggers</CardDescription>
+            <CardDescription className="text-xs text-slate-500">Initial response and fallback triggers</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">Instant Welcome Message</label>
+              <label className="text-xs font-semibold text-slate-700">Instant Welcome Message</label>
               <Textarea
                 rows={3}
-                className="mt-1"
+                className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 placeholder="Hello! Welcome to Sharyx..."
                 value={config.welcome_message || ''}
                 onChange={(e) => setConfig({ ...config, welcome_message: e.target.value })}
@@ -309,10 +307,10 @@ export const WhatsAppAIBrainPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-300">Human Handover / Fallback Message</label>
+              <label className="text-xs font-semibold text-slate-700">Human Handover / Fallback Message</label>
               <Textarea
                 rows={3}
-                className="mt-1"
+                className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 placeholder="Let me connect you with a human specialist..."
                 value={config.fallback_message || ''}
                 onChange={(e) => setConfig({ ...config, fallback_message: e.target.value })}
@@ -320,12 +318,12 @@ export const WhatsAppAIBrainPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
                 Opt-Out Keywords (Comma separated)
               </label>
               <Input
-                className="mt-1"
+                className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 placeholder="STOP, UNSUBSCRIBE, CANCEL"
                 value={config.stop_words?.join(', ') || ''}
                 onChange={(e) =>
@@ -341,16 +339,16 @@ export const WhatsAppAIBrainPage: React.FC = () => {
       </div>
 
       {/* Auto Follow-up Sequence */}
-      <Card>
-        <CardHeader>
+      <Card className="bg-white border-blue-150 shadow-xs">
+        <CardHeader className="pb-3 border-b border-blue-100">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4 text-cyan-400" />
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
+                <Clock className="h-4 w-4 text-blue-600" />
                 Automated Lead Follow-up Drip
               </CardTitle>
-              <CardDescription>
-                Sends a nudge if customer goes silent after an initial inquiry
+              <CardDescription className="text-xs text-slate-500">
+                Sends an automated reminder if candidate goes silent after an initial inquiry
               </CardDescription>
             </div>
             <Switch
@@ -359,13 +357,13 @@ export const WhatsAppAIBrainPage: React.FC = () => {
             />
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">Delay Time (Minutes)</label>
+              <label className="text-xs font-semibold text-slate-700">Delay Time (Minutes)</label>
               <Input
                 type="number"
-                className="mt-1"
+                className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
                 value={config.followup_delay_minutes || 60}
                 onChange={(e) =>
                   setConfig({ ...config, followup_delay_minutes: Number(e.target.value) })
@@ -373,10 +371,10 @@ export const WhatsAppAIBrainPage: React.FC = () => {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-slate-300">Follow-up Message</label>
+              <label className="text-xs font-semibold text-slate-700">Follow-up Message</label>
               <Input
-                className="mt-1"
-                placeholder="Hi! Just following up to see if you have any questions about our pricing."
+                className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
+                placeholder="Hi! Just following up to see if you have any questions about our interview or demo."
                 value={config.followup_message || ''}
                 onChange={(e) => setConfig({ ...config, followup_message: e.target.value })}
               />
@@ -386,8 +384,12 @@ export const WhatsAppAIBrainPage: React.FC = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} variant="emerald" disabled={loading} className="px-6">
-          <Save className="mr-2 h-4 w-4" />
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          className="px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5 shadow-sm shadow-blue-500/20"
+        >
+          <Save className="h-4 w-4" />
           {loading ? 'Saving Brain...' : 'Save AI Configuration'}
         </Button>
       </div>

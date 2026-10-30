@@ -51,19 +51,20 @@ export const PDF_TEMPLATE_TYPES = [
 
 export const OUTCOME_FILTERS = [
   'ALL',
-  'Interested',
+  'Quotation Requested',
   'Demo Booked',
-  'Not Interested',
+  'Interview Scheduled',
+  'Interested',
   'Price Objection',
-  'Callback Requested',
   'Proposal Requested',
+  'Callback Requested',
   'Deal Won',
   'Lead Qualified',
   'Site Visit Confirmed',
   'Invoice Sent',
   'Onboarding Started',
   'Candidate Screened',
-  'Interview Scheduled',
+  'Not Interested',
 ];
 
 interface PdfTemplateSelectorProps {

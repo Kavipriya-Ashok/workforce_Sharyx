@@ -5,6 +5,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -12,13 +15,15 @@ var PromptEngineService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromptEngineService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const axios_1 = __importDefault(require("axios"));
 const company_1 = require("../../Database/Table/Admin/company");
 const WhatsAppMessage_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppMessage.entity");
 const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
 const CalendarHelper_1 = require("../Helpers/CalendarHelper");
 let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
-    constructor() {
+    constructor(events) {
+        this.events = events;
         this.logger = new common_1.Logger(PromptEngineService_1.name);
         this.defaultTools = [
             {
@@ -208,7 +213,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         if (isGemini && geminiKey) {
             try {
                 let model = (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.llm_model) || "gemini-2.5-flash";
-                if (model.includes("1.5")) {
+                if (model === "gemini-2.0-flash") {
                     model = "gemini-2.5-flash";
                 }
                 const promptContents = [
@@ -288,7 +293,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         return null;
     }
     async getToolConfirmation(tool, ctx) {
-        var _a;
+        var _a, _b;
         switch (tool.toolName) {
             case "book_appointment": {
                 const slot = ((_a = tool.inputs) === null || _a === void 0 ? void 0 : _a.slot) || "Tomorrow at 10:00 AM";
@@ -311,6 +316,20 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                 catch (err) {
                     this.logger.error("Failed to save meeting_info to conversation:", err.message);
                 }
+                if (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) {
+                    const isInterview = /(?:interview|candidate|job)/i.test(`${((_b = tool.inputs) === null || _b === void 0 ? void 0 : _b.type) || ""} ${(ctx === null || ctx === void 0 ? void 0 : ctx.senderName) || ""}`);
+                    this.events.emit("voice.call.requested", {
+                        tenantId: ctx.tenantId || "default",
+                        phone: ctx.senderPhone,
+                        customerName: ctx.senderName,
+                        scheduledType: isInterview ? "interview" : "demo",
+                        reason: isInterview ? "Interview scheduled" : "You scheduled demo",
+                        meetingSlot: slot,
+                        meetUrl: meetRoom.meetUrl,
+                        agentKey: isInterview ? "recruitment" : "sales",
+                    });
+                    this.logger.log(`📞 [PROMPT ENGINE CALL TRIGGER] Dispatched voice call to ${ctx.senderPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`);
+                }
                 return `🎉 Perfect! I have scheduled your consultation slot for *${slot}*.\n\n🎥 *Google Meet Link*: ${meetRoom.meetUrl}\n\nPlease join on time from a quiet place. Looking forward to speaking with you! 👍`;
             }
             case "send_brochure":
@@ -324,6 +343,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
 };
 exports.PromptEngineService = PromptEngineService;
 exports.PromptEngineService = PromptEngineService = PromptEngineService_1 = __decorate([
-    (0, common_1.Injectable)()
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [event_emitter_1.EventEmitter2])
 ], PromptEngineService);
 //# sourceMappingURL=PromptEngine.service.js.map

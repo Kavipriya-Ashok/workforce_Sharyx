@@ -7,9 +7,11 @@ export declare class SaasFallbackProvider implements IVoiceProvider {
     private tokenCache;
     private getBaseUrl;
     private getApiKey;
-    private getCallerId;
+    private normalizeDestinationPhone;
+    resolveCallerId(baseUrl: string, token: string | null, tenantId: string, destPhone: string, config?: VoiceProviderConfig): Promise<string>;
     getAuthToken(config?: VoiceProviderConfig): Promise<string | null>;
     listRemoteAgents(config?: VoiceProviderConfig): Promise<any[]>;
+    private decodeJwt;
     createAgent(dto: CreateVoiceAgentDto, config?: VoiceProviderConfig): Promise<{
         remoteAgentId: string;
         raw: any;

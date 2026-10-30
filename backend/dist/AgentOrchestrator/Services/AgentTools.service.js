@@ -70,12 +70,24 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
                 return l;
         }
         if (state.customer_phone) {
-            const l = await lead_1.lead.findOne({ where: { phone: state.customer_phone, status: true } });
-            if (l)
+            const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
+            const withPlus = "+" + cleanPhone;
+            let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone } });
+            if (!l)
+                l = await lead_1.lead.findOne({ where: { phone: withPlus } });
+            if (!l)
+                l = await lead_1.lead.findOne({ where: { phone: cleanPhone } });
+            if (l) {
+                state.lead_id = l.id;
                 return l;
+            }
         }
         if (state.customer_email) {
-            return await lead_1.lead.findOne({ where: { email: state.customer_email, status: true } });
+            const l = await lead_1.lead.findOne({ where: { email: state.customer_email } });
+            if (l) {
+                state.lead_id = l.id;
+                return l;
+            }
         }
         return null;
     }
@@ -174,7 +186,6 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
                 return {
                     ok: true,
                     note: `Contact captured and Google Meet invitation emailed to ${confirmedEmail}`,
-                    appendText: `✉️ I've sent the Google Meet invitation directly to your email (*${confirmedEmail}*)!\n\n🗓️ Slot: ${appointmentSlot || "Scheduled Session"}\n🎥 Join: ${appointmentMeetUrl}`,
                 };
             }
             this.events.emit(exports.AGENT_OUTCOME_EVENT, {
@@ -193,7 +204,6 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
             return {
                 ok: true,
                 note: `Contact captured and synced to CRM: ${l.name} (${confirmedEmail})`,
-                appendText: `✉️ A confirmation has been registered for your email (*${confirmedEmail}*)!`,
             };
         }
         this.logger.log(`🎯 [LEAD CAPTURED & SYNCED TO ADMIN] ${l.name} | Phone: ${l.phone || "N/A"}`);
@@ -242,12 +252,14 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
         return { ok: true, note: "sales team notified" };
     }
     async bookAppointment(inputs, state, agentName) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         const slot = inputs.slot || "Tomorrow 10:00 AM";
         const type = (inputs.type || "demo").toLowerCase();
-        const label = type === "interview" ? "Interview" : type === "consultation" ? "Consultation" : "Demo";
-        const who = state.customer_name || state.customer_phone || state.customer_email || "Customer";
+        const isInterview = type === "interview" || agentName.toLowerCase().includes("recruitment");
+        const label = isInterview ? "Interview" : type === "consultation" ? "Consultation" : "Demo";
+        const who = state.customer_name || state.customer_phone || state.customer_email || "Candidate";
         const meet = await CalendarHelper_1.CalendarHelper.createGoogleMeetRoom(`Sharyx ${label} - ${who}`, slot);
-        const meeting = { slot, type, mode: inputs.mode || "ONLINE", meet_url: meet.meetUrl, booked_at: new Date().toISOString() };
+        const meeting = { slot, type: isInterview ? "interview" : type, mode: inputs.mode || "ONLINE", meet_url: meet.meetUrl, booked_at: new Date().toISOString() };
         state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { appointment: meeting });
         if (state.channel === "whatsapp" && state.conversation_ref) {
             const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
@@ -256,10 +268,85 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
                 await conv.save();
             }
         }
-        const leadRec = await this.getLead(state);
-        const recipientEmail = inputs.email || state.customer_email || (leadRec === null || leadRec === void 0 ? void 0 : leadRec.email);
+        let leadRec = await this.getLead(state);
+        let recipientEmail = inputs.email || state.customer_email || (leadRec === null || leadRec === void 0 ? void 0 : leadRec.email);
+        if (recipientEmail && (recipientEmail.includes("example.com") || !recipientEmail.includes("@"))) {
+            recipientEmail = null;
+        }
         if (recipientEmail && !state.customer_email) {
             state.customer_email = recipientEmail;
+        }
+        if (!leadRec) {
+            leadRec = new lead_1.lead();
+            leadRec.tenant_id = state.tenant_id || "default";
+            leadRec.name = state.customer_name || "Candidate";
+            leadRec.phone = state.customer_phone || null;
+            leadRec.email = recipientEmail || state.customer_email || null;
+            leadRec.source = lead_1.LeadSource.WHATSAPP;
+            leadRec.lead_status = lead_1.LeadStatus.NEW;
+            leadRec.created_by_id = "ai_agent";
+            leadRec.created_on = new Date();
+            await leadRec.save();
+            state.lead_id = leadRec.id;
+        }
+        if (leadRec) {
+            if (isInterview) {
+                leadRec.is_candidate = true;
+                leadRec.candidate_stage = "interview_scheduled";
+                leadRec.interview_link = meet.meetUrl;
+                leadRec.preferred_interview_slot = slot;
+                if (inputs.role || ((_a = state.collected_slots) === null || _a === void 0 ? void 0 : _a.applied_role) || ((_b = state.collected_slots) === null || _b === void 0 ? void 0 : _b.job_title)) {
+                    leadRec.job_title = inputs.role || ((_c = state.collected_slots) === null || _c === void 0 ? void 0 : _c.applied_role) || ((_d = state.collected_slots) === null || _d === void 0 ? void 0 : _d.job_title);
+                }
+                if (((_e = state.collected_slots) === null || _e === void 0 ? void 0 : _e.experience) || ((_f = state.collected_slots) === null || _f === void 0 ? void 0 : _f.total_experience)) {
+                    const rawExp = String(((_g = state.collected_slots) === null || _g === void 0 ? void 0 : _g.experience) || ((_h = state.collected_slots) === null || _h === void 0 ? void 0 : _h.total_experience)).replace(/[^\d.]/g, "");
+                    const numExp = parseFloat(rawExp);
+                    if (!isNaN(numExp))
+                        leadRec.total_experience = numExp;
+                }
+                if ((_j = state.collected_slots) === null || _j === void 0 ? void 0 : _j.employment_status) {
+                    leadRec.employment_status = String(state.collected_slots.employment_status);
+                }
+                if ((_k = state.collected_slots) === null || _k === void 0 ? void 0 : _k.expected_ctc) {
+                    const rawCtc = String(state.collected_slots.expected_ctc).replace(/[^\d.]/g, "");
+                    const numCtc = parseFloat(rawCtc);
+                    if (!isNaN(numCtc))
+                        leadRec.expected_ctc = numCtc;
+                }
+                if ((_l = state.collected_slots) === null || _l === void 0 ? void 0 : _l.resume_url) {
+                    leadRec.resume_url = state.collected_slots.resume_url;
+                }
+                try {
+                    const lowerSlot = slot.toLowerCase();
+                    const targetDate = new Date();
+                    if (lowerSlot.includes("tomorrow")) {
+                        targetDate.setDate(targetDate.getDate() + 1);
+                    }
+                    else if (lowerSlot.includes("friday")) {
+                        const day = targetDate.getDay();
+                        const diff = (5 - day + 7) % 7 || 7;
+                        targetDate.setDate(targetDate.getDate() + diff);
+                    }
+                    const timeMatch = slot.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+                    if (timeMatch) {
+                        let hours = parseInt(timeMatch[1], 10);
+                        const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+                        const ampm = timeMatch[3].toLowerCase();
+                        if (ampm === "pm" && hours < 12)
+                            hours += 12;
+                        if (ampm === "am" && hours === 12)
+                            hours = 0;
+                        targetDate.setHours(hours, minutes, 0, 0);
+                    }
+                    leadRec.interview_date = targetDate;
+                }
+                catch (_m) { }
+            }
+            if (recipientEmail && !leadRec.email) {
+                leadRec.email = recipientEmail;
+            }
+            leadRec.updated_on = new Date();
+            await leadRec.save();
         }
         await this.logActivity(state, `📅 ${label} booked`, `${slot} | ${meet.meetUrl}${recipientEmail ? ` | Confirmation sent to ${recipientEmail}` : ""}`, agentName);
         if (recipientEmail) {
@@ -267,7 +354,7 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
                 tenantId: state.tenant_id,
                 channel: state.channel,
                 outcome: `${label} Booked`,
-                event: "appointment_booked",
+                event: isInterview ? "interview_booked" : "appointment_booked",
                 phone: state.customer_phone,
                 email: recipientEmail,
                 leadName: state.customer_name,
@@ -280,8 +367,8 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
             ok: true,
             note: `${label} booked for ${slot}, meet ${meet.meetUrl}${recipientEmail ? `, confirmation emailed to ${recipientEmail}` : ""}`,
             appendText: recipientEmail
-                ? `🗓️ ${slot}\n🎥 Google Meet: ${meet.meetUrl}\n✉️ Invitation sent to your email (*${recipientEmail}*)!`
-                : `🗓️ ${slot}\n🎥 Google Meet: ${meet.meetUrl}\n\n✉️ What is your email address so I can send the calendar invitation directly to your inbox?`,
+                ? `🗓️ ${slot}\n🎥 Google Meet: ${meet.meetUrl}\n✉️ Invitation sent to your email (*${recipientEmail}*)!\n\n📞 A confirmation voice reminder has been scheduled for your phone.`
+                : `🗓️ ${slot}\n🎥 Google Meet: ${meet.meetUrl}\n\n✉️ What is your email address so I can send the calendar invitation directly to your inbox?\n\n📞 A confirmation voice reminder has been scheduled for your phone.`,
         };
     }
     async emailMeetingLink(inputs, state, agentName) {
@@ -368,20 +455,25 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
     async dispatchVoiceCall(inputs, state, agentName) {
         const targetPhone = inputs.phone || inputs.phone_number || state.customer_phone;
         if (!targetPhone) {
-            return { ok: false, note: "Missing customer phone number for voice call" };
+            return {
+                ok: false,
+                note: "Missing customer phone number for voice call",
+                appendText: "Could you please share your phone number with country code (e.g. +91) so our Sales Agent can call you immediately? 📱",
+            };
         }
         this.events.emit("voice.call.requested", {
             tenantId: state.tenant_id,
             phone: targetPhone,
-            customerName: inputs.name || inputs.customer_name || state.customer_phone,
-            reason: inputs.reason || inputs.inquiry || "Customer requested live phone support",
+            customerName: inputs.name || inputs.customer_name || state.customer_name || "Customer",
+            reason: inputs.reason || inputs.inquiry || "Customer requested to speak with a sales agent",
             leadId: state.lead_id,
+            agentKey: inputs.agentKey || "sales",
         });
-        await this.logActivity(state, "📞 AI Phone Call Requested", `Dispatched outbound AI call to ${targetPhone}. Reason: ${inputs.reason || "Direct conversation"}`, agentName);
+        await this.logActivity(state, "📞 AI Sales Call Dispatched", `Dispatched outbound Sales AI phone call to ${targetPhone}. Reason: ${inputs.reason || "Customer requested sales phone call"}`, agentName);
         return {
             ok: true,
-            note: `Voice call dispatched to ${targetPhone}`,
-            appendText: `📞 I've just scheduled an outbound call to ${targetPhone}. Our AI representative will ring your phone shortly!`,
+            note: `Sales voice call dispatched to ${targetPhone}`,
+            appendText: `📞 I've just initiated an outbound telephone call to your number (*${targetPhone}*). Please pick up your phone in a moment — our AI Sales Specialist is dialing!`,
         };
     }
 };

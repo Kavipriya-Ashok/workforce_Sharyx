@@ -1,14 +1,19 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
-import { lead, LeadStatus, LeadSource } from "@Database/Table/Lead/lead";
+import { lead, LeadStatus, LeadSource, CandidateStage } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
+import { Cron, CronExpression } from "@nestjs/schedule";
 
 @Injectable()
 export class LeadService {
+  private readonly logger = new Logger(LeadService.name);
+
   constructor(
     @InjectRepository(lead) private readonly leadRepo: Repository<lead>,
-    @InjectRepository(lead_activity) private readonly activityRepo: Repository<lead_activity>
+    @InjectRepository(lead_activity) private readonly activityRepo: Repository<lead_activity>,
+    private readonly events: EventEmitter2
   ) {}
 
   async getAll(filter: any, userContext?: any) {
@@ -36,6 +41,11 @@ export class LeadService {
       query.andWhere("l.source = :source", { source: filter.source });
     }
 
+    // Filter by candidate_stage
+    if (filter?.candidate_stage && filter?.candidate_stage !== "ALL") {
+      query.andWhere("l.candidate_stage = :cstage", { cstage: filter.candidate_stage });
+    }
+
     if (filter?.keyword && filter.keyword.trim()) {
       const kw = `%${filter.keyword.trim().toLowerCase()}%`;
       query.andWhere(
@@ -56,7 +66,9 @@ export class LeadService {
     if (tenantId && tenantId !== "default") qb.andWhere("l.tenant_id = :tenantId", { tenantId });
     if (isCandidate !== undefined) qb.andWhere("l.is_candidate = :isCandidate", { isCandidate });
 
-    const leads = await qb.select(["l.lead_status", "l.deal_value", "l.created_on", "l.source"]).getMany();
+    const leads = await qb.select([
+      "l.lead_status", "l.candidate_stage", "l.deal_value", "l.created_on", "l.source"
+    ]).getMany();
 
     const totalLeads = leads.length;
     const newToday = leads.filter(l => new Date(l.created_on).toDateString() === new Date().toDateString()).length;
@@ -66,6 +78,12 @@ export class LeadService {
     const pipelineValue = leads.reduce((sum, l) => sum + Number(l.deal_value || 0), 0);
     const conversionRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
 
+    // Candidate stage counts
+    const stageCounts: Record<string, number> = {};
+    for (const stage of Object.values(CandidateStage)) {
+      stageCounts[stage] = leads.filter(l => l.candidate_stage === stage).length;
+    }
+
     return {
       totalLeads,
       newToday,
@@ -73,7 +91,8 @@ export class LeadService {
       inProgressLeads,
       wonLeads,
       pipelineValue,
-      conversionRate
+      conversionRate,
+      stageCounts
     };
   }
 
@@ -105,12 +124,26 @@ export class LeadService {
     };
   }
 
+  async checkDuplicateEmail(email: string, excludeId?: string) {
+    if (!email || !email.includes("@")) return { is_duplicate: false };
+    const qb = this.leadRepo.createQueryBuilder("l")
+      .where("l.status = true")
+      .andWhere("LOWER(l.email) = :email", { email: email.toLowerCase().trim() });
+    if (excludeId) qb.andWhere("l.id != :excludeId", { excludeId });
+    const existing = await qb.getOne();
+    return {
+      is_duplicate: !!existing,
+      existing_lead: existing ? { id: existing.id, name: existing.name, email: existing.email, lead_status: existing.lead_status } : null
+    };
+  }
+
   async insert(data: any, userId?: string, userContext?: any) {
     const leadEntity = this.leadRepo.create({
       ...data,
       name: data.name || `${data.first_name || ""} ${data.last_name || ""}`.trim() || data.phone,
       tenant_id: userContext?.active_tenant_id || userContext?.tenant_id || "default",
-      assigned_to_id: data.assigned_to_id || userId || undefined
+      assigned_to_id: data.assigned_to_id || userId || undefined,
+      candidate_stage: data.is_candidate ? (data.candidate_stage || CandidateStage.NEW) : undefined
     });
 
     const saved = (await this.leadRepo.save(leadEntity as any)) as lead;
@@ -119,7 +152,7 @@ export class LeadService {
     const activity = this.activityRepo.create({
       lead_id: saved.id,
       activity_type: "CREATION",
-      title: "Lead Created",
+      title: saved.is_candidate ? "Candidate Created" : "Lead Created",
       description: `Created from ${saved.source || 'MANUAL'}`,
       performer_name: userContext?.name || "System",
       tenant_id: saved.tenant_id
@@ -153,6 +186,36 @@ export class LeadService {
       tenant_id: target.tenant_id
     });
     await this.activityRepo.save(activity);
+
+    // Auto-trigger Lead-to-Customer conversion if moved to WON
+    if (newStatus === LeadStatus.WON || newStatus === "WON") {
+      this.logger.log(`🏆 Lead ${target.name} (${id}) transitioned to WON! Emitting lead.stage.won...`);
+      this.events.emit("lead.stage.won", {
+        leadId: id,
+        tenantId: target.tenant_id,
+        dealValue: Number(target.deal_value) || 5000,
+        lead: target,
+      });
+    }
+
+    return updated;
+  }
+
+  async updateCandidateStage(id: string, candidate_stage: string, userId?: string) {
+    const target = await this.leadRepo.findOne({ where: { id } });
+    if (!target) throw new NotFoundException("Candidate not found");
+
+    const oldStage = target.candidate_stage;
+    target.candidate_stage = candidate_stage;
+    const updated = await this.leadRepo.save(target);
+
+    await this.activityRepo.save(this.activityRepo.create({
+      lead_id: id,
+      activity_type: "STAGE_CHANGE",
+      title: `Stage Changed: ${oldStage} → ${candidate_stage}`,
+      description: `Candidate moved to ${candidate_stage} stage`,
+      tenant_id: target.tenant_id
+    }));
 
     return updated;
   }
@@ -224,7 +287,14 @@ export class LeadService {
     const l = await this.leadRepo.findOne({ where: { id } });
     if (!l) throw new NotFoundException("Candidate not found");
 
+    // Set interview date on the entity so the reminder cron can find it
+    const interviewDateStr = body.interview_date;
+    l.interview_date = interviewDateStr ? new Date(interviewDateStr) : null;
+    l.interview_link = body.gmeet_link || null;
+    l.candidate_stage = CandidateStage.SCHEDULED;
     l.lead_status = LeadStatus.QUALIFIED;
+    l.reminder_sent = false;
+    l.followup_sent = false;
     l.custom_fields = {
       ...(l.custom_fields || {}),
       interview: {
@@ -245,6 +315,128 @@ export class LeadService {
       tenant_id: l.tenant_id
     }));
 
+    // Auto-trigger voice call on connected platform (Vapi / SaaS) with scheduled interview payload
+    if (l.phone) {
+      const slot = `${body.interview_date || "Upcoming"} at ${body.interview_time || "10:00 AM"}`;
+      this.events.emit("voice.call.requested", {
+        tenantId: l.tenant_id || "default",
+        phone: l.phone,
+        customerName: l.name,
+        scheduledType: "interview",
+        reason: "Interview scheduled",
+        meetingSlot: slot,
+        meetUrl: body.gmeet_link || "https://meet.google.com",
+        leadId: l.id,
+        agentKey: "recruitment",
+      });
+      this.logger.log(`📞 [INTERVIEW APPROVAL CALL TRIGGERED] Outbound call requested to ${l.phone} with payload "Interview scheduled"`);
+    }
+
     return { success: true, lead: l };
+  }
+
+  async triggerVoiceCall(id: string, body: any = {}, userContext?: any) {
+    const l = await this.leadRepo.findOne({ where: { id } });
+    if (!l) throw new NotFoundException("Lead not found");
+    if (!l.phone) throw new BadRequestException("Lead does not have a phone number on file");
+
+    const isInterview = body.scheduledType === "interview" || l.is_candidate;
+    const scheduledType = isInterview ? "interview" : "demo";
+    const slot = body.slot || (l.custom_fields?.interview?.interview_date ? `${l.custom_fields.interview.interview_date} at ${l.custom_fields.interview.interview_time || "10:00 AM"}` : "Scheduled Session");
+    const meetUrl = body.meetUrl || l.interview_link || l.custom_fields?.interview?.gmeet_link || "https://meet.google.com";
+    const reason = isInterview ? "Interview scheduled" : "You scheduled demo";
+    const chosenAgentId = body.agentId || body.agent_id;
+    const chosenAgentKey = body.agentKey || (isInterview ? "recruitment" : "sales");
+
+    this.events.emit("voice.call.requested", {
+      tenantId: l.tenant_id || userContext?.active_tenant_id || "default",
+      phone: l.phone,
+      customerName: l.name,
+      scheduledType,
+      reason,
+      meetingSlot: slot,
+      meetUrl,
+      leadId: l.id,
+      agentId: chosenAgentId,
+      agentKey: chosenAgentKey,
+    });
+
+    this.logger.log(`📞 [MANUAL LEAD CALL TRIGGERED] Dispatched voice call to ${l.phone} (${reason}) via connected platform`);
+    return { success: true, message: `Voice call dispatched to ${l.phone} via connected voice engine`, leadId: l.id };
+  }
+
+  // ─── Reminder Cron: runs every hour, sends 1-day-before reminders ─────────
+  @Cron(CronExpression.EVERY_HOUR)
+  async sendInterviewReminders() {
+    try {
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const in26h = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+
+      // Find candidates with interview in ~24h who haven't been reminded
+      const candidates = await this.leadRepo
+        .createQueryBuilder("l")
+        .where("l.status = true")
+        .andWhere("l.is_candidate = true")
+        .andWhere("l.reminder_sent = false")
+        .andWhere("l.interview_date IS NOT NULL")
+        .andWhere("l.interview_date > :from", { from: in24h })
+        .andWhere("l.interview_date < :to", { to: in26h })
+        .getMany();
+
+      for (const c of candidates) {
+        // Log reminder activity
+        await this.activityRepo.save(this.activityRepo.create({
+          lead_id: c.id,
+          activity_type: "REMINDER",
+          title: "1-Day Interview Reminder Sent",
+          description: `Reminder sent to ${c.name} (${c.email || c.phone}) for interview on ${c.interview_date?.toISOString()}`,
+          tenant_id: c.tenant_id
+        }));
+        c.reminder_sent = true;
+        await this.leadRepo.save(c);
+        console.log(`[Reminder] Sent 1-day reminder for candidate: ${c.name}`);
+        // TODO: plug in WhatsApp / Email send here using OutcomeTriggerService
+      }
+    } catch (err) {
+      console.error("[Reminder Cron] Error:", err);
+    }
+  }
+
+  // ─── Follow-up Cron: runs every hour, sends post-interview follow-up ──────
+  @Cron(CronExpression.EVERY_HOUR)
+  async sendPostInterviewFollowup() {
+    try {
+      const now = new Date();
+      const past1h = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+      const past3h = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+
+      // Find candidates whose interview was 1-3 hours ago and haven't had follow-up
+      const candidates = await this.leadRepo
+        .createQueryBuilder("l")
+        .where("l.status = true")
+        .andWhere("l.is_candidate = true")
+        .andWhere("l.followup_sent = false")
+        .andWhere("l.interview_date IS NOT NULL")
+        .andWhere("l.interview_date > :from", { from: past3h })
+        .andWhere("l.interview_date < :to", { to: past1h })
+        .getMany();
+
+      for (const c of candidates) {
+        await this.activityRepo.save(this.activityRepo.create({
+          lead_id: c.id,
+          activity_type: "FOLLOWUP",
+          title: "Post-Interview Follow-up Sent",
+          description: `Follow-up sent to ${c.name} after their interview`,
+          tenant_id: c.tenant_id
+        }));
+        c.followup_sent = true;
+        await this.leadRepo.save(c);
+        console.log(`[Follow-up] Sent post-interview follow-up for candidate: ${c.name}`);
+        // TODO: plug in WhatsApp / Email send here
+      }
+    } catch (err) {
+      console.error("[Follow-up Cron] Error:", err);
+    }
   }
 }

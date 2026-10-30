@@ -41,24 +41,24 @@ export const EmailAISettingsView: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Banner */}
-      <div className="flex items-center justify-between p-6 rounded-2xl glass border border-slate-800 bg-gradient-to-r from-indigo-950/20 via-purple-950/20 to-slate-900/50">
+      <div className="flex items-center justify-between p-6 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50 shadow-xs">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <div className="h-12 w-12 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-600">
             <Bot className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               Autonomous Email Responder
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 mt-0.5">
               Drafts and replies to customer emails automatically using your corporate knowledge base.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-slate-300">
+          <span className="text-xs font-semibold text-slate-700">
             {config.auto_reply_enabled ? 'Auto-Reply Active' : 'Auto-Reply Paused'}
           </span>
           <Switch
@@ -70,26 +70,26 @@ export const EmailAISettingsView: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Model & Tone Card */}
-        <Card>
+        <Card className="bg-white border-slate-200 shadow-xs rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sliders className="h-4 w-4 text-indigo-400" />
+            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Sliders className="h-4 w-4 text-blue-600" />
               Response Tone & Persona
             </CardTitle>
-            <CardDescription>Tailor the writing style of email replies</CardDescription>
+            <CardDescription className="text-xs text-slate-500">Tailor the writing style of email replies</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">Tone of Voice</label>
+              <label className="text-xs font-semibold text-slate-700">Tone of Voice</label>
               <div className="mt-1">
                 <Select
                   value={config.tone}
                   onValueChange={(val: any) => setConfig({ ...config, tone: val })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-slate-50 border-slate-200 text-xs text-slate-900 focus:bg-white rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="professional">Professional & Polished</SelectItem>
                     <SelectItem value="friendly">Friendly & Approachable</SelectItem>
                     <SelectItem value="persuasive">Sales & Persuasive</SelectItem>
@@ -100,17 +100,17 @@ export const EmailAISettingsView: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-300">LLM Provider</label>
+                <label className="text-xs font-semibold text-slate-700">LLM Provider</label>
                 <Input
-                  className="mt-1"
+                  className="mt-1 bg-slate-50 border-slate-200 text-xs text-slate-900 focus:bg-white rounded-xl"
                   value={config.llm_provider || 'openai'}
                   onChange={(e) => setConfig({ ...config, llm_provider: e.target.value })}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-300">Model</label>
+                <label className="text-xs font-semibold text-slate-700">Model</label>
                 <Input
-                  className="mt-1"
+                  className="mt-1 bg-slate-50 border-slate-200 text-xs text-slate-900 focus:bg-white rounded-xl"
                   value={config.llm_model || 'gpt-4o-mini'}
                   onChange={(e) => setConfig({ ...config, llm_model: e.target.value })}
                 />
@@ -120,20 +120,20 @@ export const EmailAISettingsView: React.FC = () => {
         </Card>
 
         {/* Master Prompt */}
-        <Card>
+        <Card className="bg-white border-slate-200 shadow-xs rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-emerald-400" />
+            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600" />
               System Context & Guidelines
             </CardTitle>
-            <CardDescription>Provide business context and FAQs</CardDescription>
+            <CardDescription className="text-xs text-slate-500">Provide business context and FAQs</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">System Instruction Prompt</label>
+              <label className="text-xs font-semibold text-slate-700">System Instruction Prompt</label>
               <Textarea
                 rows={5}
-                className="mt-1 font-mono text-xs"
+                className="mt-1 font-mono text-xs bg-slate-50 border-slate-200 text-slate-900 focus:bg-white rounded-xl"
                 placeholder="You are an executive email assistant for Sharyx. Answer questions about our CRM and workforce management solutions..."
                 value={config.system_prompt || ''}
                 onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
@@ -144,7 +144,11 @@ export const EmailAISettingsView: React.FC = () => {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} variant="emerald" disabled={loading} className="px-6">
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          className="px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
+        >
           <Save className="mr-2 h-4 w-4" />
           {loading ? 'Saving Settings...' : 'Save AI Settings'}
         </Button>

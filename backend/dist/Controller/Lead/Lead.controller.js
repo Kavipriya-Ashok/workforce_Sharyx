@@ -40,6 +40,10 @@ let LeadController = class LeadController extends AuthBase_controller_1.AuthBase
         const res = await this.leadService.checkDuplicatePhone(phone, excludeId, { userId });
         return this.SendResponseData(res);
     }
+    async checkDuplicateEmail(email, excludeId) {
+        const res = await this.leadService.checkDuplicateEmail(email, excludeId);
+        return this.SendResponseData(res);
+    }
     async insert(data, userId) {
         const saved = await this.leadService.insert(data, userId, { userId });
         return this.SendResponseData(saved);
@@ -50,6 +54,10 @@ let LeadController = class LeadController extends AuthBase_controller_1.AuthBase
     }
     async updateStatus(id, newStatus, userId) {
         const updated = await this.leadService.updateStatus(id, newStatus, userId);
+        return this.SendResponseData(updated);
+    }
+    async updateCandidateStage(id, stage, userId) {
+        const updated = await this.leadService.updateCandidateStage(id, stage, userId);
         return this.SendResponseData(updated);
     }
     async delete(id) {
@@ -74,6 +82,10 @@ let LeadController = class LeadController extends AuthBase_controller_1.AuthBase
     }
     async approveInterview(id, body, userId) {
         const res = await this.leadService.approveCandidateInterview(id, body, { userId });
+        return this.SendResponseData(res);
+    }
+    async triggerVoiceCall(id, body, userId) {
+        const res = await this.leadService.triggerVoiceCall(id, body, { userId });
         return this.SendResponseData(res);
     }
 };
@@ -112,6 +124,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "checkDuplicate", null);
 __decorate([
+    (0, common_1.Get)("CheckDuplicateEmail"),
+    __param(0, (0, common_1.Query)("email")),
+    __param(1, (0, common_1.Query)("exclude_id")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], LeadController.prototype, "checkDuplicateEmail", null);
+__decorate([
     (0, common_1.Post)("Insert"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
@@ -137,6 +157,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Patch)("UpdateCandidateStage/:id"),
+    __param(0, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Body)("candidate_stage")),
+    __param(2, (0, Common_helper_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", Promise)
+], LeadController.prototype, "updateCandidateStage", null);
 __decorate([
     (0, common_1.Delete)("Delete/:id"),
     __param(0, (0, common_1.Param)("id")),
@@ -184,6 +213,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "approveInterview", null);
+__decorate([
+    (0, common_1.Post)("TriggerVoiceCall/:id"),
+    __param(0, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, Common_helper_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:returntype", Promise)
+], LeadController.prototype, "triggerVoiceCall", null);
 exports.LeadController = LeadController = __decorate([
     (0, common_1.Controller)({ path: "Lead", version: "1" }),
     (0, swagger_1.ApiTags)("Lead CRM"),

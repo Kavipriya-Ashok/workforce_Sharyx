@@ -10,9 +10,9 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* ── Light Theme HSL Colors ── */
-  --color-background: hsl(260 100% 98%);
-  --color-foreground: #4B5563;
-  --color-heading: #1A1A2E;
+  --color-background: hsl(214 32% 95%);
+  --color-foreground: #334155;
+  --color-heading: #0f172a;
   --color-text-light: #FFFFFF;
 
   --color-card: #ffffff;
@@ -21,36 +21,36 @@
   --color-popover: #ffffff;
   --color-popover-foreground: var(--color-heading);
 
-  /* ── Branding Gradients & Accents ── */
-  --color-primary: hsl(262 83% 58%);
+  /* ── Branding Gradients & Accents (Refined Royal Blue) ── */
+  --color-primary: hsl(221 83% 53%);
   --color-primary-foreground: hsl(0 0% 100%);
 
-  --color-secondary: hsl(300 60% 96%);
-  --color-secondary-foreground: hsl(262 50% 30%);
+  --color-secondary: hsl(214 95% 93%);
+  --color-secondary-foreground: hsl(222 47% 20%);
 
-  --color-muted: hsl(260 20% 96%);
-  --color-muted-foreground: hsl(260 20% 45%);
+  --color-muted: hsl(214 32% 91%);
+  --color-muted-foreground: hsl(215 16% 47%);
 
-  --color-accent: hsl(328 75% 59%);
+  --color-accent: hsl(217 91% 60%);
   --color-accent-foreground: hsl(0 0% 100%);
 
   --color-cancel: #ef4444;
   --color-destructive: hsl(0 84% 60%);
   --color-destructive-foreground: hsl(0 0% 100%);
 
-  --color-border: #e2e8f0;
-  --color-primary-border: hsla(262, 83%, 50%, 0.2);
-  --color-secondary-border: hsla(300, 60%, 80%, 0.3);
+  --color-border: #cbd5e1;
+  --color-primary-border: hsla(221, 83%, 53%, 0.25);
+  --color-secondary-border: hsla(214, 95%, 80%, 0.4);
   --color-destructive-border: hsla(348, 83%, 40%, 0.2);
   --color-input: #ffffff;
-  --color-ring: hsl(270 70% 60%);
+  --color-ring: hsl(221 83% 53%);
 
   /* ── Chart & Analytics Palette ── */
-  --color-chart-1: hsl(270 70% 60%);
-  --color-chart-2: hsl(320 80% 65%);
-  --color-chart-3: hsl(190 80% 60%);
-  --color-chart-4: hsl(30 80% 60%);
-  --color-chart-5: hsl(210 60% 50%);
+  --color-chart-1: hsl(221 83% 53%);
+  --color-chart-2: hsl(199 89% 48%);
+  --color-chart-3: hsl(239 84% 67%);
+  --color-chart-4: hsl(160 84% 39%);
+  --color-chart-5: hsl(38 92% 50%);
   
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-display: 'Plus Jakarta Sans', sans-serif;
@@ -63,32 +63,32 @@
 @layer base {
   /* Premium Dark Theme */
   :root.dark {
-    --color-background: hsl(260 40% 10%);
+    --color-background: hsl(222 47% 10%);
     --color-foreground: var(--color-text-light);
     --color-heading: var(--color-text-light);
 
-    --color-card: hsl(260 40% 12%); 
-    --color-card-foreground: hsl(260 20% 90%);
+    --color-card: hsl(222 47% 13%); 
+    --color-card-foreground: hsl(214 32% 90%);
 
-    --color-popover: hsl(260 40% 14%);
-    --color-popover-foreground: hsl(260 20% 90%);
+    --color-popover: hsl(222 47% 15%);
+    --color-popover-foreground: hsl(214 32% 90%);
 
-    --color-primary: hsl(262 83% 65%);
+    --color-primary: hsl(217 91% 60%);
     --color-primary-foreground: hsl(0 0% 100%);
 
-    --color-secondary: hsla(260, 40%, 20%, 0.4);
-    --color-secondary-foreground: hsl(260 20% 90%);
+    --color-secondary: hsla(222, 47%, 20%, 0.5);
+    --color-secondary-foreground: hsl(214 32% 90%);
 
-    --color-muted: hsla(260, 20%, 20%, 0.3);
-    --color-muted-foreground: hsl(260 20% 65%);
+    --color-muted: hsla(222, 30%, 20%, 0.35);
+    --color-muted-foreground: hsl(215 20% 65%);
 
-    --color-accent: hsl(328 75% 70%);
+    --color-accent: hsl(217 91% 60%);
     --color-accent-foreground: hsl(0 0% 100%);
 
     --color-destructive: hsl(348 83% 55%);
     --color-destructive-foreground: hsl(0 0% 98%);
 
-    --color-border: #2e2836;
+    --color-border: #1e293b;
   }
 
   * {
@@ -101,13 +101,14 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* ── Animated Ambient Radial Mesh Background (Light) ── */
+  /* ── Animated Ambient Radial Mesh Background (Light - Soft Blue & Anti-Glare) ── */
   body {
     @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
     
     background-image: 
-      radial-gradient(at 0% 0%, hsla(260, 80%, 70%, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(320, 80%, 70%, 0.1) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(217, 91%, 60%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(224, 76%, 48%, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, hsla(210, 100%, 75%, 0.08) 0px, transparent 50%);
     
     background-attachment: fixed;
     background-size: 100% 100%;
@@ -117,8 +118,9 @@
   /* ── Deep Space Dark Mesh Background ── */
   :root.dark body {
     background-image: 
-      radial-gradient(at 0% 0%, hsla(260, 80%, 60%, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(320, 80%, 55%, 0.12) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, hsla(221, 83%, 53%, 0.18) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(217, 91%, 60%, 0.12) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, hsla(239, 84%, 67%, 0.1) 0px, transparent 50%);
   }
 
   h1, h2, h3, h4, h5, h6 {

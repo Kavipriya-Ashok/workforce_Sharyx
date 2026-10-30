@@ -21,6 +21,24 @@ export declare enum LeadSource {
     EMAIL = "EMAIL",
     OTHER = "OTHER"
 }
+export declare enum CandidateStage {
+    NEW = "new",
+    SCREENING = "screening",
+    SCHEDULED = "scheduled",
+    OFFERED = "offered",
+    JOINED = "joined",
+    REJECTED = "rejected"
+}
+export declare enum EmploymentStatus {
+    WORKING = "working",
+    NOTICE = "notice",
+    RELIEVED = "relieved"
+}
+export declare enum RelocationAvailability {
+    YES = "yes",
+    NO = "no",
+    CONDITIONAL = "conditional"
+}
 export declare class lead extends BaseTable {
     first_name: string;
     last_name: string;
@@ -41,4 +59,19 @@ export declare class lead extends BaseTable {
     tenant_id: string;
     last_contacted_at: Date;
     is_candidate: boolean;
+    total_experience: number;
+    relevant_experience: number;
+    employment_status: string;
+    relieving_date: Date;
+    current_ctc: number;
+    expected_ctc: number;
+    ctc_basis: string;
+    relocation: string;
+    preferred_interview_slot: string;
+    resume_url: string;
+    candidate_stage: string;
+    interview_date: Date;
+    interview_link: string;
+    reminder_sent: boolean;
+    followup_sent: boolean;
 }

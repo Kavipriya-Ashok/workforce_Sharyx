@@ -11,4 +11,5 @@ export declare class EmailLog extends BaseTable {
     delivery_status: string;
     is_ai_drafted: boolean;
     message_id: string;
+    created_on: Date;
 }

@@ -45,6 +45,7 @@ var EmailService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const nodemailer = __importStar(require("nodemailer"));
 const googleapis_1 = require("googleapis");
 const EmailAccountConfig_entity_1 = require("../../Database/Table/Email/EmailAccountConfig.entity");
@@ -53,9 +54,10 @@ const lead_activity_1 = require("../../Database/Table/Lead/lead_activity");
 const Encryption_service_1 = require("../../Service/Encryption.service");
 const EmailValidation_service_1 = require("./EmailValidation.service");
 let EmailService = EmailService_1 = class EmailService {
-    constructor(encryptionService, validationService) {
+    constructor(encryptionService, validationService, events) {
         this.encryptionService = encryptionService;
         this.validationService = validationService;
+        this.events = events;
         this.logger = new common_1.Logger(EmailService_1.name);
     }
     async validateEmail(email) {
@@ -64,7 +66,7 @@ let EmailService = EmailService_1 = class EmailService {
     getOAuthClient(redirectUri) {
         const clientId = process.env.GOOGLE_CLIENT_ID;
         const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-        const rUri = redirectUri || process.env.GOOGLE_REDIRECT_URI || "http://localhost:5173/oauth/callback";
+        const rUri = redirectUri || process.env.GOOGLE_REDIRECT_URI || "http://localhost:8070/oauth/callback";
         return new googleapis_1.google.auth.OAuth2(clientId, clientSecret, rUri);
     }
     async getConfig(tenantId = "default") {
@@ -354,27 +356,26 @@ let EmailService = EmailService_1 = class EmailService {
         return log;
     }
     async getInboxLogs(tenantId = "default") {
-        return await EmailLog_entity_1.EmailLog.find({
-            where: { tenant_id: tenantId, status: true },
-            order: { created_on: "DESC" },
-            take: 100,
-        });
+        return await EmailLog_entity_1.EmailLog.createQueryBuilder("log")
+            .addSelect("log.created_on")
+            .where("log.tenant_id = :tenantId AND log.status = true", { tenantId })
+            .orderBy("log.created_on", "DESC")
+            .take(100)
+            .getMany();
     }
     async getThread(leadIdOrEmail) {
-        return await EmailLog_entity_1.EmailLog.find({
-            where: [
-                { to_email: leadIdOrEmail },
-                { from_email: leadIdOrEmail },
-                { lead_id: leadIdOrEmail },
-            ],
-            order: { created_on: "ASC" },
-        });
+        return await EmailLog_entity_1.EmailLog.createQueryBuilder("log")
+            .addSelect("log.created_on")
+            .where("(log.to_email = :val OR log.from_email = :val OR log.lead_id = :val)", { val: leadIdOrEmail })
+            .orderBy("log.created_on", "ASC")
+            .getMany();
     }
 };
 exports.EmailService = EmailService;
 exports.EmailService = EmailService = EmailService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [Encryption_service_1.EncryptionService,
-        EmailValidation_service_1.EmailValidationService])
+        EmailValidation_service_1.EmailValidationService,
+        event_emitter_1.EventEmitter2])
 ], EmailService);
 //# sourceMappingURL=Email.service.js.map

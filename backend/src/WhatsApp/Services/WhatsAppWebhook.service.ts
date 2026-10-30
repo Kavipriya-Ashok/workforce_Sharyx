@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { WhatsAppConversation } from "@Database/Table/WhatsApp/WhatsAppConversation.entity";
 import { lead, LeadStatus, LeadSource } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
@@ -9,10 +10,13 @@ import { WhatsAppService } from "./WhatsApp.service";
 @Injectable()
 export class WhatsAppWebhookService {
   private readonly logger = new Logger(WhatsAppWebhookService.name);
+  private static readonly processedMetaIds = new Set<string>();
+
 
   constructor(
     private readonly whatsAppService: WhatsAppService,
-    private readonly aiService: WhatsAppAIService
+    private readonly aiService: WhatsAppAIService,
+    private readonly events: EventEmitter2
   ) {}
 
   async verifyHandshake(mode: string, token: string, challenge: string): Promise<string | null> {
@@ -57,10 +61,48 @@ export class WhatsAppWebhookService {
 
       const senderPhone = message.from;
       const messageType = message.type || "text";
-      const messageText = messageType === "text" ? message.text?.body : `[Media message: ${messageType}]`;
+      let messageText = messageType === "text" ? message.text?.body : `[Media message: ${messageType}]`;
       const metaMessageId = message.id;
 
-      this.logger.log(`💬 [WHATSAPP RECEIVED] From: ${senderPhone} | Text: "${messageText}"`);
+      // Meta Webhook Inbound Deduplication
+      if (metaMessageId) {
+        if (WhatsAppWebhookService.processedMetaIds.has(metaMessageId)) {
+          this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already processing: ${metaMessageId}`);
+          return { status: "duplicate_ignored" };
+        }
+        WhatsAppWebhookService.processedMetaIds.add(metaMessageId);
+        if (WhatsAppWebhookService.processedMetaIds.size > 1000) {
+          const first = WhatsAppWebhookService.processedMetaIds.values().next().value;
+          if (first) WhatsAppWebhookService.processedMetaIds.delete(first);
+        }
+
+        const existingMsg = await WhatsAppMessage.findOne({
+          where: { meta_message_id: metaMessageId },
+        });
+        if (existingMsg) {
+          this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already in database: ${metaMessageId}`);
+          return { status: "duplicate_ignored" };
+        }
+      }
+
+      // Detect PDF Resume or Document Attachment
+      let isPdfAttachment = false;
+      let docFilename = "";
+      if (messageType === "document") {
+        const doc = message.document;
+        docFilename = doc?.filename || "resume.pdf";
+        const mime = doc?.mime_type || "";
+        isPdfAttachment = mime.includes("pdf") || docFilename.toLowerCase().endsWith(".pdf");
+        if (isPdfAttachment) {
+          messageText = `[Candidate uploaded resume PDF: "${docFilename}"]`;
+        } else {
+          messageText = `[Candidate uploaded non-PDF document: "${docFilename}"]`;
+        }
+      } else if (messageType === "image") {
+        messageText = `[Candidate uploaded an image instead of a PDF resume]`;
+      }
+
+      this.logger.log(`💬 [WHATSAPP RECEIVED] From: ${senderPhone} | Type: ${messageType} | Content: "${messageText}"`);
 
       // 1. Find or create Lead in CRM
       const customerProfileName = value?.contacts?.[0]?.profile?.name || senderPhone;
@@ -149,24 +191,64 @@ export class WhatsAppWebhookService {
       inboundMsg.created_on = new Date();
       await inboundMsg.save();
 
-      // 3. Trigger AI auto-reply with 7-Layer Prompt Stacking Pipeline
-      if (messageType === "text") {
+      // 3. Trigger AI auto-reply (Text messages and Resume/Document attachments)
+      if (messageType === "text" || messageType === "document" || messageType === "image") {
         this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
-        const aiReply = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
+        const res = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
           customerName: customerProfileName,
           leadId: existingLead?.id,
         });
+
+        const announcement = typeof res === "object" ? res?.announcement : null;
+        let aiReply = typeof res === "object" ? res?.reply : (typeof res === "string" ? res : null);
+
+        // If aiReply accidentally contains the announcement text, strip it so it doesn't repeat
+        if (announcement && aiReply) {
+          const trimmedAnn = announcement.trim();
+          if (aiReply.startsWith(trimmedAnn)) {
+            aiReply = aiReply.slice(trimmedAnn.length).trim();
+          }
+        }
+
+        // 1. If handoff announcement exists, dispatch as a distinct separate message first!
+        if (announcement) {
+          this.logger.log(`🤝 [HANDOFF SEPARATE MESSAGE] Sending to ${senderPhone}: "${announcement}"`);
+          try {
+            await this.whatsAppService.sendMessage(
+              {
+                to: senderPhone,
+                text: announcement,
+                conversation_id: conversation.id,
+              },
+              "ai_copilot",
+              true
+            );
+            // Sequential delay for realistic chat experience
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          } catch (annErr: any) {
+            this.logger.warn(`Could not deliver handoff announcement: ${annErr.message}`);
+          }
+        }
+
+        // 2. Dispatch main agent reply
         if (aiReply) {
           this.logger.log(`🤖 [AI AUTO-REPLY] Replying to ${senderPhone}: "${aiReply}"`);
-          await this.whatsAppService.sendMessage(
-            {
-              to: senderPhone,
-              text: aiReply,
-              conversation_id: conversation.id,
-            },
-            "ai_copilot",
-            true
-          );
+          try {
+            await this.whatsAppService.sendMessage(
+              {
+                to: senderPhone,
+                text: aiReply,
+                conversation_id: conversation.id,
+              },
+              "ai_copilot",
+              true
+            );
+            this.logger.log(`✅ [AI AUTO-REPLY DISPATCHED] Successfully sent WhatsApp reply to ${senderPhone}`);
+          } catch (sendErr: any) {
+            this.logger.error(`❌ [WHATSAPP SEND FAILED] Could not deliver message to ${senderPhone}: ${sendErr.message}`);
+          }
+        } else {
+          this.logger.warn(`⚠️ [AI ENGINE] No reply was generated for ${senderPhone}`);
         }
       }
 

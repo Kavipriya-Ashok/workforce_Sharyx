@@ -1,10 +1,13 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Repository } from "typeorm";
 import { lead } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
 export declare class LeadService {
     private readonly leadRepo;
     private readonly activityRepo;
-    constructor(leadRepo: Repository<lead>, activityRepo: Repository<lead_activity>);
+    private readonly events;
+    private readonly logger;
+    constructor(leadRepo: Repository<lead>, activityRepo: Repository<lead_activity>, events: EventEmitter2);
     getAll(filter: any, userContext?: any): Promise<{
         items: lead[];
         total: number;
@@ -19,6 +22,7 @@ export declare class LeadService {
         wonLeads: number;
         pipelineValue: number;
         conversionRate: number;
+        stageCounts: Record<string, number>;
     }>;
     getById(id: string, userContext?: any): Promise<{
         activities: lead_activity[];
@@ -41,6 +45,21 @@ export declare class LeadService {
         tenant_id: string;
         last_contacted_at: Date;
         is_candidate: boolean;
+        total_experience: number;
+        relevant_experience: number;
+        employment_status: string;
+        relieving_date: Date;
+        current_ctc: number;
+        expected_ctc: number;
+        ctc_basis: string;
+        relocation: string;
+        preferred_interview_slot: string;
+        resume_url: string;
+        candidate_stage: string;
+        interview_date: Date;
+        interview_link: string;
+        reminder_sent: boolean;
+        followup_sent: boolean;
         id: string;
         status: boolean;
         created_by_id: string;
@@ -60,9 +79,22 @@ export declare class LeadService {
             lead_status: string;
         };
     }>;
+    checkDuplicateEmail(email: string, excludeId?: string): Promise<{
+        is_duplicate: boolean;
+        existing_lead?: undefined;
+    } | {
+        is_duplicate: boolean;
+        existing_lead: {
+            id: string;
+            name: string;
+            email: string;
+            lead_status: string;
+        };
+    }>;
     insert(data: any, userId?: string, userContext?: any): Promise<lead>;
     update(id: string, data: any, userId?: string): Promise<lead>;
     updateStatus(id: string, newStatus: string, userId?: string): Promise<lead>;
+    updateCandidateStage(id: string, candidate_stage: string, userId?: string): Promise<lead>;
     delete(id: string): Promise<{
         success: boolean;
     }>;
@@ -85,4 +117,11 @@ export declare class LeadService {
         success: boolean;
         lead: lead;
     }>;
+    triggerVoiceCall(id: string, body?: any, userContext?: any): Promise<{
+        success: boolean;
+        message: string;
+        leadId: string;
+    }>;
+    sendInterviewReminders(): Promise<void>;
+    sendPostInterviewFollowup(): Promise<void>;
 }

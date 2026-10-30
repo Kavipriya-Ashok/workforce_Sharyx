@@ -57,7 +57,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] grid grid-cols-1 lg:grid-cols-12 selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#0b0f19] grid grid-cols-1 lg:grid-cols-12 selection:bg-blue-600 selection:text-white">
       {/* LEFT: 8 AI Workforce Hero Panel */}
       <div className="lg:col-span-5 xl:col-span-6">
         <AIAgentsHeroPanel />
@@ -120,7 +120,7 @@ export const LoginPage: React.FC = () => {
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                 <Input
                   placeholder="name@company.com"
-                  className="pl-9 h-10 text-xs"
+                  className="pl-9 h-10 text-xs focus:ring-blue-500"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -134,7 +134,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => toast.info('Password reset email sent to registered account.')}
-                  className="text-[11px] text-emerald-400 hover:underline"
+                  className="text-[11px] text-blue-400 hover:underline"
                 >
                   Forgot password?
                 </button>
@@ -144,7 +144,7 @@ export const LoginPage: React.FC = () => {
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••••••"
-                  className="pl-9 pr-10 h-10 text-xs"
+                  className="pl-9 pr-10 h-10 text-xs focus:ring-blue-500"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -161,9 +161,9 @@ export const LoginPage: React.FC = () => {
 
             <Button
               type="submit"
-              variant="emerald"
+              variant="blue"
               disabled={loading}
-              className="w-full h-11 text-sm font-semibold rounded-xl"
+              className="w-full h-11 text-sm font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30"
             >
               {loading ? (
                 <>
@@ -182,7 +182,7 @@ export const LoginPage: React.FC = () => {
           {/* Footer link to Signup */}
           <p className="text-center text-xs text-slate-400">
             Don't have an account yet?{' '}
-            <Link href="/signup" className="font-semibold text-emerald-400 hover:underline">
+            <Link href="/signup" className="font-semibold text-blue-400 hover:underline">
               Sign up for free
             </Link>
           </p>

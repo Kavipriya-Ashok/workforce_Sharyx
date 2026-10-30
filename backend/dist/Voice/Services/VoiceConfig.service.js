@@ -187,7 +187,7 @@ let VoiceConfigService = VoiceConfigService_1 = class VoiceConfigService {
                 }
                 case "saas_fallback": {
                     const baseUrl = ((config === null || config === void 0 ? void 0 : config.base_url) || process.env.VOICE_BACKEND_URL || "https://fallback-voice.sharyx.ai").replace(/\/$/, "");
-                    if (apiKey && !apiKey.includes(":")) {
+                    if (apiKey && (apiKey.startsWith("eyJ") || apiKey.startsWith("shx_priv_") || !apiKey.includes(":"))) {
                         await axios_1.default.get(`${baseUrl}/api/agent/list`, {
                             headers: {
                                 Authorization: `Bearer ${apiKey.trim()}`,

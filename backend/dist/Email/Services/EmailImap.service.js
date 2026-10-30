@@ -45,6 +45,7 @@ var EmailImapService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailImapService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const mailparser_1 = require("mailparser");
 const imaps = __importStar(require("imap-simple"));
 const googleapis_1 = require("googleapis");
@@ -58,11 +59,12 @@ const EmailAI_service_1 = require("./EmailAI.service");
 const Email_service_1 = require("./Email.service");
 const AgentOrchestrator_service_1 = require("../../AgentOrchestrator/Services/AgentOrchestrator.service");
 let EmailImapService = EmailImapService_1 = class EmailImapService {
-    constructor(encryptionService, emailService, aiService, orchestrator) {
+    constructor(encryptionService, emailService, aiService, orchestrator, events) {
         this.encryptionService = encryptionService;
         this.emailService = emailService;
         this.aiService = aiService;
         this.orchestrator = orchestrator;
+        this.events = events;
         this.logger = new common_1.Logger(EmailImapService_1.name);
         this.timer = null;
         this.isPolling = false;
@@ -296,6 +298,25 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 lead_id: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
             }, "ai_auto_responder", true, tenantId);
             this.logger.log(`🤖 [AFTER-REPLY AUTOMATION DISPATCHED] To: ${fromEmail} | Subject: "${replySubject}"`);
+            const hasGMeet = /meet\.google\.com/i.test(replyHtml);
+            const isInterview = /(?:interview|candidate|job|applicant|hiring)/i.test(`${subject} ${bodyText} ${replySubject}`);
+            const targetPhone = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || this.extractPhoneNumber(bodyText);
+            if (hasGMeet && targetPhone) {
+                const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
+                const meetUrl = meetMatch ? meetMatch[0] : "https://meet.google.com";
+                this.events.emit("voice.call.requested", {
+                    tenantId,
+                    phone: targetPhone,
+                    customerName: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
+                    scheduledType: isInterview ? "interview" : "demo",
+                    reason: isInterview ? "Interview scheduled" : "You scheduled demo",
+                    meetingSlot: "Scheduled Session",
+                    meetUrl,
+                    leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                    agentKey: isInterview ? "recruitment" : "sales",
+                });
+                this.logger.log(`📞 [VOICE CALL TRIGGERED AFTER EMAIL GMEET] Dispatched call to ${targetPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`);
+            }
         }
         catch (err) {
             this.logger.warn(`After-reply automation could not be sent: ${err.message}`);
@@ -555,6 +576,7 @@ exports.EmailImapService = EmailImapService = EmailImapService_1 = __decorate([
     __metadata("design:paramtypes", [Encryption_service_1.EncryptionService,
         Email_service_1.EmailService,
         EmailAI_service_1.EmailAIService,
-        AgentOrchestrator_service_1.AgentOrchestratorService])
+        AgentOrchestrator_service_1.AgentOrchestratorService,
+        event_emitter_1.EventEmitter2])
 ], EmailImapService);
 //# sourceMappingURL=EmailImap.service.js.map

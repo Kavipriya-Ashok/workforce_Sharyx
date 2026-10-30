@@ -17,6 +17,7 @@ export interface InboundAgentMessage {
 }
 export interface OrchestratorResult {
     reply: string | null;
+    announcement?: string | null;
     agentKey: string;
     agentName: string;
     handoffs: Array<{

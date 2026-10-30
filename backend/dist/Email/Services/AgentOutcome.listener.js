@@ -16,8 +16,9 @@ const event_emitter_1 = require("@nestjs/event-emitter");
 const OutcomeTrigger_service_1 = require("../../Service/OutcomeTrigger.service");
 const AgentTools_service_1 = require("../../AgentOrchestrator/Services/AgentTools.service");
 let AgentOutcomeListener = AgentOutcomeListener_1 = class AgentOutcomeListener {
-    constructor(outcomeTrigger) {
+    constructor(outcomeTrigger, events) {
         this.outcomeTrigger = outcomeTrigger;
+        this.events = events;
         this.logger = new common_1.Logger(AgentOutcomeListener_1.name);
     }
     async handle(evt) {
@@ -33,6 +34,25 @@ let AgentOutcomeListener = AgentOutcomeListener_1 = class AgentOutcomeListener {
                 meetUrl: evt.meetUrl,
             });
             this.logger.log(`⚡ [AGENT OUTCOME] ${evt.outcome} (${evt.event}) -> sent ${res.sent}, failed ${res.failed}`);
+            const hasMeetUrl = Boolean(evt.meetUrl && evt.meetUrl.includes("meet.google.com"));
+            const isBooking = (evt.event === "appointment_booked" || evt.event === "interview_booked" || /booked/i.test(evt.outcome || "")) &&
+                hasMeetUrl;
+            if (isBooking && evt.phone && evt.channel !== "voice") {
+                const isInterview = /interview/i.test(`${evt.event} ${evt.outcome} ${evt.summary}`);
+                this.logger.log(`📞 [AUTO VOICE TRIGGER] Dispatched confirmation voice call to ${evt.phone} for ${isInterview ? "Interview" : "Demo"} after WhatsApp delivery`);
+                setTimeout(() => {
+                    this.events.emit("voice.call.requested", {
+                        tenantId: evt.tenantId || "default",
+                        phone: evt.phone,
+                        customerName: evt.leadName,
+                        scheduledType: isInterview ? "interview" : "demo",
+                        reason: isInterview ? "Interview scheduled" : "Demo scheduled",
+                        meetingSlot: evt.summary || "your upcoming session",
+                        meetUrl: evt.meetUrl,
+                        agentKey: isInterview ? "recruitment" : "sales",
+                    });
+                }, 3000);
+            }
         }
         catch (err) {
             this.logger.warn(`Agent outcome trigger failed: ${err.message}`);
@@ -48,6 +68,7 @@ __decorate([
 ], AgentOutcomeListener.prototype, "handle", null);
 exports.AgentOutcomeListener = AgentOutcomeListener = AgentOutcomeListener_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [OutcomeTrigger_service_1.OutcomeTriggerService])
+    __metadata("design:paramtypes", [OutcomeTrigger_service_1.OutcomeTriggerService,
+        event_emitter_1.EventEmitter2])
 ], AgentOutcomeListener);
 //# sourceMappingURL=AgentOutcome.listener.js.map

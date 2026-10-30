@@ -1,8 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import * as nodemailer from "nodemailer";
 import { google } from "googleapis";
 import { EmailAccountConfig } from "@Database/Table/Email/EmailAccountConfig.entity";
 import { EmailLog } from "@Database/Table/Email/EmailLog.entity";
+import { lead } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailValidationService } from "./EmailValidation.service";
@@ -15,7 +17,8 @@ export class EmailService {
 
   constructor(
     private readonly encryptionService: EncryptionService,
-    private readonly validationService: EmailValidationService
+    private readonly validationService: EmailValidationService,
+    private readonly events: EventEmitter2
   ) {}
 
   async validateEmail(email: string) {
@@ -25,7 +28,7 @@ export class EmailService {
   private getOAuthClient(redirectUri?: string) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const rUri = redirectUri || process.env.GOOGLE_REDIRECT_URI || "http://localhost:5173/oauth/callback";
+    const rUri = redirectUri || process.env.GOOGLE_REDIRECT_URI || "http://localhost:8070/oauth/callback";
     return new google.auth.OAuth2(clientId, clientSecret, rUri);
   }
 
@@ -360,21 +363,22 @@ export class EmailService {
   }
 
   async getInboxLogs(tenantId: string = "default") {
-    return await EmailLog.find({
-      where: { tenant_id: tenantId, status: true },
-      order: { created_on: "DESC" },
-      take: 100,
-    });
+    return await EmailLog.createQueryBuilder("log")
+      .addSelect("log.created_on")
+      .where("log.tenant_id = :tenantId AND log.status = true", { tenantId })
+      .orderBy("log.created_on", "DESC")
+      .take(100)
+      .getMany();
   }
 
   async getThread(leadIdOrEmail: string) {
-    return await EmailLog.find({
-      where: [
-        { to_email: leadIdOrEmail },
-        { from_email: leadIdOrEmail },
-        { lead_id: leadIdOrEmail },
-      ],
-      order: { created_on: "ASC" },
-    });
+    return await EmailLog.createQueryBuilder("log")
+      .addSelect("log.created_on")
+      .where(
+        "(log.to_email = :val OR log.from_email = :val OR log.lead_id = :val)",
+        { val: leadIdOrEmail }
+      )
+      .orderBy("log.created_on", "ASC")
+      .getMany();
   }
 }

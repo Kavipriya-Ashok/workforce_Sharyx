@@ -32,7 +32,7 @@ function RedirectToLogin() {
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="sharyx-theme">
+      <ThemeProvider defaultTheme="light" storageKey="sharyx-theme">
         <AuthProvider>
           <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-white transition-colors duration-300">
             <Switch>

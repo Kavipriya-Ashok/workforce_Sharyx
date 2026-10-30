@@ -52,6 +52,14 @@ export interface Lead {
   tenant_id: string;
   last_contacted_at?: string;
   is_candidate: boolean;
+  candidate_stage?: string;
+  interview_date?: string;
+  interview_link?: string;
+  preferred_interview_slot?: string;
+  resume_url?: string;
+  total_experience?: number;
+  employment_status?: string;
+  expected_ctc?: number;
   status: boolean;
   created_on: string;
   updated_on?: string;

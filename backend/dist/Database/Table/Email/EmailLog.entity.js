@@ -59,6 +59,10 @@ __decorate([
     (0, typeorm_1.Column)({ length: 250, nullable: true }),
     __metadata("design:type", String)
 ], EmailLog.prototype, "message_id", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "timestamp", select: true, default: () => "CURRENT_TIMESTAMP" }),
+    __metadata("design:type", Date)
+], EmailLog.prototype, "created_on", void 0);
 exports.EmailLog = EmailLog = __decorate([
     (0, typeorm_1.Entity)("email_log")
 ], EmailLog);

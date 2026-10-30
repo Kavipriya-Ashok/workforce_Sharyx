@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import axios from "axios";
 import { company } from "@Database/Table/Admin/company";
 import { WhatsAppMessage } from "@Database/Table/WhatsApp/WhatsAppMessage.entity";
@@ -52,6 +53,8 @@ export interface ToolCallExecution {
 @Injectable()
 export class PromptEngineService {
   private readonly logger = new Logger(PromptEngineService.name);
+
+  constructor(private readonly events: EventEmitter2) {}
 
   // Default tools available to WhatsApp Autonomous Copilot
   private readonly defaultTools = [
@@ -277,7 +280,7 @@ export class PromptEngineService {
     if (isGemini && geminiKey) {
       try {
         let model = aiConfig?.llm_model || "gemini-2.5-flash";
-        if (model.includes("1.5")) {
+        if (model === "gemini-2.0-flash") {
           model = "gemini-2.5-flash";
         }
         const promptContents = [
@@ -409,6 +412,22 @@ export class PromptEngineService {
           }
         } catch (err: any) {
           this.logger.error("Failed to save meeting_info to conversation:", err.message);
+        }
+
+        // Emit voice call request event to connected provider (Vapi / SaaS)
+        if (ctx?.senderPhone) {
+          const isInterview = /(?:interview|candidate|job)/i.test(`${tool.inputs?.type || ""} ${ctx?.senderName || ""}`);
+          this.events.emit("voice.call.requested", {
+            tenantId: ctx.tenantId || "default",
+            phone: ctx.senderPhone,
+            customerName: ctx.senderName,
+            scheduledType: isInterview ? "interview" : "demo",
+            reason: isInterview ? "Interview scheduled" : "You scheduled demo",
+            meetingSlot: slot,
+            meetUrl: meetRoom.meetUrl,
+            agentKey: isInterview ? "recruitment" : "sales",
+          });
+          this.logger.log(`📞 [PROMPT ENGINE CALL TRIGGER] Dispatched voice call to ${ctx.senderPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`);
         }
 
         return `🎉 Perfect! I have scheduled your consultation slot for *${slot}*.\n\n🎥 *Google Meet Link*: ${meetRoom.meetUrl}\n\nPlease join on time from a quiet place. Looking forward to speaking with you! 👍`;

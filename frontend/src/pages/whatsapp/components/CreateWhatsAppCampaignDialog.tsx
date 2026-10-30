@@ -41,7 +41,8 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
   const [form, setForm] = useState({
     name: "",
     description: "",
-    trigger_event: "round_1_cleared",
+    trigger_event: "quotation_requested",
+    outcome_filter: "Quotation Requested",
     template_name: "",
     delay_minutes: 0,
     is_active: true,
@@ -53,7 +54,8 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
         setForm({
           name: campaign.name || "",
           description: campaign.description || "",
-          trigger_event: campaign.trigger_event || "round_1_cleared",
+          trigger_event: campaign.trigger_event || "quotation_requested",
+          outcome_filter: (campaign as any).outcome_filter || "Quotation Requested",
           template_name: campaign.template_name || (templates[0]?.name || ""),
           delay_minutes: campaign.delay_minutes || 0,
           is_active: campaign.is_active ?? true,
@@ -62,7 +64,8 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
         setForm({
           name: "",
           description: "",
-          trigger_event: "round_1_cleared",
+          trigger_event: "quotation_requested",
+          outcome_filter: "Quotation Requested",
           template_name: templates[0]?.name || "",
           delay_minutes: 0,
           is_active: true,
@@ -98,39 +101,40 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white">
+      <DialogContent className="sm:max-w-md bg-white border border-blue-150 shadow-2xl text-slate-900">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <Zap className="h-5 w-5 text-amber-400" />
+          <DialogTitle className="flex items-center gap-2 text-slate-900">
+            <Zap className="h-5 w-5 text-blue-600" />
             {campaign ? "Edit Campaign" : "New Automated WhatsApp Campaign"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-300">Campaign Title *</Label>
+            <Label className="text-xs font-semibold text-slate-700">Campaign Title *</Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="e.g. Round 2 Google Meet Invite"
-              className="bg-slate-950 border-slate-800 text-white"
+              className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
               required
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-300">Trigger Event *</Label>
+            <Label className="text-xs font-semibold text-slate-700">Trigger Event *</Label>
             <Select
               value={form.trigger_event}
               onValueChange={(val) => setForm({ ...form, trigger_event: val })}
             >
-              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                <SelectItem value="round_1_cleared">Candidate: Round 1 Cleared ➔ Send Round 2</SelectItem>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="quotation_requested">Voice Call: Quotation Requested ➔ Send Quote & Proposal</SelectItem>
                 <SelectItem value="demo_booked">Meeting / Demo Booked ➔ Send Google Meet Link</SelectItem>
                 <SelectItem value="after_call_ends">Post-Call: Send Summary & Notes</SelectItem>
+                <SelectItem value="round_1_cleared">Candidate: Round 1 Cleared ➔ Send Round 2</SelectItem>
                 <SelectItem value="deal_won">Sales: Deal Won VIP Welcome</SelectItem>
                 <SelectItem value="inactive_followup">Re-engagement: 24h Inactive Followup</SelectItem>
                 <SelectItem value="manual_broadcast">Manual Broadcast</SelectItem>
@@ -139,15 +143,37 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-300">WhatsApp Template *</Label>
+            <Label className="text-xs font-semibold text-slate-700">Outcome Trigger Filter *</Label>
+            <Select
+              value={form.outcome_filter}
+              onValueChange={(val) => setForm({ ...form, outcome_filter: val })}
+            >
+              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
+                <SelectValue placeholder="Select outcome condition" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="ALL">⚡ ALL - Fire for any call outcome</SelectItem>
+                <SelectItem value="Quotation Requested">📄 Quotation Requested (Price / Proposal Quote)</SelectItem>
+                <SelectItem value="Demo Booked">📅 Demo Booked (Google Meet scheduled)</SelectItem>
+                <SelectItem value="Interview Scheduled">💼 Interview Scheduled (Candidate Round)</SelectItem>
+                <SelectItem value="Interested">⭐ Interested / Hot Lead</SelectItem>
+                <SelectItem value="Price Objection">💰 Price Objection / Budget Discussion</SelectItem>
+                <SelectItem value="Callback Requested">📞 Callback Requested</SelectItem>
+                <SelectItem value="Not Interested">❌ Not Interested</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">WhatsApp Template *</Label>
             <Select
               value={form.template_name}
               onValueChange={(val) => setForm({ ...form, template_name: val })}
             >
-              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
                 <SelectValue placeholder="Select an approved template" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-white">
+              <SelectContent className="bg-white border-slate-200">
                 {templates.map((t) => (
                   <SelectItem key={t.id || t.name} value={t.name}>
                     {t.name} ({t.category || "UTILITY"})
@@ -159,17 +185,17 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-3 items-center">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-300">Delay (Minutes)</Label>
+              <Label className="text-xs font-semibold text-slate-700">Delay (Minutes)</Label>
               <Input
                 type="number"
                 min={0}
                 value={form.delay_minutes}
                 onChange={(e) => setForm({ ...form, delay_minutes: Number(e.target.value) })}
-                className="bg-slate-950 border-slate-800 text-white"
+                className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
               />
             </div>
             <div className="flex items-center justify-between pt-5">
-              <Label className="text-xs text-slate-300">Active Now</Label>
+              <Label className="text-xs font-semibold text-slate-700">Active Now</Label>
               <Switch
                 checked={form.is_active}
                 onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
@@ -177,12 +203,21 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
             </div>
           </div>
 
-          <DialogFooter className="border-t border-slate-800 pt-3">
-            <Button variant="ghost" type="button" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-white">
+          <DialogFooter className="border-t border-slate-100 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="text-xs text-slate-600 hover:text-slate-800"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-amber-600 hover:bg-amber-500 text-white">
-              {loading ? "Saving..." : campaign ? "Update Campaign" : "Activate Campaign"}
+            <Button
+              type="submit"
+              disabled={loading || !form.name || !form.template_name}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs"
+            >
+              {loading ? "Saving..." : campaign ? "Update Campaign" : "Create Campaign"}
             </Button>
           </DialogFooter>
         </form>

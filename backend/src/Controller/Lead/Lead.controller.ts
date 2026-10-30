@@ -43,6 +43,15 @@ export class LeadController extends AuthBaseController {
     return this.SendResponseData(res);
   }
 
+  @Get("CheckDuplicateEmail")
+  async checkDuplicateEmail(
+    @Query("email") email: string,
+    @Query("exclude_id") excludeId: string
+  ) {
+    const res = await this.leadService.checkDuplicateEmail(email, excludeId);
+    return this.SendResponseData(res);
+  }
+
   @Post("Insert")
   async insert(@Body() data: any, @CurrentUser() userId: string) {
     const saved = await this.leadService.insert(data, userId, { userId });
@@ -58,6 +67,16 @@ export class LeadController extends AuthBaseController {
   @Patch("UpdateStatus/:id")
   async updateStatus(@Param("id") id: string, @Body("lead_status") newStatus: string, @CurrentUser() userId: string) {
     const updated = await this.leadService.updateStatus(id, newStatus, userId);
+    return this.SendResponseData(updated);
+  }
+
+  @Patch("UpdateCandidateStage/:id")
+  async updateCandidateStage(
+    @Param("id") id: string,
+    @Body("candidate_stage") stage: string,
+    @CurrentUser() userId: string
+  ) {
+    const updated = await this.leadService.updateCandidateStage(id, stage, userId);
     return this.SendResponseData(updated);
   }
 
@@ -94,6 +113,12 @@ export class LeadController extends AuthBaseController {
   @Post("ApproveInterview/:id")
   async approveInterview(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string) {
     const res = await this.leadService.approveCandidateInterview(id, body, { userId });
+    return this.SendResponseData(res);
+  }
+
+  @Post("TriggerVoiceCall/:id")
+  async triggerVoiceCall(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string) {
+    const res = await this.leadService.triggerVoiceCall(id, body, { userId });
     return this.SendResponseData(res);
   }
 }

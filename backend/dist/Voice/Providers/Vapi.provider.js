@@ -22,7 +22,7 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
         return ((config === null || config === void 0 ? void 0 : config.api_key) || process.env.VAPI_API_KEY || "").trim();
     }
     getPhoneNumberId(config) {
-        return ((config === null || config === void 0 ? void 0 : config.phone_number_id) || process.env.VAPI_PHONE_NUMBER_ID || "").trim();
+        return ((config === null || config === void 0 ? void 0 : config.phone_number_id) || (config === null || config === void 0 ? void 0 : config.caller_id) || process.env.VAPI_PHONE_NUMBER_ID || "").trim();
     }
     getWebhookUrl() {
         const publicUrl = process.env.PUBLIC_BACKEND_URL || "https://api.sharyx.ai";
@@ -45,6 +45,10 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
                 }, voice: {
                     provider: dto.voice_provider === "elevenlabs" ? "11labs" : (dto.voice_provider || "11labs"),
                     voiceId: dto.voice_id || "21m00Tcm4TlvDq8ikWAM",
+                }, transcriber: {
+                    provider: "deepgram",
+                    model: "nova-2",
+                    language: dto.language || "en",
                 }, firstMessage: dto.first_message || "Hello, thank you for connecting with us! How can I assist you today?", serverUrl: this.getWebhookUrl() }, (dto.transfer_phone_number ? { forwardingPhoneNumber: dto.transfer_phone_number } : {}));
             const res = await axios_1.default.post("https://api.vapi.ai/assistant", payload, {
                 headers: {
@@ -135,6 +139,18 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
             return false;
         }
     }
+    normalizeDestinationPhone(phone) {
+        let clean = (phone || "").trim().replace(/[\s\-()]/g, "");
+        if (!clean)
+            return clean;
+        if (clean.startsWith("+"))
+            return clean;
+        if (clean.length === 10)
+            return `+91${clean}`;
+        if (clean.length === 12 && clean.startsWith("91"))
+            return `+${clean}`;
+        return `+${clean}`;
+    }
     async makeCall(remoteAgentId, dto, config) {
         var _a, _b, _c, _d, _e;
         const apiKey = this.getApiKey(config);
@@ -145,23 +161,27 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
             return { callId: simulatedCallId, status: "initiated", raw: { simulated: true } };
         }
         try {
+            const cleanPhone = this.normalizeDestinationPhone(dto.phone_number);
             const payload = {
                 assistantId: remoteAgentId,
                 customer: {
-                    number: dto.phone_number,
+                    number: cleanPhone,
                     name: dto.customer_name || "Valued Customer",
                 },
             };
             let resolvedPhoneId = phoneNumberId;
-            if (!resolvedPhoneId) {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedPhoneId);
+            if (!resolvedPhoneId || !isUuid) {
                 try {
                     const listRes = await axios_1.default.get("https://api.vapi.ai/phone-number", {
                         headers: { Authorization: `Bearer ${apiKey}` },
                         timeout: 6000,
                     });
                     if (Array.isArray(listRes.data) && listRes.data.length > 0) {
-                        resolvedPhoneId = listRes.data[0].id;
-                        this.logger.log(`📞 [VAPI AUTO-RESOLVED PHONE] Auto-detected caller ID: ${listRes.data[0].number || listRes.data[0].id}`);
+                        const rawDigits = (resolvedPhoneId || "").replace(/\D/g, "");
+                        const match = listRes.data.find((n) => rawDigits && String(n.number || "").replace(/\D/g, "").includes(rawDigits));
+                        resolvedPhoneId = match ? match.id : listRes.data[0].id;
+                        this.logger.log(`📞 [VAPI AUTO-RESOLVED PHONE] Resolved caller ID to UUID: ${resolvedPhoneId} (${match ? match.number : listRes.data[0].number})`);
                     }
                 }
                 catch (err) {
@@ -172,7 +192,16 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
                 payload.phoneNumberId = resolvedPhoneId;
             }
             if (dto.custom_variables) {
-                payload.assistantOverrides = Object.assign({ variableValues: dto.custom_variables }, (dto.custom_variables.first_message ? { firstMessage: dto.custom_variables.first_message } : {}));
+                payload.assistantOverrides = Object.assign(Object.assign({ variableValues: dto.custom_variables }, (dto.custom_variables.first_message ? { firstMessage: dto.custom_variables.first_message } : {})), (dto.custom_variables.system_prompt
+                    ? {
+                        model: {
+                            provider: "openai",
+                            model: "gpt-4o-mini",
+                            temperature: 0.7,
+                            messages: [{ role: "system", content: dto.custom_variables.system_prompt }],
+                        },
+                    }
+                    : {}));
             }
             const res = await axios_1.default.post("https://api.vapi.ai/call/phone", payload, {
                 headers: {

@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { EmailAccountConfig } from "@Database/Table/Email/EmailAccountConfig.entity";
 import { EmailLog } from "@Database/Table/Email/EmailLog.entity";
 import { EncryptionService } from "@Service/Encryption.service";
@@ -7,8 +8,9 @@ import { SendEmailModel } from "../Models/SendEmail.model";
 export declare class EmailService {
     private readonly encryptionService;
     private readonly validationService;
+    private readonly events;
     private readonly logger;
-    constructor(encryptionService: EncryptionService, validationService: EmailValidationService);
+    constructor(encryptionService: EncryptionService, validationService: EmailValidationService, events: EventEmitter2);
     validateEmail(email: string): Promise<import("./EmailValidation.service").ValidationResult>;
     private getOAuthClient;
     getConfig(tenantId?: string): Promise<EmailAccountConfig | null>;

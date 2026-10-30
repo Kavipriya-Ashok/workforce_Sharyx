@@ -17,6 +17,13 @@ import {
   Sparkles,
   Award,
   RefreshCw,
+  Video,
+  PhoneCall,
+  Calendar,
+  GraduationCap,
+  FileText,
+  ExternalLink,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +35,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Lead, LeadFilter, LeadStats } from "@/types/lead";
 import { LeadService } from "@/service/leadService";
+import { VoiceService, VoiceAgentDto } from "@/service/voiceService";
 import { LeadFormDialog } from "./components/LeadFormDialog";
 import { LeadDetailDrawer } from "./components/LeadDetailDrawer";
 import { LeadImportDialog } from "./components/LeadImportDialog";
@@ -46,6 +62,7 @@ const STAGES = [
 ];
 
 export default function Leads({ isCandidate = false }: { isCandidate?: boolean }) {
+  const [activeTab, setActiveTab] = useState<"leads" | "candidates">(isCandidate ? "candidates" : "leads");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stats, setStats] = useState<LeadStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,12 +88,28 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
   const [importOpen, setImportOpen] = useState(false);
   const [emailModalLead, setEmailModalLead] = useState<Lead | null>(null);
 
+  // AI Voice Agent Calling States
+  const [voiceAgents, setVoiceAgents] = useState<VoiceAgentDto[]>([]);
+  const [callModalLead, setCallModalLead] = useState<Lead | null>(null);
+  const [callSelectedAgentId, setCallSelectedAgentId] = useState<string>("");
+  const [dispatchingCall, setDispatchingCall] = useState(false);
+
+  useEffect(() => {
+    VoiceService.listAgents()
+      .then((agents) => {
+        setVoiceAgents(agents);
+        if (agents.length > 0) setCallSelectedAgentId(agents[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      const isCandBool = activeTab === "candidates" ? true : undefined;
       const [leadsRes, statsRes] = await Promise.all([
-        LeadService.getLeads(filter),
-        LeadService.getStats(isCandidate),
+        LeadService.getLeads({ ...filter, is_candidate: isCandBool }),
+        LeadService.getStats(isCandBool),
       ]);
       setLeads(leadsRes.items || []);
       setStats(statsRes);
@@ -89,7 +122,7 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
 
   useEffect(() => {
     fetchData();
-  }, [filter.keyword, filter.status, filter.source, filter.skip, isCandidate]);
+  }, [filter.keyword, filter.status, filter.source, filter.skip, activeTab]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
@@ -113,8 +146,156 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
     }
   };
 
+  const scheduledInterviews = leads.filter(
+    (l) => l.interview_link || l.interview_date || l.preferred_interview_slot || l.candidate_stage === "interview_scheduled"
+  );
+
   return (
     <div className="space-y-6">
+      {/* ── Mode Switch: Business Leads vs Candidates & Interviews ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+        <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+          <button
+            onClick={() => {
+              setActiveTab("leads");
+              setFilter((prev) => ({ ...prev, is_candidate: false, skip: 0 }));
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === "leads"
+                ? "bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>All CRM Leads</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("candidates");
+              setFilter((prev) => ({ ...prev, is_candidate: true, skip: 0 }));
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === "candidates"
+                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-purple-600/30 font-bold"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <GraduationCap className="h-4 w-4 text-amber-300" />
+            <span>Candidates & Scheduled Interviews</span>
+            {scheduledInterviews.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[10px]">
+                {scheduledInterviews.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === "candidates" && (
+          <Badge className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 font-mono text-xs py-1 gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+            Recruitment AI Agent Workforce Active
+          </Badge>
+        )}
+      </div>
+
+      {/* ── Scheduled Interviews Reminder Banner ── */}
+      {activeTab === "candidates" && scheduledInterviews.length > 0 && (
+        <div className="rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/70 via-purple-950/50 to-slate-900/80 p-5 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+              </span>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-indigo-400" />
+                Upcoming Scheduled Interviews & Reminders ({scheduledInterviews.length})
+              </h3>
+            </div>
+            <span className="text-[11px] text-indigo-300 font-medium">
+              Google Meet links synced • Telephony voice reminders automated
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {scheduledInterviews.map((cand) => (
+              <div
+                key={cand.id}
+                className="p-3.5 rounded-xl border border-indigo-500/30 bg-slate-900/80 hover:border-indigo-400/60 transition-all flex flex-col justify-between space-y-2.5"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs">{cand.name}</span>
+                    <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[9px] uppercase tracking-wider font-bold">
+                      {cand.job_title || "Frontend Developer"}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-indigo-300 font-mono mt-1 flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3 text-indigo-400" />
+                    <span>{cand.preferred_interview_slot || (cand.interview_date ? new Date(cand.interview_date).toLocaleString() : "Scheduled Session")}</span>
+                  </div>
+                  {cand.email && (
+                    <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                      ✉️ {cand.email}
+                    </div>
+                  )}
+                  {cand.resume_url && (
+                    <div className="mt-1.5">
+                      <a
+                        href={cand.resume_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold hover:bg-rose-500/30 transition-all"
+                      >
+                        <FileText className="h-3 w-3" />
+                        <span>Resume (PDF)</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-indigo-500/20 flex items-center justify-between gap-2">
+                  {cand.interview_link ? (
+                    <a
+                      href={cand.interview_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[11px] transition-all shadow-xs"
+                    >
+                      <Video className="h-3.5 w-3.5" />
+                      <span>Join Meet</span>
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-slate-500">No Meet Link</span>
+                  )}
+
+                  {cand.phone && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          toast.info(`Dialing reminder call to ${cand.name}...`);
+                          await LeadService.triggerVoiceCall(cand.id, { scheduledType: "interview" });
+                          toast.success(`📞 Outbound reminder call dialed to ${cand.phone}!`);
+                          fetchData();
+                        } catch (err: any) {
+                          toast.error(err?.message || "Failed to trigger call");
+                        }
+                      }}
+                      className="h-7 text-[10px] gap-1 border-violet-500/30 text-violet-300 hover:bg-violet-500/20"
+                    >
+                      <PhoneCall className="h-3 w-3" />
+                      <span>Call Reminder</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── KPI Stats Bar ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
@@ -272,11 +453,11 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                       className="rounded border-slate-700 bg-slate-900 text-emerald-500"
                     />
                   </th>
-                  <th className="p-3">Contact Name</th>
+                  <th className="p-3">{activeTab === "candidates" ? "Candidate & Role" : "Contact Name"}</th>
                   <th className="p-3">Phone & Email</th>
-                  <th className="p-3">Source</th>
-                  <th className="p-3">Pipeline Status</th>
-                  <th className="p-3">AI Score</th>
+                  <th className="p-3">{activeTab === "candidates" ? "Resume (PDF)" : "Source"}</th>
+                  <th className="p-3">{activeTab === "candidates" ? "Scheduled Interview" : "Pipeline Status"}</th>
+                  <th className="p-3">{activeTab === "candidates" ? "Candidate Stage" : "AI Score"}</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -315,9 +496,27 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                         />
                       </td>
                       <td className="p-3">
-                        <div className="font-semibold text-white">{l.name}</div>
-                        {l.company_name && (
+                        <div className="font-semibold text-white flex items-center gap-1.5">
+                          {l.name}
+                          {(l.interview_link || (l as any).custom_fields?.last_voice_call) && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              <Video className="h-2.5 w-2.5" />
+                              {(l as any).custom_fields?.last_voice_call?.scheduled_type === "interview" ? "Interview" : "Demo"}
+                            </span>
+                          )}
+                        </div>
+                        {activeTab === "candidates" ? (
+                          <div className="text-[11px] text-purple-300 font-medium mt-0.5">
+                            {l.job_title || "Frontend Developer"} {l.total_experience ? `• ${l.total_experience} yrs exp` : ""}
+                          </div>
+                        ) : l.company_name ? (
                           <div className="text-[11px] text-slate-400">{l.company_name}</div>
+                        ) : null}
+                        {(l as any).custom_fields?.last_voice_call && (
+                          <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5 font-mono">
+                            <PhoneCall className="h-2.5 w-2.5" />
+                            <span>Called ({(l as any).custom_fields.last_voice_call.provider === "vapi" ? "Vapi" : "SaaS"})</span>
+                          </div>
                         )}
                       </td>
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
@@ -333,46 +532,115 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                           {l.email && <span className="text-slate-400 text-[11px]">{l.email}</span>}
                         </div>
                       </td>
-                      <td className="p-3">
-                        <Badge
-                          variant="outline"
-                          className="border-slate-700 text-slate-300 bg-slate-800/50 text-[10px]"
-                        >
-                          {l.source}
-                        </Badge>
-                      </td>
+
+                      {/* Column 4: Source or Resume PDF */}
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={l.lead_status}
-                          onValueChange={(val) => handleStatusChange(l.id, val)}
-                        >
-                          <SelectTrigger className="h-7 w-28 bg-slate-950 border-slate-800 text-white text-[11px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-slate-900 border-slate-800 text-white text-xs">
-                            {STAGES.map((s) => (
-                              <SelectItem key={s.key} value={s.key}>
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {activeTab === "candidates" ? (
+                          l.resume_url ? (
+                            <a
+                              href={l.resume_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-semibold transition-all"
+                            >
+                              <FileText className="h-3 w-3 text-rose-400" />
+                              <span>Resume (PDF)</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-500 text-[11px] italic">Pending</span>
+                          )
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-slate-700 text-slate-300 bg-slate-800/50 text-[10px]"
+                          >
+                            {l.source}
+                          </Badge>
+                        )}
                       </td>
+
+                      {/* Column 5: Pipeline Status or Interview Schedule */}
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        {activeTab === "candidates" ? (
+                          l.interview_link || l.preferred_interview_slot ? (
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3 text-indigo-400 shrink-0" />
+                                <span>{l.preferred_interview_slot || (l.interview_date ? new Date(l.interview_date).toLocaleString() : "Scheduled")}</span>
+                              </div>
+                              {l.interview_link && (
+                                <a
+                                  href={l.interview_link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] text-cyan-400 hover:text-cyan-300 hover:underline font-mono"
+                                >
+                                  <Video className="h-2.5 w-2.5" />
+                                  <span>Join Google Meet</span>
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 text-[11px] italic">Not scheduled</span>
+                          )
+                        ) : (
+                          <Select
+                            value={l.lead_status}
+                            onValueChange={(val) => handleStatusChange(l.id, val)}
+                          >
+                            <SelectTrigger className="h-7 w-28 bg-slate-950 border-slate-800 text-white text-[11px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-white text-xs">
+                              {STAGES.map((s) => (
+                                <SelectItem key={s.key} value={s.key}>
+                                  {s.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+
+                      {/* Column 6: Score or Candidate Stage */}
                       <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="bg-emerald-500 h-full rounded-full"
-                              style={{ width: `${l.score || 50}%` }}
-                            />
+                        {activeTab === "candidates" ? (
+                          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/40 text-[10px] uppercase font-bold tracking-wider">
+                            {l.candidate_stage || "interview_scheduled"}
+                          </Badge>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-emerald-500 h-full rounded-full"
+                                style={{ width: `${l.score || 50}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-white">
+                              {l.score || 50}
+                            </span>
                           </div>
-                          <span className="text-xs font-semibold text-white">
-                            {l.score || 50}
-                          </span>
-                        </div>
+                        )}
                       </td>
                       <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
+                          {l.phone && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const def = l.is_candidate
+                                  ? voiceAgents.find((a) => a.template_key === "recruitment" || /recrui|maya|sarah/i.test(a.name)) || voiceAgents[0]
+                                  : voiceAgents.find((a) => a.template_key === "sales" || /sales|alex/i.test(a.name)) || voiceAgents[0];
+                                if (def) setCallSelectedAgentId(def.id);
+                                setCallModalLead(l);
+                              }}
+                              className="p-1.5 hover:bg-violet-500/20 text-violet-400 rounded-lg transition-colors border border-violet-500/20"
+                              title={`Trigger Voice AI Call to ${l.phone}`}
+                            >
+                              <PhoneCall className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           {l.phone && (
                             <a
                               href={`https://wa.me/${l.phone.replace(/\D/g, "")}`}
@@ -382,6 +650,17 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                               title="Chat on WhatsApp"
                             >
                               <MessageSquare className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                          {l.interview_link && (
+                            <a
+                              href={l.interview_link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 hover:bg-cyan-500/20 text-cyan-400 rounded-lg transition-colors border border-cyan-500/20"
+                              title="Join Scheduled Google Meet"
+                            >
+                              <Video className="h-3.5 w-3.5" />
                             </a>
                           )}
                           {l.email && (
@@ -490,6 +769,95 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
           lead={emailModalLead}
           onEmailSent={fetchData}
         />
+      )}
+
+      {/* ── AI VOICE CALL DISPATCH MODAL ───────────────────────── */}
+      {callModalLead && (
+        <Dialog open={!!callModalLead} onOpenChange={(open) => !open && setCallModalLead(null)}>
+          <DialogContent className="sm:max-w-md bg-white border border-blue-100 shadow-2xl p-6 text-slate-800">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <PhoneCall className="h-5 w-5 text-blue-600" />
+                Dispatch AI Voice Call
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Dial lead directly using connected Vapi AI Voice Telephony engine.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 space-y-1">
+                <div className="text-xs font-semibold text-slate-800">{callModalLead.name}</div>
+                <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5">
+                  <Phone className="h-3 w-3 text-blue-500" />
+                  {callModalLead.phone}
+                </div>
+                {callModalLead.company_name && (
+                  <div className="text-[11px] text-slate-500">{callModalLead.company_name}</div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Select Voice AI Agent:</span>
+                  <span className="text-[10px] text-blue-600 font-normal">Vapi Provider</span>
+                </label>
+                <Select value={callSelectedAgentId} onValueChange={setCallSelectedAgentId}>
+                  <SelectTrigger className="w-full bg-white border-slate-200 text-xs h-9">
+                    <SelectValue placeholder="Choose an AI Voice Agent..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voiceAgents.map((ag) => (
+                      <SelectItem key={ag.id} value={ag.id} className="text-xs">
+                        {ag.name} ({ag.provider.toUpperCase()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCallModalLead(null)}
+                className="text-xs text-slate-600"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={dispatchingCall}
+                onClick={async () => {
+                  try {
+                    setDispatchingCall(true);
+                    const targetAgent = voiceAgents.find((a) => a.id === callSelectedAgentId);
+                    toast.info(`Dialing ${callModalLead.name} via ${targetAgent?.name || "Voice Agent"}...`);
+                    await LeadService.triggerVoiceCall(callModalLead.id, {
+                      scheduledType: callModalLead.is_candidate ? "interview" : "demo",
+                      agentId: callSelectedAgentId || undefined,
+                      agentKey: targetAgent?.template_key,
+                    });
+                    toast.success(`📞 Outbound call dispatched to ${callModalLead.phone}!`);
+                    setCallModalLead(null);
+                    fetchData();
+                  } catch (err: any) {
+                    toast.error(err.response?.data?.message || err.message || "Failed to trigger call");
+                  } finally {
+                    setDispatchingCall(false);
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9 px-4 gap-1.5 shadow-sm"
+              >
+                <PhoneCall className="h-3.5 w-3.5" />
+                {dispatchingCall ? "Dispatching..." : "Dispatch Call Now"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import Configuration from "./Config/Configuration";
 import { MulterModule } from "@nestjs/platform-express";
 import { Redis } from "ioredis";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ScheduleModule } from "@nestjs/schedule";
 import { ClsModule } from "nestjs-cls";
 import { CacheService } from "./Service/Cache.service";
 import { AutoNumberController } from "./Controller/Admin/AutoNumber.controller";
@@ -41,16 +42,23 @@ import { PdfGeneratorService } from "./Service/PdfGenerator.service";
 import { WhatsAppModule } from "./WhatsApp/whatsapp.module";
 import { EmailModule } from "./Email/email.module";
 import { LeadModule } from "./Module/Lead.module";
+import { CustomerModule } from "./Module/Customer.module";
+import { AutomationModule } from "./Module/Automation.module";
 import { AgentOrchestratorModule } from "./AgentOrchestrator/agent-orchestrator.module";
 import { VoiceModule } from "./Voice/voice.module";
+import { DashboardTelemetryController } from "./Controller/Admin/DashboardTelemetry.controller";
+import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.service";
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     VoiceModule,
     AgentOrchestratorModule,
     WhatsAppModule,
     EmailModule,
     LeadModule,
+    CustomerModule,
+    AutomationModule,
     ClsModule,
     ServeStaticModule.forRoot({
       rootPath: __dirname + "/client",
@@ -105,8 +113,10 @@ import { VoiceModule } from "./Voice/voice.module";
     ErrorLogController,
     AuditLogController,
     AutoNumberController,
+    DashboardTelemetryController,
   ],
   providers: [
+    DashboardTelemetryService,
     AuthService,
     UserService,
     UserRoleService,

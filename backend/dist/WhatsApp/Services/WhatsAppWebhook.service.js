@@ -12,6 +12,7 @@ var WhatsAppWebhookService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppWebhookService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
 const lead_1 = require("../../Database/Table/Lead/lead");
 const lead_activity_1 = require("../../Database/Table/Lead/lead_activity");
@@ -19,9 +20,10 @@ const WhatsAppMessage_entity_1 = require("../../Database/Table/WhatsApp/WhatsApp
 const WhatsAppAI_service_1 = require("./WhatsAppAI.service");
 const WhatsApp_service_1 = require("./WhatsApp.service");
 let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookService {
-    constructor(whatsAppService, aiService) {
+    constructor(whatsAppService, aiService, events) {
         this.whatsAppService = whatsAppService;
         this.aiService = aiService;
+        this.events = events;
         this.logger = new common_1.Logger(WhatsAppWebhookService_1.name);
     }
     async verifyHandshake(mode, token, challenge) {
@@ -60,9 +62,45 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             }
             const senderPhone = message.from;
             const messageType = message.type || "text";
-            const messageText = messageType === "text" ? (_d = message.text) === null || _d === void 0 ? void 0 : _d.body : `[Media message: ${messageType}]`;
+            let messageText = messageType === "text" ? (_d = message.text) === null || _d === void 0 ? void 0 : _d.body : `[Media message: ${messageType}]`;
             const metaMessageId = message.id;
-            this.logger.log(`💬 [WHATSAPP RECEIVED] From: ${senderPhone} | Text: "${messageText}"`);
+            if (metaMessageId) {
+                if (WhatsAppWebhookService_1.processedMetaIds.has(metaMessageId)) {
+                    this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already processing: ${metaMessageId}`);
+                    return { status: "duplicate_ignored" };
+                }
+                WhatsAppWebhookService_1.processedMetaIds.add(metaMessageId);
+                if (WhatsAppWebhookService_1.processedMetaIds.size > 1000) {
+                    const first = WhatsAppWebhookService_1.processedMetaIds.values().next().value;
+                    if (first)
+                        WhatsAppWebhookService_1.processedMetaIds.delete(first);
+                }
+                const existingMsg = await WhatsAppMessage_entity_1.WhatsAppMessage.findOne({
+                    where: { meta_message_id: metaMessageId },
+                });
+                if (existingMsg) {
+                    this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already in database: ${metaMessageId}`);
+                    return { status: "duplicate_ignored" };
+                }
+            }
+            let isPdfAttachment = false;
+            let docFilename = "";
+            if (messageType === "document") {
+                const doc = message.document;
+                docFilename = (doc === null || doc === void 0 ? void 0 : doc.filename) || "resume.pdf";
+                const mime = (doc === null || doc === void 0 ? void 0 : doc.mime_type) || "";
+                isPdfAttachment = mime.includes("pdf") || docFilename.toLowerCase().endsWith(".pdf");
+                if (isPdfAttachment) {
+                    messageText = `[Candidate uploaded resume PDF: "${docFilename}"]`;
+                }
+                else {
+                    messageText = `[Candidate uploaded non-PDF document: "${docFilename}"]`;
+                }
+            }
+            else if (messageType === "image") {
+                messageText = `[Candidate uploaded an image instead of a PDF resume]`;
+            }
+            this.logger.log(`💬 [WHATSAPP RECEIVED] From: ${senderPhone} | Type: ${messageType} | Content: "${messageText}"`);
             const customerProfileName = ((_g = (_f = (_e = value === null || value === void 0 ? void 0 : value.contacts) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.profile) === null || _g === void 0 ? void 0 : _g.name) || senderPhone;
             let existingLead = null;
             try {
@@ -145,19 +183,50 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             inboundMsg.created_by_id = "webhook";
             inboundMsg.created_on = new Date();
             await inboundMsg.save();
-            if (messageType === "text") {
+            if (messageType === "text" || messageType === "document" || messageType === "image") {
                 this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
-                const aiReply = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
+                const res = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
                     customerName: customerProfileName,
                     leadId: existingLead === null || existingLead === void 0 ? void 0 : existingLead.id,
                 });
+                const announcement = typeof res === "object" ? res === null || res === void 0 ? void 0 : res.announcement : null;
+                let aiReply = typeof res === "object" ? res === null || res === void 0 ? void 0 : res.reply : (typeof res === "string" ? res : null);
+                if (announcement && aiReply) {
+                    const trimmedAnn = announcement.trim();
+                    if (aiReply.startsWith(trimmedAnn)) {
+                        aiReply = aiReply.slice(trimmedAnn.length).trim();
+                    }
+                }
+                if (announcement) {
+                    this.logger.log(`🤝 [HANDOFF SEPARATE MESSAGE] Sending to ${senderPhone}: "${announcement}"`);
+                    try {
+                        await this.whatsAppService.sendMessage({
+                            to: senderPhone,
+                            text: announcement,
+                            conversation_id: conversation.id,
+                        }, "ai_copilot", true);
+                        await new Promise((resolve) => setTimeout(resolve, 800));
+                    }
+                    catch (annErr) {
+                        this.logger.warn(`Could not deliver handoff announcement: ${annErr.message}`);
+                    }
+                }
                 if (aiReply) {
                     this.logger.log(`🤖 [AI AUTO-REPLY] Replying to ${senderPhone}: "${aiReply}"`);
-                    await this.whatsAppService.sendMessage({
-                        to: senderPhone,
-                        text: aiReply,
-                        conversation_id: conversation.id,
-                    }, "ai_copilot", true);
+                    try {
+                        await this.whatsAppService.sendMessage({
+                            to: senderPhone,
+                            text: aiReply,
+                            conversation_id: conversation.id,
+                        }, "ai_copilot", true);
+                        this.logger.log(`✅ [AI AUTO-REPLY DISPATCHED] Successfully sent WhatsApp reply to ${senderPhone}`);
+                    }
+                    catch (sendErr) {
+                        this.logger.error(`❌ [WHATSAPP SEND FAILED] Could not deliver message to ${senderPhone}: ${sendErr.message}`);
+                    }
+                }
+                else {
+                    this.logger.warn(`⚠️ [AI ENGINE] No reply was generated for ${senderPhone}`);
                 }
             }
             return { status: "processed" };
@@ -169,9 +238,11 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
     }
 };
 exports.WhatsAppWebhookService = WhatsAppWebhookService;
+WhatsAppWebhookService.processedMetaIds = new Set();
 exports.WhatsAppWebhookService = WhatsAppWebhookService = WhatsAppWebhookService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [WhatsApp_service_1.WhatsAppService,
-        WhatsAppAI_service_1.WhatsAppAIService])
+        WhatsAppAI_service_1.WhatsAppAIService,
+        event_emitter_1.EventEmitter2])
 ], WhatsAppWebhookService);
 //# sourceMappingURL=WhatsAppWebhook.service.js.map

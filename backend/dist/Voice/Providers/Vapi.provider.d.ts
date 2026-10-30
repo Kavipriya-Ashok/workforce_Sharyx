@@ -14,6 +14,7 @@ export declare class VapiProvider implements IVoiceProvider {
     listRemoteAgents(config?: VoiceProviderConfig): Promise<any[]>;
     updateAgent(remoteAgentId: string, dto: UpdateVoiceAgentDto, config?: VoiceProviderConfig): Promise<any>;
     deleteAgent(remoteAgentId: string, config?: VoiceProviderConfig): Promise<boolean>;
+    private normalizeDestinationPhone;
     makeCall(remoteAgentId: string, dto: MakeVoiceCallDto, config?: VoiceProviderConfig): Promise<ProviderCallResponse>;
     normalizeWebhook(payload: any): NormalizedVoiceWebhookResult;
 }

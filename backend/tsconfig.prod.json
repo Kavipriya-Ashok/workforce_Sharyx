@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./dist",
+    "paths": {
+      "@Model/*": ["Model/*"],
+      "@Root/*": ["*"],
+      "@Service/*": ["Service/*"],
+      "@Helper/*": ["Helper/*"],
+      "@Controller/*": ["Controller/*"],
+      "@Database/*": ["Database/*"],
+      "@WhatsApp/*": ["WhatsApp/*"],
+      "@Email/*": ["Email/*"]
+    }
+  }
+}
+

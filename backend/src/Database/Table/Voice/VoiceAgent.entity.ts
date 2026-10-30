@@ -48,4 +48,16 @@ export class VoiceAgent extends BaseTable {
 
   @Column({ type: "jsonb", nullable: true })
   raw_provider_response: Record<string, any>;
+
+  /** Links this row to one of the 5 catalog templates (receptionist | sales | support | appointment | recruitment) */
+  @Column({ type: "varchar", length: 50, nullable: true })
+  template_key: string;
+
+  /** When false, the agent is hidden from the Dispatch Call dropdown (soft disable — remote agent is NOT deleted) */
+  @Column({ type: "boolean", default: true })
+  is_enabled: boolean;
+
+  /** Stores the last provider error if enable/sync failed, cleared on success */
+  @Column({ type: "text", nullable: true })
+  last_sync_error: string;
 }

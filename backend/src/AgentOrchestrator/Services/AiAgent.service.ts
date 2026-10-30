@@ -1,7 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
+import axios from "axios";
 import { AiAgent } from "@Database/Table/Agent/AiAgent.entity";
 import { ConversationAgentState } from "@Database/Table/Agent/ConversationAgentState.entity";
 import { AgentHandoffLog } from "@Database/Table/Agent/AgentHandoffLog.entity";
+import { VoiceAgent } from "@Database/Table/Voice/VoiceAgent.entity";
+import { VoiceProviderConfig } from "@Database/Table/Voice/VoiceProviderConfig.entity";
 import { DEFAULT_AGENTS } from "../Agents/DefaultAgents";
 
 /** CRUD + seeding for agents, plus admin queries for states and handoffs. */
@@ -16,17 +19,25 @@ export class AiAgentService {
       const existing = await AiAgent.find({ where: { tenant_id: tenantId } });
       const keys = new Set(existing.map((a) => a.agent_key));
       for (const def of DEFAULT_AGENTS) {
-        if (keys.has(def.agent_key)) continue;
-        const a = new AiAgent();
-        Object.assign(a, def);
-        a.tenant_id = tenantId;
-        a.channels = ["whatsapp", "email"];
-        a.announce_handoff = def.agent_key !== "receptionist";
-        a.is_active = true;
-        a.created_by_id = "system";
-        a.created_on = new Date();
-        await a.save();
-        this.logger.log(`Seeded agent "${def.agent_key}" for tenant ${tenantId}`);
+        let a = existing.find((x) => x.agent_key === def.agent_key);
+        if (!a) {
+          a = new AiAgent();
+          Object.assign(a, def);
+          a.tenant_id = tenantId;
+          a.channels = ["whatsapp", "email"];
+          a.announce_handoff = def.agent_key !== "receptionist";
+          a.is_active = true;
+          a.created_by_id = "system";
+          a.created_on = new Date();
+          await a.save();
+          this.logger.log(`Seeded agent "${def.agent_key}" for tenant ${tenantId}`);
+        } else {
+          a.persona_prompt = def.persona_prompt;
+          a.knowledge = def.knowledge;
+          a.handoff_message = def.handoff_message;
+          a.description = def.description;
+          await a.save();
+        }
       }
       this.seededTenants.add(tenantId);
     } catch (err: any) {
@@ -61,7 +72,47 @@ export class AiAgentService {
     if (a.agent_key === "receptionist") a.is_active = true;
     a.updated_by_id = userId || "system";
     a.updated_on = new Date();
-    return a.save();
+    const saved = await a.save();
+
+    // Auto-sync prompt & model to corresponding Vapi assistant if active
+    try {
+      const vapiConfig = await VoiceProviderConfig.findOne({
+        where: { tenant_id: a.tenant_id, provider: "vapi" as any, is_active: true }
+      });
+      if (vapiConfig?.api_key) {
+        // Find matching voice agent by name or key
+        const vapiAgent = await VoiceAgent.findOne({
+          where: [
+            { tenant_id: a.tenant_id, provider: "vapi" as any, name: a.display_name },
+          ]
+        });
+        if (vapiAgent && vapiAgent.remote_agent_id) {
+          const patchPayload: Record<string, any> = {
+            model: {
+              provider: "openai",
+              model: a.llm_model || "gpt-4o-mini",
+              temperature: a.temperature ?? 0.4,
+              messages: [{ role: "system", content: a.persona_prompt }]
+            }
+          };
+          if (a.handoff_message) {
+            patchPayload.firstMessage = a.handoff_message;
+          }
+          await axios.patch(`https://api.vapi.ai/assistant/${vapiAgent.remote_agent_id}`, patchPayload, {
+            headers: {
+              Authorization: `Bearer ${vapiConfig.api_key}`,
+              "Content-Type": "application/json"
+            },
+            timeout: 8000
+          });
+          this.logger.log(`🎙️ [VAPI SYNC] Synced ${a.display_name} changes to Vapi assistant (${vapiAgent.remote_agent_id})`);
+        }
+      }
+    } catch (syncErr: any) {
+      this.logger.warn(`Could not auto-sync AI agent to Vapi: ${syncErr.message}`);
+    }
+
+    return saved;
   }
 
   async resetToDefault(id: string): Promise<AiAgent> {

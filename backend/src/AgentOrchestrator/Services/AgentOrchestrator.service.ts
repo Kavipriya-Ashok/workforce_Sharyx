@@ -33,6 +33,7 @@ export interface InboundAgentMessage {
 
 export interface OrchestratorResult {
   reply: string | null;
+  announcement?: string | null;
   agentKey: string;
   agentName: string;
   handoffs: Array<{ from: string; to: string; reason: string }>;
@@ -106,8 +107,18 @@ export class AgentOrchestratorService {
 
       let out: AgentLlmOutput | null = null;
 
-      // ── LLM turn (if available and configured) ─────────────────────────
-      if (llmAvailable) {
+      // ── Priority Intent Check: Explicit Sales Call Handoff & Callback ──
+      const lowerMsg = userMessage.toLowerCase();
+      const hasPhone = /(?:\+?\d{1,4}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(userMessage) || /(?:\+?\d[\d\s-]{8,14}\d)/.test(userMessage);
+      const isCandidateQuery = /(?:job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment|interview|recruitment)/i.test(lowerMsg);
+      const isExplicitSalesCall = /(?:sales.*(?:call|speak|talk|phone|connect|ring|contact)|(?:call|speak|talk|phone|connect|ring|contact).*(?:sales)|sales.*(?:rep|person|team|executive|agent)|talk to sales|speak with sales|speak to sales|connect.*sales|sales.*callback|request.*sales|call pannunga.*sales|sales kitta pesanum|sales.*pesa|sales.*direct call|direct call.*sales)/i.test(lowerMsg) ||
+        (/(?:call me|call back|request.*call|can you call|need a call|phone call|call pannunga|direct call)/i.test(lowerMsg) && !isCandidateQuery);
+      const histText = (normalizedHistory || []).slice(-3).map((h) => h.content).join(" ").toLowerCase();
+      const isSalesCallbackFollowup = hasPhone && !isCandidateQuery && (state.collected_slots?.sales_call_requested || /sales|call you|phone number|call back|callback/i.test(histText));
+
+      if (isExplicitSalesCall || isSalesCallbackFollowup) {
+        out = await this.dynamicTurn(current, userMessage, state, agents, hop);
+      } else if (llmAvailable) {
         try {
           const systemPrompt = await this.buildPrompt(current, agents, state, input, hop > 0);
           out = await this.llm.completeJson<AgentLlmOutput>(systemPrompt, normalizedHistory, userMessage, {
@@ -193,6 +204,12 @@ export class AgentOrchestratorService {
         const transition = (out.reply || "").trim() || (next.handoff_message ? next.handoff_message : `Please wait a moment${nameGreeting}, let me connect you with our ${next.display_name}...`);
         announcement = transition;
 
+        // If a live call was dispatched as part of this handoff, confirm and conclude turn
+        if (out.tool?.name === "dispatch_voice_call") {
+          reply = (out.reply || "").trim();
+          break;
+        }
+
         continue; // new agent answers the same message
       }
 
@@ -201,11 +218,16 @@ export class AgentOrchestratorService {
     }
 
     // ── Compose final reply ────────────────────────────────────────────
-    const extras = appendTexts.filter((t) => !t.split("\n").some((line) => {
-      const url = line.match(/https?:\/\/\S+/)?.[0];
-      return url ? reply.includes(url) : false;
-    }));
-    let finalReply = [announcement, reply, ...extras].filter(Boolean).join(input.channel === "email" ? "\n\n" : "\n\n");
+    const uniqueExtras = Array.from(new Set(appendTexts.filter(Boolean)));
+    const extras = uniqueExtras.filter((t) => {
+      const url = t.match(/https?:\/\/\S+/)?.[0];
+      return url ? !reply.includes(url) : !reply.includes(t.trim());
+    });
+    const replyBody = [reply, ...extras].filter(Boolean).join("\n\n");
+    // For WhatsApp, announcement is sent as a distinct message first; don't duplicate it in reply!
+    let finalReply = input.channel === "whatsapp"
+      ? replyBody
+      : [announcement, replyBody].filter(Boolean).join("\n\n");
     if (state.human_takeover && !finalReply) {
       finalReply = "👨‍💼 I'm connecting you with a member of our team. They'll be with you shortly.";
     }
@@ -218,6 +240,7 @@ export class AgentOrchestratorService {
 
     return {
       reply: finalReply || null,
+      announcement: announcement || null,
       agentKey: current.agent_key,
       agentName: current.display_name,
       handoffs,
@@ -304,6 +327,8 @@ ${agent.persona_prompt}
 
     p += `\n═══ TOOLS YOU MAY CALL (at most one per turn) ═══\n${allowedTools}\n`;
     p += `- When the customer asks to receive or share the meeting link via email (e.g. "send meeting link in email", "email me the link"), call "email_meeting_link". If their email is unknown, ask for their email address.\n`;
+    p += `- When the customer explicitly asks to speak with a sales agent, talk to sales, connect with sales, or requests a sales call / callback: call "dispatch_voice_call" and handoff to "sales". If their phone number is unknown, ask for their phone number.\n`;
+    p += `- When the customer asks about job openings, recruitment, career opportunities, candidate status, or interviews: answer using recruitment knowledge or handoff to "recruitment". Under NO circumstances trigger a sales call for candidate questions.\n`;
 
     p += `
 ═══ OUTPUT: STRICT JSON ONLY ═══
@@ -495,12 +520,20 @@ RULES:
   ): Promise<AgentLlmOutput> {
     const m = (message || "").toLowerCase().trim();
     const memory: Record<string, any> = {};
+    const leadRec = await this.findLead(state);
 
     // 1. Entity Extraction
+    // Phone Number Extraction
+    const phoneMatch = message.match(/(?:\+?\d{1,4}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/) || message.match(/(?:\+?\d[\d\s-]{8,14}\d)/);
+    if (phoneMatch) {
+      memory.phone = phoneMatch[0].replace(/[\s-]/g, "");
+      if (!state.customer_phone) state.customer_phone = memory.phone;
+    }
+
     const emailMatch = message.match(/[\w.-]+@[\w.-]+\.\w+/);
     if (emailMatch) memory.email = emailMatch[0];
 
-    const explicitNameMatch = message.match(/(?:my name is|i am|i'm|this is|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+    const explicitNameMatch = message.match(/(?:my name is|i am|i'm|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
     if (explicitNameMatch) {
       memory.name = explicitNameMatch[1];
     } else if (!state.customer_name && !state.collected_slots?.name) {
@@ -561,8 +594,90 @@ RULES:
     if (agent.agent_key === "receptionist") {
       const cust = memory.name || state.customer_name || "";
       const namePart = cust ? ` ${cust}` : "";
+      const customerPhone = memory.phone || state.customer_phone || (state.collected_slots?.phone) || "";
 
-      // Handoff to Sales
+      // PRIORITY 1: Explicit Sales Agent Call / Speak with Sales Agent request
+      const isSalesCallRequest =
+        /(?:sales.*(?:call|speak|talk|phone|connect|ring|contact)|(?:call|speak|talk|phone|connect|ring|contact).*(?:sales)|sales.*(?:rep|person|team|executive|agent)|talk to sales|speak with sales|speak to sales|connect.*sales|sales.*callback|request.*sales|call pannunga.*sales|sales kitta pesanum|sales.*pesa)/i.test(m) ||
+        (/(?:call me|call back|request.*call|can you call|need a call|phone call|call pannunga|direct call)/i.test(m) && !/(?:interview|job|application|hr|career)/i.test(m));
+
+      if (isSalesCallRequest) {
+        if (customerPhone) {
+          return {
+            reply: `I'm connecting you with our Sales Specialist right away${namePart}! 💼\n\n📞 I've just initiated an outbound telephone call to your number (*${customerPhone}*). Please pick up your phone in a moment — our AI Sales Specialist is ready to discuss plans, pricing, and answer all your questions!`,
+            tool: {
+              name: "dispatch_voice_call",
+              inputs: {
+                phone: customerPhone,
+                name: cust || undefined,
+                reason: "Customer requested a direct telephone call with Sales on WhatsApp",
+                agentKey: "sales",
+              },
+            },
+            handoff: {
+              to: "sales",
+              reason: "requested sales call",
+              brief: `${cust ? `Customer ${cust}` : "Customer"} requested an outbound sales call to ${customerPhone}: "${message.slice(0, 150)}"`,
+            },
+            memory,
+          };
+        } else {
+          return {
+            reply: `I would be delighted to connect you with our Sales Specialist${namePart}! 💼\n\nCould you please share your phone number (with country code, e.g. +91) so our Sales Agent can call you immediately? 📱`,
+            handoff: {
+              to: "sales",
+              reason: "requested sales call (pending phone number)",
+              brief: `${cust ? `Customer ${cust}` : "Customer"} requested a sales call but phone number is needed`,
+            },
+            memory: { ...memory, sales_call_requested: true },
+          };
+        }
+      }
+
+      // PRIORITY 2: Candidate & Recruitment Inquiries (Job openings, interviews, candidate status)
+      const isCandidateQuestion =
+        /(job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment|interview|recruitment|fresher|salary|ctc|velai|opening irukka)/i.test(m);
+
+      if (isCandidateQuestion) {
+        // Questions about open positions / vacancies
+        if (/(opening|position|role|vacancy|what job|any job|hiring)/i.test(m)) {
+          return {
+            reply: `We currently have open opportunities at Sharyx for:\n• AI Solutions Engineer (2-5 yrs Python/Node.js, NLP/AI)\n• Business Development Executive (1-3 yrs B2B SaaS Sales)\n• Frontend Developer (2+ yrs React/TypeScript)\n\nLet me connect you with our Recruitment Specialist${namePart} 🎓 who can assist with your application and schedule your interview!`,
+            handoff: {
+              to: "recruitment",
+              reason: "job openings inquiry",
+              brief: `${cust ? `Candidate ${cust}` : "Candidate"} inquired about open roles: "${message.slice(0, 150)}"`,
+            },
+            memory,
+          };
+        }
+
+        // Interview / Candidate status questions
+        if (/(status|result|selection|interview.*when|update|round)/i.test(m)) {
+          return {
+            reply: `Let me connect you with our Recruitment Specialist${namePart} 🎓 to check your interview and application status right away!`,
+            handoff: {
+              to: "recruitment",
+              reason: "candidate status inquiry",
+              brief: `${cust ? `Candidate ${cust}` : "Candidate"} asked about interview/application status: "${message.slice(0, 150)}"`,
+            },
+            memory,
+          };
+        }
+
+        // General recruitment / apply
+        return {
+          reply: `Thank you for your interest in joining Sharyx! Let me connect you with our Recruitment Specialist${namePart} 🎓 to review your profile and experience.`,
+          handoff: {
+            to: "recruitment",
+            reason: "career application",
+            brief: `${cust ? `Candidate ${cust}` : "Candidate"} wants to apply: "${message.slice(0, 150)}"`,
+          },
+          memory,
+        };
+      }
+
+      // PRIORITY 3: General Pricing inquiry (Chat only - handoff to Sales)
       if (/(price|pricing|cost|plan|quote|quotation|how much|buy|purchase|discount|package|rate|evlo)/i.test(m)) {
         return {
           reply: `Please wait a moment${namePart}, let me connect you with our Sales Specialist 💼...`,
@@ -575,8 +690,8 @@ RULES:
         };
       }
 
-      // Handoff to Appointment
-      if (/(demo|book|appointment|schedule|meeting|slot|reschedule|call me|meet)/i.test(m)) {
+      // PRIORITY 4: Appointment / Demo booking
+      if (/(demo|book|appointment|schedule|meeting|slot|reschedule|meet)/i.test(m)) {
         return {
           reply: `I'll connect you to our Appointment Desk${namePart} 📅!`,
           handoff: {
@@ -588,8 +703,8 @@ RULES:
         };
       }
 
-      // Handoff to Support
-      if (/(not working|issue|problem|error|bug|complain|complaint|refund|broken|support|human|real person|talk to|manager)/i.test(m)) {
+      // PRIORITY 5: Support request
+      if (/(not working|issue|problem|error|bug|complain|complaint|refund|broken|support|human|real person|manager)/i.test(m)) {
         return {
           reply: `Let me connect you to our Support Lead${namePart} 🛟!`,
           handoff: {
@@ -601,20 +716,7 @@ RULES:
         };
       }
 
-      // Handoff to Recruitment
-      if (/(job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment)/i.test(m)) {
-        return {
-          reply: `Let me connect you with our Recruitment Specialist${namePart} 🎓!`,
-          handoff: {
-            to: "recruitment",
-            reason: "job inquiry",
-            brief: `${cust ? `Customer ${cust}` : "Candidate"} inquired about careers: "${message.slice(0, 150)}"`,
-          },
-          memory,
-        };
-      }
-
-      // If user provided Name
+      // PRIORITY 6: If user provided Name
       if (memory.name && !state.customer_name) {
         return {
           reply: `Nice to meet you, ${memory.name}! Welcome to Sharyx 👋\n\nMay I know your company name and what is your best email address so we can register your inquiry and share our product guide with you?`,
@@ -623,7 +725,7 @@ RULES:
         };
       }
 
-      // If user provided Email
+      // PRIORITY 7: If user provided Email
       if (memory.email && !state.customer_email) {
         return {
           reply: `Thank you! I've registered your email (*${memory.email}*).\n\nWhat product or service are you exploring today? We offer AI Voice Calling, WhatsApp Copilots, and Email Automation!`,
@@ -632,17 +734,17 @@ RULES:
         };
       }
 
-      // Product knowledge questions
+      // PRIORITY 8: Product knowledge questions
       if (/(product|feature|service|what do you|tell me about|info|email automation|voice agent|whatsapp)/i.test(m)) {
         return {
-          reply: `We provide an Autonomous AI Workforce platform featuring:\n🎙️ AI Voice Agent: 24/7 autonomous phone calling & lead qualification\n💬 WhatsApp AI Copilot: Meta Cloud API smart messaging & support\n✉️ Email AI Copilot: Inbox auto-replies & campaign workflows\n📊 Real-Time CRM: Automated lead tracking\n\nWould you like to explore our pricing plans, or schedule a live Google Meet demo?`,
+          reply: `We provide an Autonomous AI Workforce platform featuring:\n🎙️ AI Voice Agent: 24/7 autonomous phone calling & lead qualification\n💬 WhatsApp AI Copilot: Meta Cloud API smart messaging & support\n✉️ Email AI Copilot: Inbox auto-replies & campaign workflows\n📊 Real-Time CRM: Automated lead tracking\n\nWould you like to explore our pricing plans, speak with our Sales Specialist, or schedule a live Google Meet demo?`,
           memory,
         };
       }
 
-      // Initial greeting / prompt intake (Warm welcome + asking basic details)
+      // PRIORITY 9: Initial greeting / prompt intake (Warm welcome + asking basic details)
       return {
-        reply: "Hi 👋 Welcome to Sharyx! May I know your name and company name, and your email address so we can register your inquiry and share our product guide with you?",
+        reply: "Hi 👋 Welcome to Sharyx! I can assist you with product details, connect you with our Sales team, answer recruitment questions, or schedule a live Google Meet demo. May I know your name and how I can help you today?",
         memory,
       };
     }
@@ -650,6 +752,37 @@ RULES:
     // 4. Sales Specialist Dynamic Flow
     if (agent.agent_key === "sales") {
       const custName = memory.name || state.customer_name || "";
+      const customerPhone = memory.phone || state.customer_phone || (state.collected_slots?.phone) || "";
+
+      // If user asks for a live phone call / callback, or provides phone number when a sales call was requested
+      const hasPhoneInMessage = memory.phone || /(?:\+?\d[\d\s-]{8,14}\d)/.test(message);
+      const isCallPending = state.collected_slots?.sales_call_requested || /(?:call me|call back|phone call|call.*phone|speak.*phone|talk.*phone|call pannunga)/i.test(m);
+
+      if ((isCallPending && hasPhoneInMessage) || (/(?:call me|call back|phone call|call.*phone|speak.*phone|talk.*phone|call pannunga)/i.test(m))) {
+        const phoneToCall = memory.phone || customerPhone || (message.match(/(?:\+?\d[\d\s-]{8,14}\d)/)?.[0]?.replace(/[\s-]/g, "") || "");
+        if (phoneToCall) {
+          const updatedMemory = { ...memory, phone: phoneToCall, sales_call_requested: false };
+          return {
+            reply: `I'd be glad to speak with you directly! 📞\n\nI've initiated an outbound phone call to *${phoneToCall}*. Please pick up your phone in a moment — our AI Sales Specialist is dialing.`,
+            tool: {
+              name: "dispatch_voice_call",
+              inputs: {
+                phone: phoneToCall,
+                name: custName || undefined,
+                reason: "Customer requested live phone call in Sales chat",
+                agentKey: "sales",
+              },
+            },
+            memory: updatedMemory,
+          };
+        } else {
+          return {
+            reply: "I would be happy to call you! Could you please share your phone number (with country code, e.g. +91) so I can ring you immediately? 📱",
+            memory: { ...memory, sales_call_requested: true },
+          };
+        }
+      }
+
       const seatsMatch = message.match(/(\d+)\s*(users?|seats?|agents?|people|members?)/i) || message.match(/^\s*(\d+)\s*$/);
 
       if (seatsMatch) {
@@ -733,24 +866,146 @@ RULES:
 
     // 6. Recruitment Specialist Dynamic Flow
     if (agent.agent_key === "recruitment") {
-      const expMatch = message.match(/(\d+)\s*(yrs?|years?)/i);
+      const candName = memory.name || state.customer_name || (leadRec?.name && !leadRec.name.startsWith("+") ? leadRec.name : "there");
+      const candEmail = memory.email || state.customer_email || (leadRec?.email && !leadRec.email.includes("example.com") ? leadRec.email : null);
+
+      // Role Detection
+      const isFrontend = /(frontend|react|typescript|ui|nextjs|web developer)/i.test(m);
+      const isAiEng = /(ai solutions|python|nlp|ml|backend|engineer|machine learning|langchain)/i.test(m);
+      const isBde = /(bde|business development|sales executive|b2b sales|marketing)/i.test(m);
+      if (isFrontend) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "Frontend Developer" };
+      else if (isAiEng) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "AI Solutions Engineer" };
+      else if (isBde) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "Business Development Executive" };
+
+      const currentRole = state.collected_slots?.applied_role || (isFrontend ? "Frontend Developer" : isAiEng ? "AI Solutions Engineer" : isBde ? "Business Development Executive" : null);
+
+      // PDF Resume detection in message
+      const isPdfUploaded = /\[Candidate (?:uploaded|shared) (?:resume )?PDF:.*?\]/i.test(message) || /(?:drive\.google\.com|dropbox\.com|onedrive|\.pdf)/i.test(message);
+      const isNonPdfUploaded = /\[Candidate (?:uploaded|sent) non-PDF (?:attachment|document):.*?\]|\[Candidate uploaded an image instead of a PDF resume\]/i.test(message) || /(https?:\/\/[^\s]+(\.docx?|\.png|\.jpg|\.jpeg)|[^\s]+(\.docx?|\.png|\.jpg|\.jpeg))/i.test(message);
+
+      if (isNonPdfUploaded) {
+        return {
+          reply: `Thank you, ${candName}! However, our hiring system specifically requires your resume in *PDF format (.pdf)* 📄.\n\nCould you please upload your resume as a PDF file or share a Google Drive / Dropbox PDF link?`,
+          memory,
+        };
+      }
+
+      if (/(?:can i share|how to send|submit|upload|where to send|share).*?(?:resume|cv)/i.test(m) || (/^(?:resume|cv|my resume)$/i.test(m.trim()) && !isPdfUploaded && !isNonPdfUploaded)) {
+        return {
+          reply: `Please share your *Resume / CV in PDF format (.pdf)* 📄! You can attach the PDF document directly here in WhatsApp or paste a Google Drive / accessible PDF link.`,
+          memory,
+        };
+      }
+
+      if (isPdfUploaded) {
+        const urlMatch = message.match(/https?:\/\/[^\s]+/i);
+        const fileNameMatch = message.match(/"([^"]+\.pdf)"/i);
+        const resumeUrl = urlMatch ? urlMatch[0] : fileNameMatch ? fileNameMatch[1] : "candidate_resume.pdf";
+        state.collected_slots = { ...(state.collected_slots || {}), resume_url: resumeUrl };
+        memory.resume_url = resumeUrl;
+        
+        return {
+          reply: `Thank you, ${candName}! I've verified and received your resume (PDF) 📄.\n\nLet's get your 30-minute Google Meet interview scheduled! 📅\n\nWould any of these slots work for you?\n1. Tomorrow (Oct 29) at 11:00 AM\n2. Tomorrow (Oct 29) at 3:00 PM\n3. Friday (Oct 30) at 11:00 AM`,
+          tool: { name: "capture_contact", inputs: { resume_url: resumeUrl, ...memory } },
+          memory,
+        };
+      }
+
+      // Slot chosen by candidate
+      const slotMatch = message.match(/(tomorrow|today|morning|afternoon|11(?::00)?\s*am|3(?::00)?\s*pm|10(?::00)?\s*am|friday|\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+      if (slotMatch && (state.collected_slots?.applied_role || /(?:developer|engineer|role|opening|interview|slot)/i.test(m) || state.collected_slots?.experience)) {
+        let confirmedSlot = "Tomorrow at 11:00 AM";
+        if (/(?:11|11:00|11am|11 am)/i.test(m)) confirmedSlot = "Tomorrow at 11:00 AM";
+        else if (/(?:3|3:00|3pm|3 pm)/i.test(m)) confirmedSlot = "Tomorrow at 3:00 PM";
+        else if (/(?:friday)/i.test(m)) confirmedSlot = "Friday at 11:00 AM";
+        else confirmedSlot = message.trim();
+
+        // Check if candidate email is captured!
+        if (!candEmail) {
+          state.collected_slots = { ...(state.collected_slots || {}), pending_interview_slot: confirmedSlot };
+          return {
+            reply: `Awesome! ${confirmedSlot} works great 🗓️.\n\nCould you please share your email address so I can send the Google Meet calendar invite and link directly to your inbox? ✉️`,
+            memory,
+          };
+        }
+
+        // We have both slot and email -> Book the interview!
+        return {
+          reply: `You're all set, ${candName}! Your interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${confirmedSlot}* 🚀.`,
+          tool: {
+            name: "book_appointment",
+            inputs: {
+              slot: confirmedSlot,
+              type: "interview",
+              email: candEmail,
+              role: currentRole || "Frontend Developer",
+            },
+          },
+          memory,
+        };
+      }
+
+      // If user provides email after pending slot
+      if (memory.email && state.collected_slots?.pending_interview_slot) {
+        const slot = state.collected_slots.pending_interview_slot;
+        return {
+          reply: `Thank you! I've registered your email (*${memory.email}*).\n\nYour interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${slot}* 🚀.`,
+          tool: {
+            name: "book_appointment",
+            inputs: {
+              slot,
+              type: "interview",
+              email: memory.email,
+              role: currentRole || "Frontend Developer",
+            },
+          },
+          memory,
+        };
+      }
+
+      // Experience extraction
+      const expMatch = message.match(/(\d+)\s*(yrs?|years?)/i) || (m.length <= 10 && /^\d+$/.test(m) ? [m + " years", m] : null);
       if (expMatch) {
         memory.experience = expMatch[0];
+        state.collected_slots = { ...(state.collected_slots || {}), experience: expMatch[0] };
         return {
-          reply: `Thank you! Noted ${expMatch[0]} of experience. What is your current employment status, notice period, and expected CTC?`,
+          reply: `That's great! 🌟 Are you currently working, serving notice, or already relieved? Also, what is your expected CTC (e.g. 5 LPA)?`,
           memory,
         };
       }
-      if (/(ctc|lpa|notice|immediate|serving)/i.test(m)) {
+
+      // Notice period & CTC extraction
+      if (/(notice|relieved|serving|working|immediate|lpa|ctc|lakh|\d+\s*days)/i.test(m)) {
+        if (/(serving|notice|\d+\s*days)/i.test(m)) {
+          memory.employment_status = message.trim();
+          state.collected_slots = { ...(state.collected_slots || {}), employment_status: message.trim() };
+        }
+        if (/(lpa|ctc|lakh|\d+)/i.test(m)) {
+          memory.expected_ctc = message.trim();
+          state.collected_slots = { ...(state.collected_slots || {}), expected_ctc: message.trim() };
+        }
+
+        // Ask for Resume PDF!
+        if (!state.collected_slots?.resume_url) {
+          return {
+            reply: `Got it! Thanks for sharing those details, ${candName} 📋.\n\nCould you please share your *Resume / CV in PDF format*? You can upload the PDF file directly here or share an accessible PDF link 📄.`,
+            tool: { name: "capture_contact", inputs: memory },
+            memory,
+          };
+        }
+      }
+
+      // If candidate mentions role
+      if (currentRole && !state.collected_slots?.experience) {
         return {
-          reply: "Got it! Let me connect you with our Appointment Desk to schedule your interview round on Google Meet 📅!",
-          handoff: { to: "appointment", reason: "interview booking", brief: "Candidate screened for interview" },
-          tool: { name: "capture_contact", inputs: memory },
+          reply: `Awesome! Our ${currentRole} role focuses on modern, scalable applications 💻. How many years of total and relevant experience do you have?`,
           memory,
         };
       }
+
+      // Default introduction
       return {
-        reply: "Welcome to Sharyx Careers! We are hiring for AI Solutions Engineer, Business Development Executive, and Frontend Developer. Which role are you applying for?",
+        reply: `Hi ${candName}! I am Priya, your Recruitment Specialist at Sharyx 🎓.\n\nWe currently have openings for:\n• *AI Solutions Engineer* (Python, Node.js, NLP)\n• *Business Development Executive* (B2B SaaS)\n• *Frontend Developer* (React, TypeScript)\n\nWhich of these roles are you interested in?`,
         memory,
       };
     }
@@ -781,14 +1036,18 @@ RULES:
     try {
       if (state.lead_id) return await lead.findOne({ where: { id: state.lead_id } });
       if (state.customer_phone) {
-        const l = await lead.findOne({ where: { phone: state.customer_phone, status: true } });
+        const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
+        const withPlus = "+" + cleanPhone;
+        let l = await lead.findOne({ where: { phone: state.customer_phone } });
+        if (!l) l = await lead.findOne({ where: { phone: withPlus } });
+        if (!l) l = await lead.findOne({ where: { phone: cleanPhone } });
         if (l) {
           state.lead_id = l.id;
           return l;
         }
       }
       if (state.customer_email) {
-        const l = await lead.findOne({ where: { email: state.customer_email, status: true } });
+        const l = await lead.findOne({ where: { email: state.customer_email } });
         if (l) {
           state.lead_id = l.id;
           return l;

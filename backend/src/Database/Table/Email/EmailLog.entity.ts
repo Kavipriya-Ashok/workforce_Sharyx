@@ -35,4 +35,7 @@ export class EmailLog extends BaseTable {
 
   @Column({ length: 250, nullable: true })
   message_id: string;
+
+  @Column({ type: "timestamp", select: true, default: () => "CURRENT_TIMESTAMP" })
+  created_on: Date;
 }

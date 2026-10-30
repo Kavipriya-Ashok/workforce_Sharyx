@@ -21,6 +21,7 @@ const Configuration_1 = __importDefault(require("./Config/Configuration"));
 const platform_express_1 = require("@nestjs/platform-express");
 const ioredis_1 = require("ioredis");
 const event_emitter_1 = require("@nestjs/event-emitter");
+const schedule_1 = require("@nestjs/schedule");
 const nestjs_cls_1 = require("nestjs-cls");
 const Cache_service_1 = require("./Service/Cache.service");
 const AutoNumber_controller_1 = require("./Controller/Admin/AutoNumber.controller");
@@ -53,19 +54,26 @@ const PdfGenerator_service_1 = require("./Service/PdfGenerator.service");
 const whatsapp_module_1 = require("./WhatsApp/whatsapp.module");
 const email_module_1 = require("./Email/email.module");
 const Lead_module_1 = require("./Module/Lead.module");
+const Customer_module_1 = require("./Module/Customer.module");
+const Automation_module_1 = require("./Module/Automation.module");
 const agent_orchestrator_module_1 = require("./AgentOrchestrator/agent-orchestrator.module");
 const voice_module_1 = require("./Voice/voice.module");
+const DashboardTelemetry_controller_1 = require("./Controller/Admin/DashboardTelemetry.controller");
+const DashboardTelemetry_service_1 = require("./Service/Admin/DashboardTelemetry.service");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            schedule_1.ScheduleModule.forRoot(),
             voice_module_1.VoiceModule,
             agent_orchestrator_module_1.AgentOrchestratorModule,
             whatsapp_module_1.WhatsAppModule,
             email_module_1.EmailModule,
             Lead_module_1.LeadModule,
+            Customer_module_1.CustomerModule,
+            Automation_module_1.AutomationModule,
             nestjs_cls_1.ClsModule,
             serve_static_1.ServeStaticModule.forRoot({
                 rootPath: __dirname + "/client",
@@ -123,8 +131,10 @@ exports.AppModule = AppModule = __decorate([
             ErrorLog_controller_1.ErrorLogController,
             AuditLog_controller_1.AuditLogController,
             AutoNumber_controller_1.AutoNumberController,
+            DashboardTelemetry_controller_1.DashboardTelemetryController,
         ],
         providers: [
+            DashboardTelemetry_service_1.DashboardTelemetryService,
             Auth_service_1.AuthService,
             User_service_1.UserService,
             UserRole_service_1.UserRoleService,

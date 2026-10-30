@@ -206,8 +206,8 @@ export class VoiceConfigService {
         }
         case "saas_fallback": {
           const baseUrl = (config?.base_url || process.env.VOICE_BACKEND_URL || "https://fallback-voice.sharyx.ai").replace(/\/$/, "");
-          if (apiKey && !apiKey.includes(":")) {
-            // Validate via direct Bearer token or x-api-key
+          if (apiKey && (apiKey.startsWith("eyJ") || apiKey.startsWith("shx_priv_") || !apiKey.includes(":"))) {
+            // Validate via direct Bearer token or private key
             await axios.get(`${baseUrl}/api/agent/list`, {
               headers: {
                 Authorization: `Bearer ${apiKey.trim()}`,

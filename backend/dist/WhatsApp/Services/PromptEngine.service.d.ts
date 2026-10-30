@@ -1,3 +1,4 @@
+import { EventEmitter2 } from "@nestjs/event-emitter";
 export interface ConversationContext {
     tenantId: string;
     senderPhone: string;
@@ -44,7 +45,9 @@ export interface ToolCallExecution {
     inputs: Record<string, any>;
 }
 export declare class PromptEngineService {
+    private readonly events;
     private readonly logger;
+    constructor(events: EventEmitter2);
     private readonly defaultTools;
     buildSystemPrompt(ctx: ConversationContext, customPersona?: string): string;
     buildAutoContext(tenantId: string, senderPhone: string, senderName: string, messageText: string, conversationId?: string): Promise<ConversationContext>;
