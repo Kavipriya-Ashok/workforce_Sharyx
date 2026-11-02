@@ -14,12 +14,18 @@ export interface TriggerContext {
     jobTitle?: string;
     company?: string;
     dashboardUrl?: string;
+    calendarUrl?: string;
+    llmWhatsApp?: string;
+    llmEmailParagraph?: string;
 }
 export declare class OutcomeTriggerService {
     private readonly emailService;
     private readonly pdfService;
     private readonly logger;
+    private readonly recentDispatches;
+    private readonly llm;
     constructor(emailService: EmailService, pdfService: PdfGeneratorService);
+    private generateLlmFollowup;
     executeTrigger(channel: "whatsapp" | "email" | "both", event: string, ctx: TriggerContext): Promise<{
         sent: number;
         failed: number;

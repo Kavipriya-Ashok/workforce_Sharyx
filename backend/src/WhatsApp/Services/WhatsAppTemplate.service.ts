@@ -53,6 +53,10 @@ export class WhatsAppTemplateService {
     tpl.body_text = sanitizedBody;
     tpl.footer_text = data.footer_text || null;
     tpl.buttons = data.buttons || null;
+    tpl.outcome_filter = data.outcome_filter || tpl.outcome_filter || "ALL";
+    tpl.attach_pdf = Boolean(data.attach_pdf);
+    tpl.pdf_template_type = data.pdf_template_type || null;
+    tpl.pdf_title = data.pdf_title || null;
     tpl.approval_status = data.approval_status || "APPROVED";
     tpl.is_active = true;
     tpl.updated_on = new Date();

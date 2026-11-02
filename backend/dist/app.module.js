@@ -77,7 +77,7 @@ exports.AppModule = AppModule = __decorate([
             nestjs_cls_1.ClsModule,
             serve_static_1.ServeStaticModule.forRoot({
                 rootPath: __dirname + "/client",
-                exclude: ["/api/*", "swagger"],
+                exclude: ["/api/{*path}", "swagger"],
             }),
             event_emitter_1.EventEmitterModule.forRoot({ maxListeners: 0 }),
             config_1.ConfigModule.forRoot({ isGlobal: true, load: [Configuration_1.default] }),

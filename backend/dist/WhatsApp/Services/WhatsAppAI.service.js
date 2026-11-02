@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppAIService = void 0;
 const common_1 = require("@nestjs/common");
 const WhatsAppAIConfig_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppAIConfig.entity");
+const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
 const PromptEngine_service_1 = require("./PromptEngine.service");
 const AgentOrchestrator_service_1 = require("../../AgentOrchestrator/Services/AgentOrchestrator.service");
 let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
@@ -51,9 +52,11 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         if (!config) {
             config = new WhatsAppAIConfig_entity_1.WhatsAppAIConfig();
             config.tenant_id = data.tenant_id || "default";
+            config.status = true;
             config.created_by_id = userId || "system";
             config.created_on = new Date();
         }
+        config.status = true;
         config.is_ai_enabled = (_a = data.is_ai_enabled) !== null && _a !== void 0 ? _a : true;
         config.ai_mode = data.ai_mode || "hybrid";
         config.system_prompt = data.system_prompt || null;
@@ -83,47 +86,33 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         }
         if (conversationId) {
             try {
-                const result = await this.orchestrator.handle({
-                    channel: "whatsapp",
-                    tenantId,
-                    conversationRef: conversationId,
-                    message: customerMessage,
-                    phone: customerPhone,
-                    name: extras === null || extras === void 0 ? void 0 : extras.customerName,
-                    leadId: extras === null || extras === void 0 ? void 0 : extras.leadId,
-                    llm: {
-                        provider: config.llm_provider,
-                        model: config.llm_model,
-                        apiKey: config.api_key || undefined,
-                    },
-                });
-                if (result) {
-                    if (result.humanTakeover && !result.reply)
-                        return null;
-                    this.logger.log(`🤝 [MULTI-AGENT] ${result.agentName}${result.handoffs.length ? ` (via ${result.handoffs.map((h) => `${h.from}→${h.to}`).join(", ")})` : ""}`);
-                    if (result.reply) {
-                        return {
-                            reply: result.reply,
-                            announcement: result.announcement || null,
-                        };
-                    }
+                const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: conversationId } });
+                if ((conv === null || conv === void 0 ? void 0 : conv.conversation_status) === "human_takeover" || (conv === null || conv === void 0 ? void 0 : conv.is_human_takeover)) {
+                    this.logger.log(`Live human takeover active on WhatsApp conversation ${conversationId}, pausing AI.`);
+                    return null;
                 }
             }
             catch (err) {
-                this.logger.error(`Multi-agent orchestrator failed, using legacy pipeline: ${err.message}`);
+                this.logger.warn(`Could not check human takeover status: ${err.message}`);
             }
         }
         try {
-            const ctx = await this.promptEngineService.buildAutoContext(tenantId, customerPhone, customerPhone, customerMessage, conversationId);
+            this.logger.log(`🧠 [BASE LLM] Generating WhatsApp reply via ${config.llm_provider || "gemini"} (${config.llm_model || "gemini-2.5-flash"})...`);
+            const ctx = await this.promptEngineService.buildAutoContext(tenantId, customerPhone, (extras === null || extras === void 0 ? void 0 : extras.customerName) || customerPhone, customerMessage, conversationId);
             const aiResult = await this.promptEngineService.generateReply(ctx, config);
-            return aiResult.replyText;
+            if (aiResult === null || aiResult === void 0 ? void 0 : aiResult.replyText) {
+                return {
+                    reply: aiResult.replyText,
+                    announcement: null,
+                };
+            }
         }
         catch (err) {
-            this.logger.error("AI Generation error:", err.message);
-            return (config.fallback_message ||
-                config.welcome_message ||
-                "Thank you for contacting Sharyx! A team member will assist you shortly.");
+            this.logger.error("Base LLM Engine error:", err.message);
         }
+        return (config.fallback_message ||
+            config.welcome_message ||
+            "Thank you for contacting Sharyx! A team member will assist you shortly.");
     }
 };
 exports.WhatsAppAIService = WhatsAppAIService;

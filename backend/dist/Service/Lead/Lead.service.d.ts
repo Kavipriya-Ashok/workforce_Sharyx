@@ -26,6 +26,9 @@ export declare class LeadService {
     }>;
     getById(id: string, userContext?: any): Promise<{
         activities: lead_activity[];
+        whatsappMessages: any[];
+        emailLogs: any[];
+        voiceCalls: any[];
         first_name: string;
         last_name: string;
         name: string;
@@ -62,8 +65,8 @@ export declare class LeadService {
         followup_sent: boolean;
         id: string;
         status: boolean;
-        created_by_id: string;
-        created_on: Date;
+        created_by_id?: string;
+        created_on?: Date;
         updated_by_id?: string;
         updated_on?: Date;
     }>;

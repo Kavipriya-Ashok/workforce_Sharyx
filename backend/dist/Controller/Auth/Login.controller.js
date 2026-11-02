@@ -31,6 +31,18 @@ let LoginController = class LoginController extends AuthBase_controller_1.AuthBa
         const result = await this._AuthService.ValidateUser(UserLogin.email, UserLogin.password);
         return { Type: ResponseEnum_1.ResponseEnum.Success, Message: 'Login Successfully', result };
     }
+    async SendSignupOtp(body) {
+        const result = await this._AuthService.sendSignupOtp(body.email, body.name);
+        return { Type: ResponseEnum_1.ResponseEnum.Success, Message: result.message, result };
+    }
+    async VerifySignupOtp(body) {
+        const result = await this._AuthService.verifySignupOtp(body);
+        return { Type: ResponseEnum_1.ResponseEnum.Success, Message: 'Account verified and registered successfully!', result };
+    }
+    async GoogleAuth(body) {
+        const result = await this._AuthService.googleAuth(body);
+        return { Type: ResponseEnum_1.ResponseEnum.Success, Message: 'Google authentication successful', result };
+    }
     async ForgotPassword(ForgotPasswordData) {
         const Result = await this._UserService.ForgotPassword(ForgotPasswordData.email);
         if (Result.status) {
@@ -53,6 +65,27 @@ __decorate([
     __metadata("design:paramtypes", [UserLogin_model_1.UserLoginModel]),
     __metadata("design:returntype", Promise)
 ], LoginController.prototype, "UserLogin", null);
+__decorate([
+    (0, common_1.Post)('SendSignupOtp'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], LoginController.prototype, "SendSignupOtp", null);
+__decorate([
+    (0, common_1.Post)('VerifySignupOtp'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], LoginController.prototype, "VerifySignupOtp", null);
+__decorate([
+    (0, common_1.Post)('GoogleAuth'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], LoginController.prototype, "GoogleAuth", null);
 __decorate([
     (0, common_1.Post)('ForgotPassword'),
     __param(0, (0, common_1.Body)()),

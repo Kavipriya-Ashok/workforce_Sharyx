@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -35,11 +68,16 @@ let LeadService = LeadService_1 = class LeadService {
         const query = this.leadRepo.createQueryBuilder("l")
             .where("l.status = :active", { active: true });
         if (tenantId && tenantId !== "default") {
-            query.andWhere("l.tenant_id = :tenantId", { tenantId });
+            query.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
         }
         if ((filter === null || filter === void 0 ? void 0 : filter.is_candidate) !== undefined && (filter === null || filter === void 0 ? void 0 : filter.is_candidate) !== "undefined") {
             const isCand = filter.is_candidate === "true" || filter.is_candidate === true;
-            query.andWhere("l.is_candidate = :isCand", { isCand });
+            if (isCand) {
+                query.andWhere(`(l.is_candidate = true OR l.candidate_stage IN ('screening', 'scheduled', 'offered', 'joined', 'interview_scheduled') OR LOWER(COALESCE(l.notes, '')) ~ '(placement|interview|resume|candidate|fresher|vacancy|hiring|recruitment)' OR LOWER(COALESCE(l.job_title, '')) ~ '(developer|engineer|intern|fresher|candidate|placement)' OR COALESCE(l.custom_fields::text, '') ILIKE '%interview%' OR COALESCE(l.custom_fields::text, '') ILIKE '%placement%' OR COALESCE(l.custom_fields::text, '') ILIKE '%Talent Acquisition%')`);
+            }
+            else {
+                query.andWhere("l.is_candidate = :isCand", { isCand: false });
+            }
         }
         if ((filter === null || filter === void 0 ? void 0 : filter.status) && (filter === null || filter === void 0 ? void 0 : filter.status) !== "ALL") {
             query.andWhere("l.lead_status = :status", { status: filter.status });
@@ -61,10 +99,17 @@ let LeadService = LeadService_1 = class LeadService {
     async getStats(userContext, isCandidate) {
         const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id);
         const qb = this.leadRepo.createQueryBuilder("l").where("l.status = true");
-        if (tenantId && tenantId !== "default")
-            qb.andWhere("l.tenant_id = :tenantId", { tenantId });
-        if (isCandidate !== undefined)
-            qb.andWhere("l.is_candidate = :isCandidate", { isCandidate });
+        if (tenantId && tenantId !== "default") {
+            qb.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+        }
+        if (isCandidate !== undefined) {
+            if (isCandidate) {
+                qb.andWhere(`(l.is_candidate = true OR l.candidate_stage IN ('screening', 'scheduled', 'offered', 'joined', 'interview_scheduled') OR LOWER(COALESCE(l.notes, '')) ~ '(placement|interview|resume|candidate|fresher|vacancy|hiring|recruitment)' OR LOWER(COALESCE(l.job_title, '')) ~ '(developer|engineer|intern|fresher|candidate|placement)' OR COALESCE(l.custom_fields::text, '') ILIKE '%interview%' OR COALESCE(l.custom_fields::text, '') ILIKE '%placement%' OR COALESCE(l.custom_fields::text, '') ILIKE '%Talent Acquisition%')`);
+            }
+            else {
+                qb.andWhere("l.is_candidate = :isCandidate", { isCandidate: false });
+            }
+        }
         const leads = await qb.select([
             "l.lead_status", "l.candidate_stage", "l.deal_value", "l.created_on", "l.source"
         ]).getMany();
@@ -98,7 +143,62 @@ let LeadService = LeadService_1 = class LeadService {
             where: { lead_id: id, status: true },
             order: { created_on: "DESC" }
         });
-        return Object.assign(Object.assign({}, foundLead), { activities });
+        const cleanPhone = (foundLead.phone || "").replace(/\D/g, "").slice(-10);
+        let whatsappMessages = [];
+        try {
+            const { WhatsAppMessage } = await Promise.resolve().then(() => __importStar(require("@Database/Table/WhatsApp/WhatsAppMessage.entity")));
+            const waQb = WhatsAppMessage.createQueryBuilder("w")
+                .where("w.status = true");
+            if (cleanPhone) {
+                waQb.andWhere("(w.sender_phone LIKE :ph OR w.recipient_phone LIKE :ph)", { ph: `%${cleanPhone}` });
+            }
+            else {
+                waQb.andWhere("1=0");
+            }
+            whatsappMessages = await waQb.orderBy("w.created_on", "ASC").take(50).getMany();
+        }
+        catch (err) {
+            this.logger.debug(`Could not load whatsapp messages for lead ${id}: ${err.message}`);
+        }
+        let emailLogs = [];
+        try {
+            const { EmailLog } = await Promise.resolve().then(() => __importStar(require("@Database/Table/Email/EmailLog.entity")));
+            const emQb = EmailLog.createQueryBuilder("e")
+                .where("e.status = true");
+            if (foundLead.email && foundLead.email.trim()) {
+                emQb.andWhere("(e.lead_id = :id OR LOWER(e.to_email) = :em OR LOWER(e.from_email) = :em)", {
+                    id,
+                    em: foundLead.email.trim().toLowerCase(),
+                });
+            }
+            else {
+                emQb.andWhere("e.lead_id = :id", { id });
+            }
+            emailLogs = await emQb.orderBy("e.created_on", "ASC").take(50).getMany();
+        }
+        catch (err) {
+            this.logger.debug(`Could not load email logs for lead ${id}: ${err.message}`);
+        }
+        let voiceCalls = [];
+        try {
+            const { VoiceCallLog } = await Promise.resolve().then(() => __importStar(require("@Database/Table/Voice/VoiceCallLog.entity")));
+            const vcQb = VoiceCallLog.createQueryBuilder("v")
+                .where("v.status = true");
+            if (cleanPhone) {
+                vcQb.andWhere("(v.lead_id = :id OR v.customer_phone LIKE :ph)", { id, ph: `%${cleanPhone}` });
+            }
+            else {
+                vcQb.andWhere("v.lead_id = :id", { id });
+            }
+            voiceCalls = await vcQb.orderBy("v.created_on", "DESC").take(50).getMany();
+        }
+        catch (err) {
+            this.logger.debug(`Could not load voice calls for lead ${id}: ${err.message}`);
+        }
+        return Object.assign(Object.assign({}, foundLead), { activities,
+            whatsappMessages,
+            emailLogs,
+            voiceCalls });
     }
     async checkDuplicatePhone(phone, excludeId, userContext) {
         if (!phone || phone.trim().length < 8)
@@ -130,7 +230,25 @@ let LeadService = LeadService_1 = class LeadService {
         };
     }
     async insert(data, userId, userContext) {
-        const leadEntity = this.leadRepo.create(Object.assign(Object.assign({}, data), { name: data.name || `${data.first_name || ""} ${data.last_name || ""}`.trim() || data.phone, tenant_id: (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || "default", assigned_to_id: data.assigned_to_id || userId || undefined, candidate_stage: data.is_candidate ? (data.candidate_stage || lead_1.CandidateStage.NEW) : undefined }));
+        var _a, _b;
+        const cleanNumber = (val) => {
+            if (val === "" || val === null || val === undefined)
+                return null;
+            const parsed = Number(val);
+            return isNaN(parsed) ? null : parsed;
+        };
+        const sanitizedData = Object.assign(Object.assign({}, data), { deal_value: (_a = cleanNumber(data.deal_value)) !== null && _a !== void 0 ? _a : 0, total_experience: cleanNumber(data.total_experience), relevant_experience: cleanNumber(data.relevant_experience), current_ctc: cleanNumber(data.current_ctc), expected_ctc: cleanNumber(data.expected_ctc), relieving_date: data.relieving_date ? new Date(data.relieving_date) : null });
+        const resolvedCreatedById = userId ||
+            (userContext === null || userContext === void 0 ? void 0 : userContext.userId) ||
+            (userContext === null || userContext === void 0 ? void 0 : userContext.id) ||
+            data.created_by_id ||
+            "00000000-0000-0000-0000-000000000001";
+        const isPlacementOrCandidate = Boolean(sanitizedData.is_candidate) ||
+            Boolean(sanitizedData.resume_url) ||
+            sanitizedData.total_experience !== null ||
+            sanitizedData.expected_ctc !== null ||
+            /\b(placement|candidate|interview|resume|fresher|internship|vacancy|hiring|recruitment|career|job opening)\b/i.test(`${sanitizedData.notes || ""} ${sanitizedData.agentKey || ""}`);
+        const leadEntity = this.leadRepo.create(Object.assign(Object.assign({}, sanitizedData), { is_candidate: isPlacementOrCandidate, name: sanitizedData.name || `${sanitizedData.first_name || ""} ${sanitizedData.last_name || ""}`.trim() || sanitizedData.phone, tenant_id: (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || "default", assigned_to_id: sanitizedData.assigned_to_id || userId || undefined, created_by_id: resolvedCreatedById, created_on: new Date(), candidate_stage: isPlacementOrCandidate ? (sanitizedData.candidate_stage || lead_1.CandidateStage.NEW) : undefined }));
         const saved = (await this.leadRepo.save(leadEntity));
         const activity = this.activityRepo.create({
             lead_id: saved.id,
@@ -141,6 +259,28 @@ let LeadService = LeadService_1 = class LeadService {
             tenant_id: saved.tenant_id
         });
         await this.activityRepo.save(activity);
+        if (saved.phone && data.auto_trigger_call !== false && saved.source !== lead_1.LeadSource.CSV_IMPORT) {
+            const requestedAgentId = data.assigned_voice_agent_id ||
+                data.agentId ||
+                data.agent_id ||
+                ((_b = data.custom_fields) === null || _b === void 0 ? void 0 : _b.assigned_voice_agent_id);
+            const requestedAgentKey = data.agentKey || (saved.is_candidate ? "recruitment" : "receptionist");
+            if (requestedAgentId) {
+                this.triggerVoiceCall(saved.id, {
+                    agentId: requestedAgentId,
+                    agentKey: requestedAgentKey,
+                    scheduledType: saved.is_candidate ? "interview" : "outbound",
+                }, userContext).catch((err) => this.logger.warn(`Auto voice call on insert failed: ${err.message}`));
+            }
+            else {
+                setTimeout(() => {
+                    this.triggerVoiceCall(saved.id, {
+                        agentKey: requestedAgentKey,
+                        scheduledType: saved.is_candidate ? "interview" : "outbound",
+                    }, userContext).catch((err) => this.logger.warn(`Delayed auto voice call on insert failed: ${err.message}`));
+                }, 1200);
+            }
+        }
         return saved;
     }
     async update(id, data, userId) {
@@ -289,19 +429,19 @@ let LeadService = LeadService_1 = class LeadService {
         return { success: true, lead: l };
     }
     async triggerVoiceCall(id, body = {}, userContext) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         const l = await this.leadRepo.findOne({ where: { id } });
         if (!l)
             throw new common_1.NotFoundException("Lead not found");
         if (!l.phone)
             throw new common_1.BadRequestException("Lead does not have a phone number on file");
+        const chosenAgentId = body.agentId || body.agent_id || ((_a = l.custom_fields) === null || _a === void 0 ? void 0 : _a.assigned_voice_agent_id);
+        const chosenAgentKey = body.agentKey;
         const isInterview = body.scheduledType === "interview" || l.is_candidate;
-        const scheduledType = isInterview ? "interview" : "demo";
-        const slot = body.slot || (((_b = (_a = l.custom_fields) === null || _a === void 0 ? void 0 : _a.interview) === null || _b === void 0 ? void 0 : _b.interview_date) ? `${l.custom_fields.interview.interview_date} at ${l.custom_fields.interview.interview_time || "10:00 AM"}` : "Scheduled Session");
-        const meetUrl = body.meetUrl || l.interview_link || ((_d = (_c = l.custom_fields) === null || _c === void 0 ? void 0 : _c.interview) === null || _d === void 0 ? void 0 : _d.gmeet_link) || "https://meet.google.com";
-        const reason = isInterview ? "Interview scheduled" : "You scheduled demo";
-        const chosenAgentId = body.agentId || body.agent_id;
-        const chosenAgentKey = body.agentKey || (isInterview ? "recruitment" : "sales");
+        const scheduledType = body.scheduledType || (isInterview ? "interview" : "outbound");
+        const slot = body.slot || (((_c = (_b = l.custom_fields) === null || _b === void 0 ? void 0 : _b.interview) === null || _c === void 0 ? void 0 : _c.interview_date) ? `${l.custom_fields.interview.interview_date} at ${l.custom_fields.interview.interview_time || "10:00 AM"}` : "");
+        const meetUrl = body.meetUrl || l.interview_link || ((_e = (_d = l.custom_fields) === null || _d === void 0 ? void 0 : _d.interview) === null || _e === void 0 ? void 0 : _e.gmeet_link) || "";
+        const reason = body.reason || "Outbound AI Voice Call";
         this.events.emit("voice.call.requested", {
             tenantId: l.tenant_id || (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || "default",
             phone: l.phone,
@@ -314,7 +454,7 @@ let LeadService = LeadService_1 = class LeadService {
             agentId: chosenAgentId,
             agentKey: chosenAgentKey,
         });
-        this.logger.log(`📞 [MANUAL LEAD CALL TRIGGERED] Dispatched voice call to ${l.phone} (${reason}) via connected platform`);
+        this.logger.log(`📞 [MANUAL LEAD CALL TRIGGERED] Dispatched voice call to ${l.phone} (AgentID: ${chosenAgentId || chosenAgentKey || "auto"}) via connected platform`);
         return { success: true, message: `Voice call dispatched to ${l.phone} via connected voice engine`, leadId: l.id };
     }
     async sendInterviewReminders() {

@@ -48,12 +48,12 @@ export const LoginPage: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
-    toast.info('Google OAuth connecting...');
-    setTimeout(async () => {
-      await login({ username: 'alex@company.com', password: 'oauth_token' });
-      toast.success('Google authentication verified!');
-      setLocation('/admin');
-    }, 1000);
+    toast.info('Connecting to Google...');
+    const clientId = '11874827859-h7b1l07qs1pi1ie1489ijdj4u7jvbuqg.apps.googleusercontent.com';
+    const redirectUri = encodeURIComponent(`${window.location.origin}/oauth/callback`);
+    const scope = encodeURIComponent('openid email profile');
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account&state=auth_google`;
+    window.location.href = googleAuthUrl;
   };
 
   return (

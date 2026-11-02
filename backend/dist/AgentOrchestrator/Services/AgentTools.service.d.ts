@@ -1,5 +1,6 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConversationAgentState } from "@Database/Table/Agent/ConversationAgentState.entity";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 export interface AgentToolCall {
     name: string;
     inputs?: Record<string, any>;
@@ -24,8 +25,9 @@ export interface AgentOutcomeEvent {
 }
 export declare class AgentToolsService {
     private readonly events;
+    private readonly openingsService;
     private readonly logger;
-    constructor(events: EventEmitter2);
+    constructor(events: EventEmitter2, openingsService: JobOpeningsService);
     execute(tool: AgentToolCall, state: ConversationAgentState, agentKey: string, agentName: string): Promise<ToolResult>;
     private getLead;
     private logActivity;

@@ -35,16 +35,22 @@ export class ExceptionHelper implements ExceptionFilter {
         MessageText = exception.response;
       }
     }
-    await error_log.insert({
-      url: response.req.url,
-      ipaddress: response.req.ip,
-      message: MessageText,
-      created_by_id: (response.req as any)?.user?.["user_id"] ?? EmptyUuid,
-      created_by_name: (response.req as any)?.user?.["email"] ?? "No User",
-      created_on: new Date(),
-    });
-    response
-      .status(500)
-      .json({ Type: ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
+    try {
+      await error_log.insert({
+        url: response.req?.url || "",
+        ipaddress: response.req?.ip || "",
+        message: String(MessageText || "Error").slice(0, 1000),
+        created_by_id: (response.req as any)?.user?.["user_id"] ?? EmptyUuid,
+        created_by_name: (response.req as any)?.user?.["email"] ?? "No User",
+        created_on: new Date(),
+      });
+    } catch {
+      // Never crash the server if error_log write fails
+    }
+    if (!response.headersSent) {
+      response
+        .status(exception?.status || 500)
+        .json({ Type: ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
+    }
   }
 }

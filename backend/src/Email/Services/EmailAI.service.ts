@@ -42,6 +42,9 @@ export class EmailAIService {
     config.tone = data.tone || "professional";
     config.llm_provider = data.llm_provider || "gemini";
     config.llm_model = data.llm_model || "gemini-2.5-flash";
+    if (data.api_key !== undefined) {
+      config.api_key = data.api_key;
+    }
     config.updated_by_id = userId || "system";
     config.updated_on = new Date();
     return await config.save();
@@ -50,8 +53,8 @@ export class EmailAIService {
   async generateDraft(dto: GenerateEmailAIDraftModel, tenantId: string = "default") {
     const config = await this.getConfig(tenantId);
     const recipientName = dto.lead_name || "Valued Client";
-    const openAiKey = process.env.OPENAI_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const openAiKey = config?.api_key && config?.llm_provider === "openai" ? config.api_key : process.env.OPENAI_API_KEY;
+    const geminiKey = config?.api_key && config?.llm_provider === "gemini" ? config.api_key : (process.env.GEMINI_API_KEY || process.env.GEMINI_KEY);
 
     // 1. Generate live Google Meet Room Link
     let gmeetUrl = "https://meet.google.com/shx-demo-room";
@@ -83,16 +86,31 @@ export class EmailAIService {
       ? `Customer Phone on File: YES (Provided)`
       : `Customer Phone on File: NO (Not provided yet)`;
 
+    const customInstruction = config?.system_prompt?.trim()
+      ? `\n\nADMIN CONFIGURED INSTRUCTIONS & KNOWLEDGE BASE:\n${config.system_prompt.trim()}\n`
+      : "";
+
     const systemPrompt = `You are "Sharyx AI", the official executive assistant and qualification copilot for Sharyx.
-Tone: ${config?.tone || "professional, warm, direct, and helpful"}.
+Tone: ${config?.tone || "professional, warm, direct, and helpful"}.${customInstruction}
 
 CRITICAL CONVERSATIONAL RULES (Follow strictly based on track):
 
-TRACK A: RECRUITMENT & JOB CANDIDATE (REC Use Cases):
+TRACK A: RECRUITMENT & JOB CANDIDATE (REC-001 to REC-040 Use Cases):
 - If the sender is inquiring about jobs, vacancies, or submitted a resume:
-  * Acknowledge their application warmly.
-  * Collect any missing screening details: Role applied for, Total/relevant experience, Current employment status (working, serving notice, or relieved), Notice period / relieving date, and Expected salary/CTC.
-  * If the candidate is ready for an interview or confirmed their slot, confirm the interview and share this confirmed Google Meet link: ${gmeetUrl}.
+  * Acknowledge their application warmly in the email thread.
+  * NEVER ask again for details already provided in the incoming email or thread history (REC-022, REC-023).
+  * Collect ONLY the missing screening details from the 14 required fields:
+    1) Full name & Mobile number (with country code, required for scheduling/follow-up)
+    2) Resume/CV in PDF format (or accessible PDF link; if corrupted/non-PDF, politely request PDF; if candidate cannot share resume right now, collect contact & essential profile details)
+    3) Job title / role applied for (*Frontend Developer*, *AI Solutions Engineer*, *Business Development Executive*)
+    4) Total and relevant experience (clarify if ambiguous)
+    5) Current/last company
+    6) Employment status (working, serving notice, or relieved — DO NOT assume they have left their job! Ask employment status first, then conditionally ask notice period/expected relieving date if employed, or last working date if relieved)
+    7) Current/last and expected salary (record separately; clarify monthly/annual & CTC basis; if candidate declines current salary disclosure, accept politely and continue)
+    8) Relocation availability (Yes/No/Conditional; if cannot relocate, note constraint for HR assessment)
+    9) Preferred interview date & time (Mon-Sat, 10:00 AM - 6:00 PM IST)
+  * If the candidate is ready for an interview or selected an available slot, confirm the interview and include: Role, Date, Time, Timezone (IST / GMT+5:30), and this confirmed Google Meet link: ${gmeetUrl}.
+  * Handle rescheduling, cancellation, or data correction/deletion requests politely.
 
 TRACK B: SERVICES INQUIRY & SALES DEMO QUALIFICATION (SAL Use Cases):
 - DO NOT mention WhatsApp! Keep the communication professional and direct.
@@ -153,14 +171,16 @@ GENERAL MEMORY & FORMATTING:
     }
 
     if (geminiKey) {
-      const fullPrompt = `${systemPrompt}\n\n${userPromptContent}`;
-      const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-      for (const model of modelsToTry) {
+      const selectedModel = config?.llm_model || "gemini-2.5-flash";
+      const modelsToTry = [selectedModel, "gemini-2.5-flash", "gemini-flash-latest"];
+      const uniqueModels = [...new Set(modelsToTry)];
+      for (const model of uniqueModels) {
         try {
           const response = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
             {
-              contents: [{ parts: [{ text: fullPrompt }] }],
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ parts: [{ text: userPromptContent }] }],
             },
             { timeout: 15000 }
           );
@@ -175,7 +195,7 @@ GENERAL MEMORY & FORMATTING:
           const errMsg = err?.response?.data?.error?.message || err.message;
           this.logger.warn(`Gemini (${model}) draft failed: ${errMsg}`);
           if (errMsg?.includes("API_KEY_INVALID") || errMsg?.includes("API key not valid")) {
-            this.logger.error("The provided GEMINI_API_KEY in .env is invalid. Gemini keys from Google AI Studio must start with 'AIzaSy'.");
+            this.logger.error("The provided GEMINI_API_KEY is invalid. Gemini keys from Google AI Studio must start with 'AIzaSy'.");
             break;
           }
         }

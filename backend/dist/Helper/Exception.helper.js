@@ -13,7 +13,7 @@ const ResponseEnum_1 = require("./Enum/ResponseEnum");
 const Common_helper_1 = require("./Common.helper");
 let ExceptionHelper = class ExceptionHelper {
     async catch(exception, host) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
         let MessageText = "";
@@ -51,17 +51,23 @@ let ExceptionHelper = class ExceptionHelper {
                 MessageText = exception.response;
             }
         }
-        await error_log_1.error_log.insert({
-            url: response.req.url,
-            ipaddress: response.req.ip,
-            message: MessageText,
-            created_by_id: (_h = (_g = (_f = response.req) === null || _f === void 0 ? void 0 : _f.user) === null || _g === void 0 ? void 0 : _g["user_id"]) !== null && _h !== void 0 ? _h : Common_helper_1.EmptyUuid,
-            created_by_name: (_l = (_k = (_j = response.req) === null || _j === void 0 ? void 0 : _j.user) === null || _k === void 0 ? void 0 : _k["email"]) !== null && _l !== void 0 ? _l : "No User",
-            created_on: new Date(),
-        });
-        response
-            .status(500)
-            .json({ Type: ResponseEnum_1.ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
+        try {
+            await error_log_1.error_log.insert({
+                url: ((_f = response.req) === null || _f === void 0 ? void 0 : _f.url) || "",
+                ipaddress: ((_g = response.req) === null || _g === void 0 ? void 0 : _g.ip) || "",
+                message: String(MessageText || "Error").slice(0, 1000),
+                created_by_id: (_k = (_j = (_h = response.req) === null || _h === void 0 ? void 0 : _h.user) === null || _j === void 0 ? void 0 : _j["user_id"]) !== null && _k !== void 0 ? _k : Common_helper_1.EmptyUuid,
+                created_by_name: (_o = (_m = (_l = response.req) === null || _l === void 0 ? void 0 : _l.user) === null || _m === void 0 ? void 0 : _m["email"]) !== null && _o !== void 0 ? _o : "No User",
+                created_on: new Date(),
+            });
+        }
+        catch (_p) {
+        }
+        if (!response.headersSent) {
+            response
+                .status((exception === null || exception === void 0 ? void 0 : exception.status) || 500)
+                .json({ Type: ResponseEnum_1.ResponseEnum.Error, Message: MessageText, message: MessageText, ok: false });
+        }
     }
 };
 exports.ExceptionHelper = ExceptionHelper;

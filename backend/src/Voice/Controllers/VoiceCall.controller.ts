@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from "@nestjs/common";
+import { Controller, Get, Post, Body, Query, Res } from "@nestjs/common";
 import { VoiceCallService } from "../Services/VoiceCall.service";
 import { MakeVoiceCallDto } from "../Interfaces/VoiceTypes";
 
@@ -48,6 +48,19 @@ export class VoiceCallController {
    * Manually sync call logs from Vapi platform — pulls from api.vapi.ai/call
    * and upserts them into local VoiceCallLog table with recordings, durations and transcripts.
    */
+  /**
+   * Stream / proxy call audio recording so the browser can play it without Cloudflare R2 CORS/forbidden blocks.
+   */
+  @Get("audio")
+  async streamAudio(
+    @Query("callId") callId: string,
+    @Query("providerCallId") providerCallId: string,
+    @Query("tenantId") tenantId?: string,
+    @Res() res?: any
+  ) {
+    return await this.callService.streamCallAudio(callId, providerCallId, tenantId || "default", res);
+  }
+
   @Post("sync-vapi")
   async syncFromVapi(@Query("tenantId") tenantId?: string) {
     const synced = await this.callService.syncCallLogsFromVapi(tenantId || "default");

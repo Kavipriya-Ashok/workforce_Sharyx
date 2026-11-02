@@ -62,7 +62,7 @@ import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.se
     ClsModule,
     ServeStaticModule.forRoot({
       rootPath: __dirname + "/client",
-      exclude: ["/api/*", "swagger"],
+      exclude: ["/api/{*path}", "swagger"],
     }),
     EventEmitterModule.forRoot({ maxListeners: 0 }),
     ConfigModule.forRoot({ isGlobal: true, load: [Configuration] }),

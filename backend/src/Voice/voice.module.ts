@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AgentOrchestratorModule } from "../AgentOrchestrator/agent-orchestrator.module";
 import { VapiProvider } from "./Providers/Vapi.provider";
 import { RetellProvider } from "./Providers/Retell.provider";
 import { BlandProvider } from "./Providers/Bland.provider";
@@ -13,6 +14,7 @@ import { VoiceConfigController } from "./Controllers/VoiceConfig.controller";
 import { VoiceWebhookController } from "./Controllers/VoiceWebhook.controller";
 
 @Module({
+  imports: [AgentOrchestratorModule],
   controllers: [
     VoiceAgentController,
     VoiceCallController,

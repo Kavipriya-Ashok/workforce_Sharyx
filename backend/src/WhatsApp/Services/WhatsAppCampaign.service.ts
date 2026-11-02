@@ -21,10 +21,14 @@ export class WhatsAppCampaignService {
     campaign.tenant_id = "default";
     campaign.name = dto.name;
     campaign.description = dto.description || null;
-    campaign.trigger_event = dto.trigger_event || "round_1_cleared";
+    campaign.trigger_event = dto.trigger_event || "after_call_ends";
+    campaign.outcome_filter = (dto as any).outcome_filter || "ALL";
     campaign.template_name = dto.template_name;
     campaign.delay_minutes = dto.delay_minutes ?? 0;
     campaign.is_active = dto.is_active !== undefined ? dto.is_active : true;
+    campaign.attach_pdf = Boolean((dto as any).attach_pdf);
+    campaign.pdf_template_type = (dto as any).pdf_template_type || null;
+    campaign.pdf_title = (dto as any).pdf_title || null;
     campaign.total_recipients = dto.recipients?.length || 0;
     campaign.campaign_status = "active";
     campaign.scheduled_at = dto.scheduled_at || null;
@@ -47,10 +51,14 @@ export class WhatsAppCampaignService {
     if (data.name) campaign.name = data.name;
     if (data.description !== undefined) campaign.description = data.description;
     if (data.trigger_event) campaign.trigger_event = data.trigger_event;
+    if ((data as any).outcome_filter !== undefined) campaign.outcome_filter = (data as any).outcome_filter;
     if (data.template_name) campaign.template_name = data.template_name;
     if (data.delay_minutes !== undefined) campaign.delay_minutes = data.delay_minutes;
     if (data.is_active !== undefined) campaign.is_active = data.is_active;
     if (data.scheduled_at !== undefined) campaign.scheduled_at = data.scheduled_at;
+    if ((data as any).attach_pdf !== undefined) campaign.attach_pdf = Boolean((data as any).attach_pdf);
+    if ((data as any).pdf_template_type !== undefined) campaign.pdf_template_type = (data as any).pdf_template_type;
+    if ((data as any).pdf_title !== undefined) campaign.pdf_title = (data as any).pdf_title;
     campaign.updated_on = new Date();
 
     return await campaign.save();

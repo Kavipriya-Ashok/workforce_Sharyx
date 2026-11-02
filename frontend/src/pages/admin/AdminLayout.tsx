@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
 import { AdminDashboard } from './AdminDashboard';
-import { WhatsAppLiveChat } from '@/pages/whatsapp/components/WhatsAppLiveChat';
-import { WhatsAppSyncSection } from '@/pages/whatsapp/components/WhatsAppSyncSection';
-import { WhatsAppTemplatesTab } from '@/pages/whatsapp/components/WhatsAppTemplatesTab';
-import { WhatsAppCampaignFormPage } from '@/pages/whatsapp/components/WhatsAppCampaignFormPage';
-import { WhatsAppAIBrainPage } from '@/pages/whatsapp/components/WhatsAppAIBrainPage';
-import { WhatsAppAnalyticsPage } from '@/pages/whatsapp/components/WhatsAppAnalyticsPage';
+import { WhatsAppAutomation } from '@/pages/whatsapp/WhatsAppAutomation';
 import { EmailAutomation } from '@/pages/email/EmailAutomation';
 import { VoiceAutomation } from '@/pages/voice/VoiceAutomation';
 import { CallLogsPage } from '@/pages/voice/CallLogsPage';
 import { AiAgentsPage } from '@/pages/agents/AiAgentsPage';
+import { VoiceService, VoiceAgentDto } from '@/service/voiceService';
 import Leads from '@/pages/lead/Leads';
 import { Customers } from '@/pages/customer/Customers';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
@@ -71,13 +67,100 @@ export const AdminLayout: React.FC = () => {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activePage, setActivePage] = useState<AdminPage>('dashboard');
+
+  const getPageFromLocation = (loc: string): AdminPage => {
+    const path = loc.split('?')[0].replace(/^\/admin\/?/, '').toLowerCase().trim();
+
+    if (typeof window !== 'undefined' && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const query = (params.get('page') || params.get('tab') || '').toLowerCase().trim();
+      if (query === 'api' || query === 'settings' || query === 'credentials') return 'settings';
+      if (query === 'whatsapp') return 'whatsapp_chat';
+      if (query === 'email') return 'email_inbox';
+      if (query === 'voice') return 'voice';
+      if (query === 'leads') return 'leads';
+      if (query === 'candidates') return 'candidates';
+      if (query === 'customers') return 'customers';
+    }
+
+    if (!path || path === 'dashboard') return 'dashboard';
+    if (path === 'api' || path === 'settings' || path === 'credentials' || path === 'api-credentials') return 'settings';
+    if (path === 'whatsapp' || path === 'whatsapp/chat' || path === 'whatsapp_chat') return 'whatsapp_chat';
+    if (path === 'whatsapp/campaigns' || path === 'whatsapp_campaigns') return 'whatsapp_campaigns';
+    if (path === 'whatsapp/templates' || path === 'whatsapp_templates') return 'whatsapp_templates';
+    if (path === 'whatsapp/brain' || path === 'whatsapp_brain') return 'whatsapp_brain';
+    if (path === 'whatsapp/analytics' || path === 'whatsapp_analytics') return 'whatsapp_analytics';
+    if (path === 'email' || path === 'email/inbox' || path === 'email_inbox') return 'email_inbox';
+    if (path === 'email/templates' || path === 'email_templates') return 'email_templates';
+    if (path === 'email/ai' || path === 'email_ai') return 'email_ai';
+    if (path === 'email/campaigns' || path === 'email_campaigns') return 'email_campaigns';
+    if (path === 'email/settings' || path === 'email_settings') return 'email_settings';
+    if (path === 'voice') return 'voice';
+    if (path === 'voice/logs' || path === 'voice_logs') return 'voice_logs';
+    if (path === 'agents') return 'agents';
+    if (path === 'leads') return 'leads';
+    if (path === 'candidates') return 'candidates';
+    if (path === 'customers') return 'customers';
+
+    return 'dashboard';
+  };
+
+  const [activePage, setActivePage] = useState<AdminPage>(() => getPageFromLocation(location));
+
+  const navigateToPage = (page: AdminPage) => {
+    setActivePage(page);
+    const routeMap: Record<AdminPage, string> = {
+      dashboard: '/admin/dashboard',
+      whatsapp_chat: '/admin/whatsapp',
+      whatsapp_sync: '/admin/whatsapp',
+      whatsapp_campaigns: '/admin/whatsapp/campaigns',
+      whatsapp_templates: '/admin/whatsapp/templates',
+      whatsapp_brain: '/admin/whatsapp/brain',
+      whatsapp_analytics: '/admin/whatsapp/analytics',
+      email: '/admin/email',
+      email_inbox: '/admin/email',
+      email_templates: '/admin/email/templates',
+      email_ai: '/admin/email/ai',
+      email_campaigns: '/admin/email/campaigns',
+      email_settings: '/admin/email/settings',
+      voice: '/admin/voice',
+      voice_logs: '/admin/voice/logs',
+      agents: '/admin/agents',
+      leads: '/admin/leads',
+      candidates: '/admin/candidates',
+      customers: '/admin/customers',
+      settings: '/admin/api',
+    };
+    const targetRoute = routeMap[page] || '/admin/dashboard';
+    if (location !== targetRoute) {
+      setLocation(targetRoute);
+    }
+  };
+
+  useEffect(() => {
+    const matched = getPageFromLocation(location);
+    if (matched !== activePage) {
+      setActivePage(matched);
+    }
+  }, [location]);
+
   const [whatsappSubmenuOpen, setWhatsappSubmenuOpen] = useState(true);
   const [emailSubmenuOpen, setEmailSubmenuOpen] = useState(true);
   const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
   const [agentsSubmenuOpen, setAgentsSubmenuOpen] = useState(true);
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const [activeTenant, setActiveTenant] = useState(user?.company_name || 'Sharyx Enterprise Inc');
+  const [dynamicVoiceAgents, setDynamicVoiceAgents] = useState<VoiceAgentDto[]>([]);
+
+  useEffect(() => {
+    VoiceService.listAgents()
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setDynamicVoiceAgents(res);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const SIDEBAR_AGENTS = [
     { key: 'receptionist', name: 'Receptionist', emoji: '🛎️', role: 'Welcome & Routing', color: 'text-amber-500' },
@@ -129,7 +212,7 @@ export const AdminLayout: React.FC = () => {
         {/* Navigation links */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
           <button
-            onClick={() => setActivePage('dashboard')}
+            onClick={() => navigateToPage('dashboard')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'dashboard'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
@@ -146,17 +229,17 @@ export const AdminLayout: React.FC = () => {
               onClick={() => {
                 setWhatsappSubmenuOpen(!whatsappSubmenuOpen);
                 if (!whatsappSubmenuOpen && !activePage.startsWith('whatsapp_')) {
-                  setActivePage('whatsapp_chat');
+                  navigateToPage('whatsapp_chat');
                 }
               }}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage.startsWith('whatsapp_')
+                activePage.startsWith('whatsapp')
                   ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
                   : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
               }`}
             >
               <div className="flex items-center gap-3">
-                <MessageSquare className={`h-4 w-4 shrink-0 ${activePage.startsWith('whatsapp_') ? 'text-blue-400' : 'text-emerald-400'}`} />
+                <MessageSquare className={`h-4 w-4 shrink-0 ${activePage.startsWith('whatsapp') ? 'text-blue-400' : 'text-emerald-400'}`} />
                 {!sidebarCollapsed && <span>WhatsApp Suite</span>}
               </div>
               {!sidebarCollapsed && (
@@ -172,7 +255,7 @@ export const AdminLayout: React.FC = () => {
             {!sidebarCollapsed && whatsappSubmenuOpen && (
               <div className="pl-3 pr-1 py-1 space-y-1 border-l border-[#1a2846] ml-5 my-1">
                 <button
-                  onClick={() => setActivePage('whatsapp_chat')}
+                  onClick={() => navigateToPage('whatsapp_chat')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_chat'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -184,31 +267,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('whatsapp_sync')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_sync'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
-                  }`}
-                >
-                  <RefreshCw className="h-3 w-3 text-cyan-400 shrink-0" />
-                  <span>⚡ Live Sync & Diagnostic</span>
-                </button>
-
-                <button
-                  onClick={() => setActivePage('whatsapp_templates')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_templates'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
-                  }`}
-                >
-                  <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
-                  <span>📋 Meta Templates</span>
-                </button>
-
-                <button
-                  onClick={() => setActivePage('whatsapp_campaigns')}
+                  onClick={() => navigateToPage('whatsapp_campaigns')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -220,7 +279,19 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('whatsapp_brain')}
+                  onClick={() => navigateToPage('whatsapp_templates')}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                    activePage === 'whatsapp_templates'
+                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                  }`}
+                >
+                  <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
+                  <span>📋 Meta Templates</span>
+                </button>
+
+                <button
+                  onClick={() => navigateToPage('whatsapp_brain')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_brain'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -232,7 +303,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('whatsapp_analytics')}
+                  onClick={() => navigateToPage('whatsapp_analytics')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_analytics'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -250,7 +321,7 @@ export const AdminLayout: React.FC = () => {
           <div className="space-y-1">
             <button
               onClick={() => {
-                setActivePage('email_inbox');
+                navigateToPage('email_inbox');
                 setEmailSubmenuOpen(!emailSubmenuOpen);
               }}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
@@ -275,7 +346,7 @@ export const AdminLayout: React.FC = () => {
             {!sidebarCollapsed && emailSubmenuOpen && (
               <div className="pl-3 pr-1 py-1 space-y-1 border-l border-[#1a2846] ml-5 my-1">
                 <button
-                  onClick={() => setActivePage('email_inbox')}
+                  onClick={() => navigateToPage('email_inbox')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_inbox' || activePage === 'email'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -287,7 +358,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('email_templates')}
+                  onClick={() => navigateToPage('email_templates')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -299,7 +370,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('email_ai')}
+                  onClick={() => navigateToPage('email_ai')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_ai'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -311,7 +382,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('email_campaigns')}
+                  onClick={() => navigateToPage('email_campaigns')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -323,7 +394,7 @@ export const AdminLayout: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={() => setActivePage('email_settings')}
+                  onClick={() => navigateToPage('email_settings')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_settings'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
@@ -338,7 +409,7 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setActivePage('voice')}
+            onClick={() => navigateToPage('voice')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'voice'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
@@ -350,7 +421,7 @@ export const AdminLayout: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePage('voice_logs')}
+            onClick={() => navigateToPage('voice_logs')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'voice_logs'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
@@ -368,77 +439,6 @@ export const AdminLayout: React.FC = () => {
             )}
           </button>
 
-          {/* AI AGENTS MENU & 5 DEFAULT AGENTS */}
-          <div className="space-y-1">
-            <button
-              onClick={() => {
-                setActivePage('agents');
-                setAgentsSubmenuOpen(!agentsSubmenuOpen);
-              }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage === 'agents'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                  : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Bot className={`h-4 w-4 shrink-0 ${activePage === 'agents' ? 'text-white' : 'text-blue-400'}`} />
-                {!sidebarCollapsed && <span>Chat Agents (WA/Email)</span>}
-              </div>
-              {!sidebarCollapsed && (
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    agentsSubmenuOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              )}
-            </button>
-
-            {/* 5 DEFAULT AGENTS LIST */}
-            {!sidebarCollapsed && agentsSubmenuOpen && (
-              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-[#1a2846] ml-5 my-1">
-                <button
-                  onClick={() => {
-                    setActivePage('agents');
-                    setSelectedAgentKey(null);
-                  }}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'agents' && !selectedAgentKey
-                      ? 'bg-blue-500/20 text-blue-300 font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
-                  }`}
-                >
-                  <Sparkles className="h-3 w-3 text-blue-400 shrink-0" />
-                  <span>All Agents Overview</span>
-                </button>
-
-                {SIDEBAR_AGENTS.map((ag) => {
-                  const isSelected = activePage === 'agents' && selectedAgentKey === ag.key;
-                  return (
-                    <button
-                      key={ag.key}
-                      onClick={() => {
-                        setActivePage('agents');
-                        setSelectedAgentKey(ag.key);
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                        isSelected
-                          ? 'bg-blue-600/90 text-white font-bold shadow-xs'
-                          : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className="text-xs">{ag.emoji}</span>
-                        <span className="truncate">{ag.name}</span>
-                      </div>
-                      <span className="text-[9px] text-slate-400 uppercase tracking-wider">{ag.key.slice(0, 3)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           <div className="pt-4 pb-1">
             {!sidebarCollapsed && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3">
@@ -448,7 +448,7 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setActivePage('leads')}
+            onClick={() => navigateToPage('leads')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'leads'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
@@ -460,7 +460,7 @@ export const AdminLayout: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePage('candidates')}
+            onClick={() => navigateToPage('candidates')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'candidates'
                 ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-purple-600/30 font-bold'
@@ -472,7 +472,7 @@ export const AdminLayout: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePage('customers')}
+            onClick={() => navigateToPage('customers')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'customers'
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-bold'
@@ -491,15 +491,15 @@ export const AdminLayout: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActivePage('settings')}
+            onClick={() => navigateToPage('settings')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'settings'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
                 : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
             }`}
           >
-            <Settings className={`h-4 w-4 shrink-0 ${activePage === 'settings' ? 'text-white' : 'text-slate-400'}`} />
-            {!sidebarCollapsed && <span>API Keys & Settings</span>}
+            <Key className={`h-4 w-4 shrink-0 ${activePage === 'settings' ? 'text-white' : 'text-amber-400'}`} />
+            {!sidebarCollapsed && <span>API Credentials & Settings</span>}
           </button>
         </div>
 
@@ -593,11 +593,11 @@ export const AdminLayout: React.FC = () => {
                 {activePage === 'email_settings' && 'Email Mailbox & SMTP Settings'}
                 {activePage === 'voice' && 'Voice AI & Phone Calls'}
                 {activePage === 'voice_logs' && 'Voice Call Logs & Audio Dialogue'}
-                {activePage === 'agents' && 'Chat Agents Workforce'}
+                {activePage === 'agents' && 'Specialized Chat Agents Sandbox'}
                 {activePage === 'leads' && 'Leads & Contacts'}
                 {activePage === 'candidates' && 'Candidates & Scheduled Interviews'}
                 {activePage === 'customers' && 'Customers 360° & Automated Conversions'}
-                {activePage === 'settings' && 'API Keys & System Settings'}
+                {activePage === 'settings' && 'API Keys & Connected Platforms'}
               </span>
             </div>
           </div>
@@ -625,25 +625,57 @@ export const AdminLayout: React.FC = () => {
         {/* CONTENT BODY */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
           {activePage === 'dashboard' && <AdminDashboard />}
-          {activePage === 'whatsapp_chat' && <WhatsAppLiveChat />}
-          {activePage === 'whatsapp_sync' && <WhatsAppSyncSection />}
-          {activePage === 'whatsapp_templates' && <WhatsAppTemplatesTab />}
-          {activePage === 'whatsapp_campaigns' && <WhatsAppCampaignFormPage />}
-          {activePage === 'whatsapp_brain' && <WhatsAppAIBrainPage />}
-          {activePage === 'whatsapp_analytics' && <WhatsAppAnalyticsPage />}
-          {activePage === 'email' && <EmailAutomation initialTab="inbox" />}
-          {activePage === 'email_inbox' && <EmailAutomation initialTab="inbox" />}
-          {activePage === 'email_templates' && <EmailAutomation initialTab="templates" />}
-          {activePage === 'email_ai' && <EmailAutomation initialTab="ai_settings" />}
-          {activePage === 'email_campaigns' && <EmailAutomation initialTab="campaigns" />}
-          {activePage === 'email_settings' && <EmailAutomation initialTab="settings" />}
+          {activePage.startsWith('whatsapp') && (
+            <WhatsAppAutomation
+              key={activePage}
+              initialTab={
+                activePage === 'whatsapp_campaigns' ? 'campaigns' :
+                activePage === 'whatsapp_templates' ? 'templates' :
+                activePage === 'whatsapp_brain' ? 'ai_brain' :
+                activePage === 'whatsapp_analytics' ? 'analytics' :
+                'live_chat'
+              }
+              onTabChange={(tab) => {
+                const pageMap: Record<string, AdminPage> = {
+                  live_chat: 'whatsapp_chat',
+                  campaigns: 'whatsapp_campaigns',
+                  templates: 'whatsapp_templates',
+                  ai_brain: 'whatsapp_brain',
+                  analytics: 'whatsapp_analytics',
+                };
+                if (pageMap[tab]) navigateToPage(pageMap[tab]);
+              }}
+            />
+          )}
+          {activePage.startsWith('email') && (
+            <EmailAutomation
+              key={activePage}
+              initialTab={
+                activePage === 'email_templates' ? 'templates' :
+                activePage === 'email_ai' ? 'ai_settings' :
+                activePage === 'email_campaigns' ? 'campaigns' :
+                activePage === 'email_settings' ? 'settings' :
+                'inbox'
+              }
+              onTabChange={(tab) => {
+                const pageMap: Record<string, AdminPage> = {
+                  inbox: 'email_inbox',
+                  templates: 'email_templates',
+                  ai_settings: 'email_ai',
+                  campaigns: 'email_campaigns',
+                  settings: 'email_settings',
+                };
+                if (pageMap[tab]) navigateToPage(pageMap[tab]);
+              }}
+            />
+          )}
           {activePage === 'voice' && <VoiceAutomation />}
           {activePage === 'voice_logs' && <CallLogsPage />}
           {activePage === 'agents' && (
             <AiAgentsPage
               selectedAgentKey={selectedAgentKey}
               onSelectAgent={setSelectedAgentKey}
-              onNavigateVoice={() => setActivePage('voice')}
+              onNavigateVoice={() => navigateToPage('voice')}
             />
           )}
           {activePage === 'leads' && <Leads isCandidate={false} />}

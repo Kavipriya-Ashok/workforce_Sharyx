@@ -11,17 +11,20 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const lead_1 = require("../Database/Table/Lead/lead");
 const lead_activity_1 = require("../Database/Table/Lead/lead_activity");
+const JobOpening_entity_1 = require("../Database/Table/Lead/JobOpening.entity");
 const Lead_controller_1 = require("../Controller/Lead/Lead.controller");
+const JobOpenings_controller_1 = require("../Controller/Lead/JobOpenings.controller");
 const Lead_service_1 = require("../Service/Lead/Lead.service");
+const JobOpenings_service_1 = require("../Service/Lead/JobOpenings.service");
 let LeadModule = class LeadModule {
 };
 exports.LeadModule = LeadModule;
 exports.LeadModule = LeadModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([lead_1.lead, lead_activity_1.lead_activity])],
-        controllers: [Lead_controller_1.LeadController],
-        providers: [Lead_service_1.LeadService],
-        exports: [Lead_service_1.LeadService, typeorm_1.TypeOrmModule],
+        imports: [typeorm_1.TypeOrmModule.forFeature([lead_1.lead, lead_activity_1.lead_activity, JobOpening_entity_1.JobOpening])],
+        controllers: [Lead_controller_1.LeadController, JobOpenings_controller_1.JobOpeningsController],
+        providers: [Lead_service_1.LeadService, JobOpenings_service_1.JobOpeningsService],
+        exports: [Lead_service_1.LeadService, JobOpenings_service_1.JobOpeningsService, typeorm_1.TypeOrmModule],
     })
 ], LeadModule);
 //# sourceMappingURL=Lead.module.js.map

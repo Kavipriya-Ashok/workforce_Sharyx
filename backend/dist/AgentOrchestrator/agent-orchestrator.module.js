@@ -13,14 +13,15 @@ const AgentOrchestrator_service_1 = require("./Services/AgentOrchestrator.servic
 const AgentLlm_service_1 = require("./Services/AgentLlm.service");
 const AgentTools_service_1 = require("./Services/AgentTools.service");
 const AiAgent_service_1 = require("./Services/AiAgent.service");
+const JobOpenings_service_1 = require("../Service/Lead/JobOpenings.service");
 let AgentOrchestratorModule = class AgentOrchestratorModule {
 };
 exports.AgentOrchestratorModule = AgentOrchestratorModule;
 exports.AgentOrchestratorModule = AgentOrchestratorModule = __decorate([
     (0, common_1.Module)({
         controllers: [AiAgent_controller_1.AiAgentController],
-        providers: [AgentOrchestrator_service_1.AgentOrchestratorService, AgentLlm_service_1.AgentLlmService, AgentTools_service_1.AgentToolsService, AiAgent_service_1.AiAgentService],
-        exports: [AgentOrchestrator_service_1.AgentOrchestratorService, AiAgent_service_1.AiAgentService, AgentLlm_service_1.AgentLlmService],
+        providers: [AgentOrchestrator_service_1.AgentOrchestratorService, AgentLlm_service_1.AgentLlmService, AgentTools_service_1.AgentToolsService, AiAgent_service_1.AiAgentService, JobOpenings_service_1.JobOpeningsService],
+        exports: [AgentOrchestrator_service_1.AgentOrchestratorService, AiAgent_service_1.AiAgentService, AgentLlm_service_1.AgentLlmService, JobOpenings_service_1.JobOpeningsService],
     })
 ], AgentOrchestratorModule);
 //# sourceMappingURL=agent-orchestrator.module.js.map

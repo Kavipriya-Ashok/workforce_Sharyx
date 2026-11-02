@@ -48,8 +48,8 @@ export declare class CustomerService {
         assigned_to_id: string;
         id: string;
         status: boolean;
-        created_by_id: string;
-        created_on: Date;
+        created_by_id?: string;
+        created_on?: Date;
         updated_by_id?: string;
         updated_on?: Date;
     }>;

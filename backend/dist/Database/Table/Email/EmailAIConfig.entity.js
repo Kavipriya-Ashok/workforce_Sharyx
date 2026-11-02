@@ -39,6 +39,10 @@ __decorate([
     (0, typeorm_1.Column)({ length: 50, default: "gpt-4o-mini" }),
     __metadata("design:type", String)
 ], EmailAIConfig.prototype, "llm_model", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    __metadata("design:type", String)
+], EmailAIConfig.prototype, "api_key", void 0);
 exports.EmailAIConfig = EmailAIConfig = __decorate([
     (0, typeorm_1.Entity)("email_ai_config")
 ], EmailAIConfig);

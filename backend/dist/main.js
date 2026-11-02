@@ -4,6 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
+process.on("uncaughtException", (err) => {
+    console.error("⚠️ [SERVER SAFEGUARD] Uncaught Exception handled gracefully:", (err === null || err === void 0 ? void 0 : err.message) || err);
+});
+process.on("unhandledRejection", (reason) => {
+    console.error("⚠️ [SERVER SAFEGUARD] Unhandled Rejection handled gracefully:", (reason === null || reason === void 0 ? void 0 : reason.message) || reason);
+});
 const core_1 = require("@nestjs/core");
 const swagger_1 = require("@nestjs/swagger");
 const app_module_1 = require("./app.module");

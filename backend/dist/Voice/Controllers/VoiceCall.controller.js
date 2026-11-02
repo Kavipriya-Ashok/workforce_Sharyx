@@ -35,6 +35,9 @@ let VoiceCallController = class VoiceCallController {
         const synced = await this.callService.syncCallLogsFromSaas(tenantId || "default");
         return { ok: true, synced, message: `Synced ${synced} call logs from Sharyx SaaS platform` };
     }
+    async streamAudio(callId, providerCallId, tenantId, res) {
+        return await this.callService.streamCallAudio(callId, providerCallId, tenantId || "default", res);
+    }
     async syncFromVapi(tenantId) {
         const synced = await this.callService.syncCallLogsFromVapi(tenantId || "default");
         return { ok: true, synced, message: `Synced ${synced} call logs from Vapi platform` };
@@ -72,6 +75,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "syncFromSaas", null);
+__decorate([
+    (0, common_1.Get)("audio"),
+    __param(0, (0, common_1.Query)("callId")),
+    __param(1, (0, common_1.Query)("providerCallId")),
+    __param(2, (0, common_1.Query)("tenantId")),
+    __param(3, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, Object]),
+    __metadata("design:returntype", Promise)
+], VoiceCallController.prototype, "streamAudio", null);
 __decorate([
     (0, common_1.Post)("sync-vapi"),
     __param(0, (0, common_1.Query)("tenantId")),

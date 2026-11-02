@@ -7,7 +7,7 @@ declare const _default: () => {
         Password: string;
         Name: string;
         Seed: string;
-        Sync: true;
+        Sync: boolean;
         LOG: boolean;
     };
     Encryption: {

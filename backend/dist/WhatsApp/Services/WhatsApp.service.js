@@ -152,13 +152,13 @@ let WhatsAppService = WhatsAppService_1 = class WhatsAppService {
             metaMessageId = ((_b = (_a = metaResponse === null || metaResponse === void 0 ? void 0 : metaResponse.messages) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.id) || metaMessageId;
         }
         catch (error) {
-            this.logger.error("Meta Graph API error:", ((_c = error === null || error === void 0 ? void 0 : error.response) === null || _c === void 0 ? void 0 : _c.data) || error.message);
+            this.logger.error("Meta Graph API error:", JSON.stringify(((_c = error === null || error === void 0 ? void 0 : error.response) === null || _c === void 0 ? void 0 : _c.data) || error.message));
             deliveryStatus = "failed";
             const metaErr = (_e = (_d = error === null || error === void 0 ? void 0 : error.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error;
             if ((metaErr === null || metaErr === void 0 ? void 0 : metaErr.code) === 190) {
                 throw new Error("Meta Access Token has expired or is invalid (Error 190). Please paste a new Permanent Access Token in Settings.");
             }
-            throw new Error((metaErr === null || metaErr === void 0 ? void 0 : metaErr.message) || error.message);
+            throw new Error((metaErr === null || metaErr === void 0 ? void 0 : metaErr.message) || (error === null || error === void 0 ? void 0 : error.message) || "Unknown Meta Graph error");
         }
         let conversation = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
             where: { customer_phone: cleanPhone, tenant_id: config.tenant_id },

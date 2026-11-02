@@ -26,12 +26,12 @@ __decorate([
 ], BaseTable.prototype, "status", void 0);
 __decorate([
     (0, AuditLog_decorators_1.AuditLogRemoveColumn)(),
-    (0, typeorm_1.Column)({ select: false }),
+    (0, typeorm_1.Column)({ nullable: true, select: false }),
     __metadata("design:type", String)
 ], BaseTable.prototype, "created_by_id", void 0);
 __decorate([
     (0, AuditLog_decorators_1.AuditLogRemoveColumn)(),
-    (0, typeorm_1.Column)({ type: "timestamp", select: false }),
+    (0, typeorm_1.Column)({ type: "timestamp", nullable: true, select: false }),
     __metadata("design:type", Date)
 ], BaseTable.prototype, "created_on", void 0);
 __decorate([

@@ -12,6 +12,7 @@ import { AgentLlmService, LlmConfig, LlmMessage } from "./AgentLlm.service";
 import { AgentToolsService, AgentToolCall } from "./AgentTools.service";
 import { AiAgentService } from "./AiAgent.service";
 import { AGENT_TOOL_DOCS } from "../Agents/DefaultAgents";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 
 export type AgentChannel = "whatsapp" | "email";
 
@@ -59,7 +60,8 @@ export class AgentOrchestratorService {
   constructor(
     private readonly llm: AgentLlmService,
     private readonly tools: AgentToolsService,
-    private readonly agentService: AiAgentService
+    private readonly agentService: AiAgentService,
+    private readonly openingsService: JobOpeningsService
   ) {}
 
   // ════════════════════════════════════════════════════════════════════════
@@ -146,10 +148,33 @@ export class AgentOrchestratorService {
         if (out.memory.name && !state.customer_name) state.customer_name = String(out.memory.name);
         if (out.memory.email && !state.customer_email) state.customer_email = String(out.memory.email);
 
-        // Auto-sync into CRM Leads board whenever name, email, or company are learned
-        if (out.memory.name || out.memory.email || out.memory.company) {
+        // Auto-sync into CRM Leads / Candidates board whenever contact or recruitment screening fields are learned
+        const hasSyncableMemory = Boolean(
+          out.memory.name ||
+            out.memory.email ||
+            out.memory.company ||
+            out.memory.current_company ||
+            out.memory.role ||
+            out.memory.job_title ||
+            out.memory.applied_role ||
+            out.memory.experience ||
+            out.memory.total_experience ||
+            out.memory.relevant_experience ||
+            out.memory.employment_status ||
+            out.memory.relieving_date ||
+            out.memory.current_ctc ||
+            out.memory.expected_ctc ||
+            out.memory.relocation ||
+            out.memory.preferred_location ||
+            out.memory.location ||
+            out.memory.notice_period ||
+            out.memory.resume_url ||
+            current.agent_key === "recruitment"
+        );
+        if (hasSyncableMemory && out.tool?.name !== "capture_contact") {
+          await state.save();
           const res = await this.tools.execute(
-            { name: "capture_contact", inputs: out.memory },
+            { name: "capture_contact", inputs: { ...out.memory, is_candidate: current.agent_key === "recruitment" || undefined } },
             state,
             current.agent_key,
             current.display_name
@@ -160,12 +185,20 @@ export class AgentOrchestratorService {
         }
       }
 
+      // Persist state before executing tools so any event listeners (e.g. voice.call.requested) read the latest collected_slots from DB
+      await state.save();
+
       // tool
       if (out.tool?.name) {
         if ((current.allowed_tools || []).includes(out.tool.name)) {
           const res = await this.tools.execute(out.tool, state, current.agent_key, current.display_name);
           this.logger.log(`🛠️ [${current.agent_key}] tool ${out.tool.name} -> ${res.note}`);
-          if (res.appendText) appendTexts.push(res.appendText);
+          // If book_appointment failed server-side validation (e.g. Sunday / 12 AM), replace the LLM's optimistic confirmation with the validation message!
+          if (out.tool.name === "book_appointment" && !res.ok && res.appendText) {
+            out.reply = res.appendText;
+          } else if (res.appendText) {
+            appendTexts.push(res.appendText);
+          }
           if (out.tool.name === "transfer_to_human") {
             await this.recordHandoff(state, current.agent_key, "human", out.tool.inputs?.reason || "requested", input.message);
             handoffs.push({ from: current.agent_key, to: "human", reason: out.tool.inputs?.reason || "requested" });
@@ -199,10 +232,8 @@ export class AgentOrchestratorService {
         const custDisp = state.customer_name ? `Customer: ${state.customer_name}` : `Phone: ${state.customer_phone || input.phone || "unknown"}`;
         this.logger.log(`🤝 [AGENT HANDOFF CALL] ${current.display_name} ➡️ ${next.display_name} (${custDisp}) | Reason: ${reason} | Brief: ${state.handoff_brief}`);
 
-        // Transition message to customer
-        const nameGreeting = state.customer_name ? ` ${state.customer_name}` : "";
-        const transition = (out.reply || "").trim() || (next.handoff_message ? next.handoff_message : `Please wait a moment${nameGreeting}, let me connect you with our ${next.display_name}...`);
-        announcement = transition;
+        // Do not emit a separate transition message on WhatsApp so each inbound message produces strictly ONE outbound reply
+        announcement = "";
 
         // If a live call was dispatched as part of this handoff, confirm and conclude turn
         if (out.tool?.name === "dispatch_voice_call") {
@@ -217,17 +248,13 @@ export class AgentOrchestratorService {
       break;
     }
 
-    // ── Compose final reply ────────────────────────────────────────────
+    // ── Compose final reply (strictly ONE combined reply per inbound message) ──
     const uniqueExtras = Array.from(new Set(appendTexts.filter(Boolean)));
     const extras = uniqueExtras.filter((t) => {
       const url = t.match(/https?:\/\/\S+/)?.[0];
       return url ? !reply.includes(url) : !reply.includes(t.trim());
     });
-    const replyBody = [reply, ...extras].filter(Boolean).join("\n\n");
-    // For WhatsApp, announcement is sent as a distinct message first; don't duplicate it in reply!
-    let finalReply = input.channel === "whatsapp"
-      ? replyBody
-      : [announcement, replyBody].filter(Boolean).join("\n\n");
+    let finalReply = [reply, ...extras].filter(Boolean).join("\n\n");
     if (state.human_takeover && !finalReply) {
       finalReply = "👨‍💼 I'm connecting you with a member of our team. They'll be with you shortly.";
     }
@@ -240,7 +267,7 @@ export class AgentOrchestratorService {
 
     return {
       reply: finalReply || null,
-      announcement: announcement || null,
+      announcement: null,
       agentKey: current.agent_key,
       agentName: current.display_name,
       handoffs,
@@ -292,17 +319,30 @@ ${agent.persona_prompt}
         p += `HANDOFF TAKEOVER INSTRUCTIONS (CRITICAL):
 - You are now taking over this customer from ${prevName}.
 - Greet the customer warmly by name${customerName ? ` ("Hi ${customerName}!" or "Hello ${customerName}!")` : ""}.
-- Explicitly acknowledge what they enquired about from the handoff brief (for example: "I heard you enquired about [topic from brief] - shall we discuss [pricing/packages/next steps]?").
+- Directly fulfill what they enquired about immediately in this message.
+- If the customer is asking about job openings, careers, or vacancies: You MUST immediately list ALL active open roles from the LIVE HR OPENINGS section below in this exact reply! DO NOT say "let me check", "let me fetch", or "bear with me". List the roles right away!
 - Keep it natural, warm, and directly address their request without making them repeat anything.\n`;
       }
     }
 
-    // Known details (all agents)
+    // Known details (all agents) — merge DB lead record + collected_slots so state is never lost
+    const leadProfile = (leadRec?.custom_fields as any)?.recruitment_profile || {};
+    const lastCallSummary = (leadRec?.custom_fields as any)?.last_voice_call?.summary || "";
     const known: Record<string, any> = {
       name: state.customer_name || leadRec?.name,
       phone: state.customer_phone || leadRec?.phone,
       email: state.customer_email || leadRec?.email,
       company: leadRec?.company_name,
+      role: state.collected_slots?.role || state.collected_slots?.applied_role || leadRec?.job_title,
+      total_experience: state.collected_slots?.total_experience || state.collected_slots?.experience || leadRec?.total_experience,
+      relevant_experience: state.collected_slots?.relevant_experience || leadRec?.relevant_experience,
+      employment_status: state.collected_slots?.employment_status || leadRec?.employment_status,
+      relieving_date: state.collected_slots?.relieving_date || leadRec?.relieving_date,
+      current_ctc: state.collected_slots?.current_ctc || leadRec?.current_ctc,
+      expected_ctc: state.collected_slots?.expected_ctc || leadRec?.expected_ctc,
+      relocation: state.collected_slots?.relocation || leadRec?.relocation,
+      preferred_location: state.collected_slots?.preferred_location || leadProfile?.preferred_location,
+      resume_url: state.collected_slots?.resume_url || leadRec?.resume_url,
       pipeline_stage: leadRec?.lead_status,
       ...(state.collected_slots || {}),
     };
@@ -311,6 +351,61 @@ ${agent.persona_prompt}
 
     // Existing appointment
     const appt = state.collected_slots?.appointment || (await this.getWaMeeting(state));
+
+    const candidateHasRole = Boolean(known.role || known.applied_role || state.collected_slots?.role);
+    const candidateHasExp = Boolean(known.total_experience || known.relevant_experience);
+    const candidateHasCtcOrRelieving = Boolean(known.current_ctc || known.expected_ctc || known.relieving_date);
+    const isScreeningComplete = candidateHasRole && candidateHasExp && candidateHasCtcOrRelieving;
+
+    if (agent.agent_key === "recruitment") {
+      if (isScreeningComplete && !appt?.meet_url) {
+        const emailPrompt = !known.email
+          ? `\n- The candidate's EMAIL is missing. You MUST ask for their email address along with the interview slots so we can send their calendar invite and Google Meet link!`
+          : `\n- Candidate email: ${known.email}`;
+        p += `\n══════════════════════════════════════════════════════════════════════════
+🎯 CRITICAL: CANDIDATE SCREENING IS COMPLETE — SCHEDULE INTERVIEW NOW!
+══════════════════════════════════════════════════════════════════════════
+All required candidate details (Role: ${known.role || "Backend Developer"}, Experience: ${known.total_experience || 5} years, Relieving Date: ${known.relieving_date || "Confirmed"}, CTC: ${known.current_ctc || "-"} -> ${known.expected_ctc || "-"}) are ALREADY FULLY COLLECTED.
+${emailPrompt}
+
+STRICT INSTRUCTIONS FOR THIS TURN:
+1. UNDER NO CIRCUMSTANCES should you ask for their role, experience, resume, or CTC again!
+2. UNDER NO CIRCUMSTANCES should you list the open roles again!
+3. Congratulate / thank the candidate warmly by name (${customerName || "kavi"}).
+4. Inform them that their profile is SHORTLISTED for the technical round for "${known.role || "Backend Developer"}".
+5. Offer them 2-3 concrete interview slots from AVAILABLE INTERVIEW SLOTS below (e.g. tomorrow at 11:00 AM IST, 2:00 PM IST, or 4:00 PM IST).${!known.email ? " Also ask for their email address so the calendar invitation can be delivered to their inbox." : ""}
+6. If the candidate just provided or confirmed a slot date/time (e.g. "11am", "tomorrow at 2pm", or an email), immediately call the tool "book_appointment" with {"slot": "<chosen_date_time>", "type": "interview", "role": "${known.role || "Backend Developer"}", "email": "${known.email || ""}"}!
+══════════════════════════════════════════════════════════════════════════\n`;
+      } else if (!candidateHasRole) {
+        p += `\n═══ RECRUITMENT AGENT DIRECTIVES (PRIYA) ═══
+- The candidate has NOT chosen a role yet.
+- IMMEDIATELY list the 4 active roles from LIVE HR OPENINGS below with title, min experience, skills, locations, and work mode!
+- NEVER invent unlisted roles (like SDE or Data Scientist).
+- After listing the roles, ask: "Which of these roles interests you, or would you like to share your resume?"\n`;
+      } else {
+        p += `\n═══ RECRUITMENT AGENT DIRECTIVES (PRIYA) ═══
+- The candidate has already chosen the role: "${known.role}". DO NOT list open roles again!
+- Politely collect any remaining screening details (e.g. experience, notice period, or current/expected CTC) one question at a time.
+- As soon as details are provided, move straight to scheduling the interview!\n`;
+      }
+    }
+
+    // Inject Live Open Roles & Available Slots from HR Database (TASK 2 & TASK 3)
+    if (agent.agent_key === "recruitment" || agent.agent_key === "receptionist" || agent.agent_key === "appointment") {
+      try {
+        const { promptBlock } = await this.openingsService.formatOpenRolesForPrompt(state.tenant_id || "default");
+        const availSlots = await this.openingsService.getAvailableSlots(state.tenant_id || "default", 4);
+        p += `\n═══ LIVE HR OPENINGS (FROM DATABASE — NEVER OFFER UNLISTED ROLES) ═══\n${promptBlock}\n`;
+        p += `\n═══ AVAILABLE INTERVIEW SLOTS (MON–SAT, 10:00 AM – 6:00 PM IST ONLY) ═══\nOffer ONLY these valid future slots (no Sundays, no 12 AM, no past times):\n${availSlots.map((s) => `- ${s}`).join("\n")}\n`;
+        if (lastCallSummary) {
+          p += `\n═══ PREVIOUS VOICE CALL SUMMARY WITH CANDIDATE ═══\n${lastCallSummary}\n`;
+        }
+      } catch (openErr: any) {
+        this.logger.warn(`Failed to load dynamic open roles for prompt: ${openErr.message}`);
+      }
+    }
+
+    // Existing appointment
     if (appt?.meet_url) {
       p += `\n═══ EXISTING APPOINTMENT ═══\n${appt.type || "Meeting"} on ${appt.slot} | Google Meet: ${appt.meet_url}\nIf asked for the link/time, share it directly.\n`;
     }
@@ -321,8 +416,8 @@ ${agent.persona_prompt}
     p += `\n═══ CHANNEL: ${input.channel.toUpperCase()} ═══\n`;
     p +=
       input.channel === "whatsapp"
-        ? `- Keep it SHORT: 1-3 sentences, chatty and warm. Use *bold* sparingly and at most 1-2 emojis.\n- Ask only ONE question at a time.\n`
-        : `- Write a professional email body in plain text (no markdown, no HTML): greeting with the customer's name, 2-3 short paragraphs, clear next step, sign off as "${agent.display_name}, ${biz.name}".\n- Do NOT include a subject line.\n`;
+        ? `- Keep it SHORT: 1-3 sentences, chatty and warm. Use *bold* sparingly and at most 1-2 emojis.\n- Ask only ONE question at a time.\n- CONTACT INTAKE ON WHATSAPP: We already have the customer's phone number (${known.phone || input.phone || "on file"}). If their email address ("email" in KNOWN CUSTOMER DETAILS) is missing, politely ask for their email address so we can send proposals and Google Meet calendar invites.\n`
+        : `- Write a professional email body in plain text (no markdown, no HTML): greeting with the customer's name, 2-3 short paragraphs, clear next step, sign off as "${agent.display_name}, ${biz.name}".\n- Do NOT include a subject line.\n- CRITICAL CONTACT INTAKE ON EMAIL: We already have the customer's email address (${known.email || input.email || "on file"}) — NEVER ask for their email address! Instead, if their mobile/phone number ("phone" in KNOWN CUSTOMER DETAILS) is missing, ALWAYS ask for their mobile phone number (with country code, e.g. +91) so our team / AI Voice Agent can coordinate directly with them!\n`;
     p += `- Reply in the customer's language (English / Tamil / Tanglish).\n`;
 
     p += `\n═══ TOOLS YOU MAY CALL (at most one per turn) ═══\n${allowedTools}\n`;
@@ -336,7 +431,7 @@ ${agent.persona_prompt}
   "reply": "message to the customer (when handing off, write a short transition like 'Please hold on a moment, let me connect you with our <Specialist>...')",
   "handoff": null OR { "to": "<agent_key>", "reason": "short reason", "brief": "2-4 lines for the next teammate: who the customer is, what they want, details collected, what is pending" },
   "tool": null OR { "name": "<tool_name>", "inputs": { ... } },
-  "memory": { "key facts learned THIS turn, e.g. name, company, email, interest, seats, budget, meeting_type, preferred_time" }
+  "memory": { "key facts learned THIS turn, e.g. name, company, current_company, email, phone, interest, seats, budget, role, total_experience, relevant_experience, employment_status (working|notice|relieved), relieving_date, current_ctc, expected_ctc, ctc_basis (annual|monthly), relocation (yes|no|conditional), preferred_location, preferred_slot, resume_url, meeting_type, preferred_time" }
 }
 RULES:
 - Handle the request yourself if it is within your role. Hand off ONLY when it clearly belongs to a teammate.
@@ -639,10 +734,15 @@ RULES:
         /(job|career|resume|cv|hiring|apply|applicant|candidate|vacancy|opening|employment|interview|recruitment|fresher|salary|ctc|velai|opening irukka)/i.test(m);
 
       if (isCandidateQuestion) {
+        const openRoles = await this.openingsService.getOpenRoles(state.tenant_id || "default");
+        const rolesBullet = openRoles.length
+          ? openRoles.map((r) => `• *${r.title}* (${(r.locations || []).join(", ")} — ${r.work_mode || "Hybrid"})`).join("\n")
+          : "No active openings right now (we can keep your resume on file)";
+
         // Questions about open positions / vacancies
         if (/(opening|position|role|vacancy|what job|any job|hiring)/i.test(m)) {
           return {
-            reply: `We currently have open opportunities at Sharyx for:\n• AI Solutions Engineer (2-5 yrs Python/Node.js, NLP/AI)\n• Business Development Executive (1-3 yrs B2B SaaS Sales)\n• Frontend Developer (2+ yrs React/TypeScript)\n\nLet me connect you with our Recruitment Specialist${namePart} 🎓 who can assist with your application and schedule your interview!`,
+            reply: `We currently have open opportunities at Sharyx for:\n${rolesBullet}\n\nLet me connect you with our Recruitment Specialist${namePart} 🎓 who can assist with your application and schedule your interview!`,
             handoff: {
               to: "recruitment",
               reason: "job openings inquiry",
@@ -864,20 +964,42 @@ RULES:
       };
     }
 
-    // 6. Recruitment Specialist Dynamic Flow
+    // 6. Recruitment Specialist Dynamic Flow (Uses Live DB Open Roles & Server-Side Validated Slots)
     if (agent.agent_key === "recruitment") {
       const candName = memory.name || state.customer_name || (leadRec?.name && !leadRec.name.startsWith("+") ? leadRec.name : "there");
       const candEmail = memory.email || state.customer_email || (leadRec?.email && !leadRec.email.includes("example.com") ? leadRec.email : null);
+      const openRoles = await this.openingsService.getOpenRoles(state.tenant_id || "default");
+      const availSlots = await this.openingsService.getAvailableSlots(state.tenant_id || "default", 4);
 
-      // Role Detection
-      const isFrontend = /(frontend|react|typescript|ui|nextjs|web developer)/i.test(m);
-      const isAiEng = /(ai solutions|python|nlp|ml|backend|engineer|machine learning|langchain)/i.test(m);
-      const isBde = /(bde|business development|sales executive|b2b sales|marketing)/i.test(m);
-      if (isFrontend) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "Frontend Developer" };
-      else if (isAiEng) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "AI Solutions Engineer" };
-      else if (isBde) state.collected_slots = { ...(state.collected_slots || {}), applied_role: "Business Development Executive" };
+      // Dynamic Role Detection against live openRoles from DB
+      let matchedOpening = openRoles.find((r) => m.includes(r.title.toLowerCase()));
+      if (!matchedOpening) {
+        matchedOpening = openRoles.find((r) => {
+          const titleWords = r.title.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+          return titleWords.some((tw) => m.includes(tw));
+        });
+      }
+      if (matchedOpening) {
+        state.collected_slots = {
+          ...(state.collected_slots || {}),
+          role: matchedOpening.title,
+          applied_role: matchedOpening.title,
+        };
+        memory.role = matchedOpening.title;
+      }
 
-      const currentRole = state.collected_slots?.applied_role || (isFrontend ? "Frontend Developer" : isAiEng ? "AI Solutions Engineer" : isBde ? "Business Development Executive" : null);
+      const currentRole =
+        state.collected_slots?.role ||
+        state.collected_slots?.applied_role ||
+        state.collected_slots?.job_title ||
+        leadRec?.job_title ||
+        matchedOpening?.title ||
+        null;
+
+      const activeRoleObj =
+        openRoles.find((r) => currentRole && r.title.toLowerCase() === String(currentRole).toLowerCase()) ||
+        matchedOpening ||
+        null;
 
       // PDF Resume detection in message
       const isPdfUploaded = /\[Candidate (?:uploaded|shared) (?:resume )?PDF:.*?\]/i.test(message) || /(?:drive\.google\.com|dropbox\.com|onedrive|\.pdf)/i.test(message);
@@ -903,42 +1025,46 @@ RULES:
         const resumeUrl = urlMatch ? urlMatch[0] : fileNameMatch ? fileNameMatch[1] : "candidate_resume.pdf";
         state.collected_slots = { ...(state.collected_slots || {}), resume_url: resumeUrl };
         memory.resume_url = resumeUrl;
-        
+
+        const slotsBullet = availSlots.map((s, i) => `${i + 1}. *${s}*`).join("\n");
         return {
-          reply: `Thank you, ${candName}! I've verified and received your resume (PDF) 📄.\n\nLet's get your 30-minute Google Meet interview scheduled! 📅\n\nWould any of these slots work for you?\n1. Tomorrow (Oct 29) at 11:00 AM\n2. Tomorrow (Oct 29) at 3:00 PM\n3. Friday (Oct 30) at 11:00 AM`,
+          reply: `Thank you, ${candName}! I've verified and received your resume (PDF) 📄.\n\nLet's get your 30-minute Google Meet interview scheduled! 📅\n\nWould any of these slots work for you?\n${slotsBullet}`,
           tool: { name: "capture_contact", inputs: { resume_url: resumeUrl, ...memory } },
           memory,
         };
       }
 
-      // Slot chosen by candidate
-      const slotMatch = message.match(/(tomorrow|today|morning|afternoon|11(?::00)?\s*am|3(?::00)?\s*pm|10(?::00)?\s*am|friday|\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
-      if (slotMatch && (state.collected_slots?.applied_role || /(?:developer|engineer|role|opening|interview|slot)/i.test(m) || state.collected_slots?.experience)) {
-        let confirmedSlot = "Tomorrow at 11:00 AM";
-        if (/(?:11|11:00|11am|11 am)/i.test(m)) confirmedSlot = "Tomorrow at 11:00 AM";
-        else if (/(?:3|3:00|3pm|3 pm)/i.test(m)) confirmedSlot = "Tomorrow at 3:00 PM";
-        else if (/(?:friday)/i.test(m)) confirmedSlot = "Friday at 11:00 AM";
-        else confirmedSlot = message.trim();
+      // Slot chosen by candidate (any date/time expression like "03/11/2026 at 12pm", "12pm", "Monday 11am", "tomorrow 11 am")
+      const slotMatch = message.match(
+        /(tomorrow|today|morning|afternoon|evening|night|midnight|\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\b|\b\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\b|sunday|monday|tuesday|wednesday|thursday|friday|saturday|\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b)/i
+      );
+      const isRelievingDateAnswer =
+        !(/\b(am|pm|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|slot|interview)\b/i.test(m)) &&
+        !state.collected_slots?.relieving_date &&
+        Boolean(state.collected_slots?.employment_status);
 
-        // Check if candidate email is captured!
+      if (slotMatch && !isRelievingDateAnswer) {
+        const requestedSlot = message.trim();
+        const roleForBooking = currentRole || openRoles[0]?.title || "Open Role";
+
         if (!candEmail) {
-          state.collected_slots = { ...(state.collected_slots || {}), pending_interview_slot: confirmedSlot };
+          state.collected_slots = { ...(state.collected_slots || {}), pending_interview_slot: requestedSlot };
           return {
-            reply: `Awesome! ${confirmedSlot} works great 🗓️.\n\nCould you please share your email address so I can send the Google Meet calendar invite and link directly to your inbox? ✉️`,
+            reply: `Got it! Before I lock in your interview slot, could you please share your email address so I can send the Google Meet calendar invite directly to your inbox? ✉️`,
             memory,
           };
         }
 
-        // We have both slot and email -> Book the interview!
+        // Delegate to book_appointment (which performs server-side validation for Sundays, 12 AM, working hours, etc.)
         return {
-          reply: `You're all set, ${candName}! Your interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${confirmedSlot}* 🚀.`,
+          reply: `Awesome, ${candName}! Your interview for the *${roleForBooking}* role is confirmed 🚀.`,
           tool: {
             name: "book_appointment",
             inputs: {
-              slot: confirmedSlot,
+              slot: requestedSlot,
               type: "interview",
               email: candEmail,
-              role: currentRole || "Frontend Developer",
+              role: roleForBooking,
             },
           },
           memory,
@@ -948,15 +1074,16 @@ RULES:
       // If user provides email after pending slot
       if (memory.email && state.collected_slots?.pending_interview_slot) {
         const slot = state.collected_slots.pending_interview_slot;
+        const roleForBooking = currentRole || openRoles[0]?.title || "Open Role";
         return {
-          reply: `Thank you! I've registered your email (*${memory.email}*).\n\nYour interview for the *${currentRole || "Frontend Developer"}* role is confirmed for *${slot}* 🚀.`,
+          reply: `Thank you! I've registered your email (*${memory.email}*).\n\nYour interview for the *${roleForBooking}* role is confirmed 🚀.`,
           tool: {
             name: "book_appointment",
             inputs: {
               slot,
               type: "interview",
               email: memory.email,
-              role: currentRole || "Frontend Developer",
+              role: roleForBooking,
             },
           },
           memory,
@@ -966,29 +1093,45 @@ RULES:
       // Experience extraction
       const expMatch = message.match(/(\d+)\s*(yrs?|years?)/i) || (m.length <= 10 && /^\d+$/.test(m) ? [m + " years", m] : null);
       if (expMatch) {
-        memory.experience = expMatch[0];
-        state.collected_slots = { ...(state.collected_slots || {}), experience: expMatch[0] };
+        memory.total_experience = expMatch[0];
+        state.collected_slots = { ...(state.collected_slots || {}), experience: expMatch[0], total_experience: expMatch[0] };
         return {
-          reply: `That's great! 🌟 Are you currently working, serving notice, or already relieved? Also, what is your expected CTC (e.g. 5 LPA)?`,
+          reply: `That's great, ${candName}! Are you currently working, serving notice, or already relieved?`,
+          tool: { name: "capture_contact", inputs: memory },
           memory,
         };
       }
 
       // Notice period & CTC extraction
-      if (/(notice|relieved|serving|working|immediate|lpa|ctc|lakh|\d+\s*days)/i.test(m)) {
-        if (/(serving|notice|\d+\s*days)/i.test(m)) {
+      if (/(notice|relieved|serving|working|immediate|lpa|ctc|lakh|crore|\d+\s*days)/i.test(m)) {
+        if (/(serving|notice|working|relieved|\d+\s*days)/i.test(m)) {
           memory.employment_status = message.trim();
           state.collected_slots = { ...(state.collected_slots || {}), employment_status: message.trim() };
         }
-        if (/(lpa|ctc|lakh|\d+)/i.test(m)) {
+        if (/(lpa|ctc|lakh|crore)/i.test(m)) {
           memory.expected_ctc = message.trim();
           state.collected_slots = { ...(state.collected_slots || {}), expected_ctc: message.trim() };
         }
 
-        // Ask for Resume PDF!
-        if (!state.collected_slots?.resume_url) {
+        if (!state.collected_slots?.resume_url && !leadRec?.resume_url) {
           return {
             reply: `Got it! Thanks for sharing those details, ${candName} 📋.\n\nCould you please share your *Resume / CV in PDF format*? You can upload the PDF file directly here or share an accessible PDF link 📄.`,
+            tool: { name: "capture_contact", inputs: memory },
+            memory,
+          };
+        }
+
+        // If location not asked yet, ask based on activeRoleObj locations!
+        if (activeRoleObj && !state.collected_slots?.preferred_location) {
+          const locs = activeRoleObj.locations || [];
+          const locQuestion =
+            locs.length > 1
+              ? `This role is in *${locs.join(" and ")}* (${activeRoleObj.work_mode || "Hybrid"}). Which location do you prefer, and are you open to relocating?`
+              : locs.length === 1
+              ? `This role is in *${locs[0]}* (${activeRoleObj.work_mode || "Hybrid"}). Are you okay to relocate to *${locs[0]}*?`
+              : `Are you open to relocating for this role?`;
+          return {
+            reply: `Thanks, ${candName}! ${locQuestion}`,
             tool: { name: "capture_contact", inputs: memory },
             memory,
           };
@@ -996,16 +1139,25 @@ RULES:
       }
 
       // If candidate mentions role
-      if (currentRole && !state.collected_slots?.experience) {
+      if (currentRole && !state.collected_slots?.experience && !state.collected_slots?.total_experience) {
+        const minExp = activeRoleObj?.min_experience ? `${activeRoleObj.min_experience}+ years` : "relevant";
+        const skills = activeRoleObj?.skills?.length ? ` with ${activeRoleObj.skills.join(", ")}` : "";
         return {
-          reply: `Awesome! Our ${currentRole} role focuses on modern, scalable applications 💻. How many years of total and relevant experience do you have?`,
+          reply: `Great, ${candName}! The *${currentRole}* role requires ${minExp} of experience${skills}. Could you please share your resume (PDF format) and let me know your total and relevant years of experience?`,
+          tool: { name: "capture_contact", inputs: { role: currentRole, ...memory } },
           memory,
         };
       }
 
-      // Default introduction
+      // Dynamic Default Introduction using live DB openings
+      const rolesList = openRoles.length
+        ? openRoles
+            .map((r) => `• *${r.title}* (${(r.skills || []).slice(0, 3).join(", ") || "Open"} — ${(r.locations || []).join(", ")})`)
+            .join("\n")
+        : "• No active openings at the moment (we can keep your resume on file for upcoming roles)";
+
       return {
-        reply: `Hi ${candName}! I am Priya, your Recruitment Specialist at Sharyx 🎓.\n\nWe currently have openings for:\n• *AI Solutions Engineer* (Python, Node.js, NLP)\n• *Business Development Executive* (B2B SaaS)\n• *Frontend Developer* (React, TypeScript)\n\nWhich of these roles are you interested in?`,
+        reply: `Hi ${candName}! I am Priya, your Recruitment Specialist at Sharyx 🎓.\n\nWe currently have openings for:\n${rolesList}\n\nWhich of these roles are you interested in?`,
         memory,
       };
     }

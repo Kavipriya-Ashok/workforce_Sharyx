@@ -31,10 +31,14 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         campaign.tenant_id = "default";
         campaign.name = dto.name;
         campaign.description = dto.description || null;
-        campaign.trigger_event = dto.trigger_event || "round_1_cleared";
+        campaign.trigger_event = dto.trigger_event || "after_call_ends";
+        campaign.outcome_filter = dto.outcome_filter || "ALL";
         campaign.template_name = dto.template_name;
         campaign.delay_minutes = (_a = dto.delay_minutes) !== null && _a !== void 0 ? _a : 0;
         campaign.is_active = dto.is_active !== undefined ? dto.is_active : true;
+        campaign.attach_pdf = Boolean(dto.attach_pdf);
+        campaign.pdf_template_type = dto.pdf_template_type || null;
+        campaign.pdf_title = dto.pdf_title || null;
         campaign.total_recipients = ((_b = dto.recipients) === null || _b === void 0 ? void 0 : _b.length) || 0;
         campaign.campaign_status = "active";
         campaign.scheduled_at = dto.scheduled_at || null;
@@ -56,6 +60,8 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
             campaign.description = data.description;
         if (data.trigger_event)
             campaign.trigger_event = data.trigger_event;
+        if (data.outcome_filter !== undefined)
+            campaign.outcome_filter = data.outcome_filter;
         if (data.template_name)
             campaign.template_name = data.template_name;
         if (data.delay_minutes !== undefined)
@@ -64,6 +70,12 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
             campaign.is_active = data.is_active;
         if (data.scheduled_at !== undefined)
             campaign.scheduled_at = data.scheduled_at;
+        if (data.attach_pdf !== undefined)
+            campaign.attach_pdf = Boolean(data.attach_pdf);
+        if (data.pdf_template_type !== undefined)
+            campaign.pdf_template_type = data.pdf_template_type;
+        if (data.pdf_title !== undefined)
+            campaign.pdf_title = data.pdf_title;
         campaign.updated_on = new Date();
         return await campaign.save();
     }

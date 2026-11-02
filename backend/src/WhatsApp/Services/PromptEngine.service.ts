@@ -4,7 +4,9 @@ import axios from "axios";
 import { company } from "@Database/Table/Admin/company";
 import { WhatsAppMessage } from "@Database/Table/WhatsApp/WhatsAppMessage.entity";
 import { WhatsAppConversation } from "@Database/Table/WhatsApp/WhatsAppConversation.entity";
+import { lead, LeadStatus, LeadSource } from "@Database/Table/Lead/lead";
 import { CalendarHelper } from "../Helpers/CalendarHelper";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 
 export interface ConversationContext {
   tenantId: string;
@@ -14,9 +16,12 @@ export interface ConversationContext {
   conversationHistory: Array<{ role: "user" | "assistant"; content: string }>;
   leadInfo?: {
     name?: string;
+    email?: string;
     lead_status?: string;
     deal_value?: number | string;
     interested_service?: string;
+    is_candidate?: boolean;
+    candidate_stage?: string;
   };
   tenantBusinessContext?: {
     companyName: string;
@@ -35,6 +40,7 @@ export interface ConversationContext {
     dateTime?: string;
     meetingUrl?: string;
   };
+  openRolesContext?: string;
   kbContext?: string;
   tools?: Array<{
     name: string;
@@ -54,16 +60,40 @@ export interface ToolCallExecution {
 export class PromptEngineService {
   private readonly logger = new Logger(PromptEngineService.name);
 
-  constructor(private readonly events: EventEmitter2) {}
+  constructor(
+    private readonly events: EventEmitter2,
+    private readonly openingsService: JobOpeningsService
+  ) {}
 
-  // Default tools available to WhatsApp Autonomous Copilot
+  // SaaS tools available to the WhatsApp Base LLM Copilot
   private readonly defaultTools = [
     {
       name: "book_appointment",
-      description: "Book a Google Meet or office consultation / interview slot",
+      description: "Book a Google Meet demo, consultation, or job interview slot",
       parameters: {
-        slot: "ISO date string or human format (e.g. 2026-10-18 10:30 AM)",
+        slot: "Date and time of appointment (e.g. Tomorrow at 11:00 AM or Mon-Sat 10 AM - 6 PM IST)",
+        type: "demo or interview or consultation",
         mode: "ONLINE or OFFICE",
+      },
+    },
+    {
+      name: "capture_contact",
+      description: "Save customer or candidate contact details into CRM leads database",
+      parameters: {
+        name: "Full name",
+        email: "Email address",
+        phone: "Phone number",
+        company: "Company or organization name (optional)",
+        role: "Applied job role (optional)",
+        preferred_location: "Preferred location city (optional)",
+      },
+    },
+    {
+      name: "dispatch_voice_call",
+      description: "Initiates an immediate outbound AI sales phone call to customer's phone",
+      parameters: {
+        phone: "Customer phone number to dial",
+        reason: "Reason for the sales/consultation call",
       },
     },
     {
@@ -75,7 +105,7 @@ export class PromptEngineService {
     },
     {
       name: "transfer_to_human",
-      description: "Escalates chat to a human agent when customer requests live agent",
+      description: "Escalates chat to a human agent when customer requests live support",
       parameters: {
         reason: "Customer request or complex inquiry",
       },
@@ -86,33 +116,37 @@ export class PromptEngineService {
   public buildSystemPrompt(ctx: ConversationContext, customPersona?: string): string {
     let prompt = "";
 
-    // LAYER 1: Business Identity & Agent Persona
-    prompt +=
-      customPersona ||
-      `You are "Sharyx AI", an expert workforce co-pilot. Keep replies concise, helpful, and natural (1-3 sentences maximum for WhatsApp). Follow the user's language (Tamil, English, or Tanglish).`;
+    // LAYER 1: Master System Prompt / Business Persona (HIGHEST PRIORITY DIRECTIVE)
+    const masterPrompt = (customPersona || "").trim();
+    if (masterPrompt) {
+      prompt += `# MASTER SYSTEM PROMPT & BEHAVIOR DIRECTIVE (FOLLOW STRICTLY):\n${masterPrompt}\n\n`;
+    } else {
+      prompt += `You are "Sharyx AI", an expert workforce co-pilot. Keep replies warm, professional, helpful, and concise (1-3 sentences maximum for WhatsApp). Always follow the user's language (Tamil, English, or Tanglish).\n\n`;
+    }
 
     if (ctx.tenantBusinessContext) {
       const b = ctx.tenantBusinessContext;
       prompt += `\n\n[APPLICATION OWNER & BUSINESS IDENTITY]:\n`;
       prompt += `You represent "${b.companyName || "Sharyx Enterprise"}".\n`;
-      if (b.servicesList) prompt += `- Core Services: ${b.servicesList}\n`;
-      if (b.address) prompt += `- Operating Address: ${b.address}\n`;
-      if (b.businessEmail) prompt += `- Business Email: ${b.businessEmail}\n`;
+      if (b.servicesList) prompt += `- Core Solutions: ${b.servicesList}\n`;
+      if (b.address) prompt += `- Address: ${b.address}\n`;
+      if (b.businessEmail) prompt += `- Support Email: ${b.businessEmail}\n`;
     }
 
-    // LAYER 2: CRM Lead Profile
-    prompt += `\n\n[CRM CONTACT & LEAD CONTEXT]:\n`;
+    // LAYER 2: CRM Lead / Candidate Profile
+    prompt += `\n\n[CRM CONTACT & PROFILE CONTEXT]:\n`;
     if (ctx.leadInfo) {
-      prompt += `- Lead Name: ${ctx.leadInfo.name || ctx.senderName}\n`;
+      prompt += `- Contact Name: ${ctx.leadInfo.name || ctx.senderName}\n`;
       prompt += `- Phone: ${ctx.senderPhone}\n`;
+      if (ctx.leadInfo.email) prompt += `- Email: ${ctx.leadInfo.email}\n`;
       if (ctx.leadInfo.lead_status) prompt += `- Pipeline Stage: ${ctx.leadInfo.lead_status}\n`;
-      if (ctx.leadInfo.deal_value) prompt += `- Deal Value: ₹${ctx.leadInfo.deal_value}\n`;
-      if (ctx.leadInfo.interested_service) prompt += `- Interested Service: ${ctx.leadInfo.interested_service}\n`;
+      if (ctx.leadInfo.is_candidate) prompt += `- Candidate Stage: ${ctx.leadInfo.candidate_stage || "screening"}\n`;
+      if (ctx.leadInfo.interested_service) prompt += `- Notes / Interest: ${ctx.leadInfo.interested_service}\n`;
     } else {
-      prompt += `- Contact Status: New Contact (${ctx.senderPhone})\n`;
+      prompt += `- Contact: New Lead (${ctx.senderPhone})\n`;
     }
 
-    // LAYER 3: Omnichannel Memory (Voice + WhatsApp + Email)
+    // LAYER 3: Omnichannel History (Voice Call + WhatsApp + Email)
     if (ctx.omnichannelLogs) {
       const o = ctx.omnichannelLogs;
       if (o.lastCallSummary || o.lastWhatsAppMsg || o.lastEmailLog) {
@@ -121,7 +155,7 @@ export class PromptEngineService {
           prompt += `- Last Phone Call Summary: ${o.lastCallSummary} (Outcome: ${o.lastCallOutcome || "COMPLETED"})\n`;
         }
         if (o.lastWhatsAppMsg) {
-          prompt += `- Last WhatsApp Chat: ${o.lastWhatsAppMsg}\n`;
+          prompt += `- Last WhatsApp Message: ${o.lastWhatsAppMsg}\n`;
         }
         if (o.lastEmailLog) {
           prompt += `- Last Email Touchpoint: ${o.lastEmailLog}\n`;
@@ -136,22 +170,36 @@ export class PromptEngineService {
       prompt += `- Active Meeting Status: ${a.status || "CONFIRMED & SCHEDULED"}\n`;
       prompt += `- Confirmed Date & Time: ${a.dateTime}\n`;
       prompt += `- Google Meet Video URL: ${a.meetingUrl}\n`;
-      prompt += `*CRITICAL*: If customer asks for the Google Meet link, meeting link, or time, you MUST share this link (${a.meetingUrl}) directly in your message! Do NOT tell them to check email.\n`;
+      prompt += `*CRITICAL*: If customer asks for the Google Meet link, meeting link, or time, share this link (${a.meetingUrl}) directly in your message! Do NOT tell them to check email.\n`;
     }
 
-    // LAYER 5: Knowledge Base Grounding (RAG)
+    // LAYER 5: Live HR Job Openings & Hiring Context
+    if (ctx.openRolesContext) {
+      prompt += `\n\n[LIVE HR JOB OPENINGS & HIRING CONTEXT]:\n${ctx.openRolesContext}\n\n`;
+      prompt += `*RECRUITMENT & HIRING INSTRUCTIONS*:
+- When a candidate or job seeker asks about jobs, openings, career opportunities, or applying, refer ONLY to the verified roles above.
+- Never invent roles or locations.
+- If customer provides their name or email, use the "capture_contact" tool.
+- If customer confirms a slot for an interview, use the "book_appointment" tool.`;
+    }
+
+    // LAYER 6: Knowledge Base Grounding (RAG)
     if (ctx.kbContext) {
       prompt += `\n\n[VERIFIED KNOWLEDGE BASE CONTEXT]:\n${ctx.kbContext}\n\n**CRITICAL GROUNDING**: Answer accurately using ONLY the verified facts above. Never hallucinate.`;
     }
 
-    // LAYER 6: Dynamic Tools & Function Calling
+    // LAYER 7: Dynamic Tools & Function Calling
     const tools = ctx.tools && ctx.tools.length > 0 ? ctx.tools : this.defaultTools;
     prompt += `\n\n[AVAILABLE SAAS TOOLS]:\n${JSON.stringify(tools, null, 2)}\n\n`;
-    prompt += `**TOOL CALLING RULE**: If customer explicitly wants to book a slot, get brochure, or talk to human agent, reply ONLY in JSON format: {"action": "execute_tool", "toolName": "<name>", "inputs": {...}}. If no tool is needed, respond with standard friendly text.`;
+    prompt += `**TOOL CALLING RULE**: If customer explicitly wants to book a meeting/interview, save contact info, request a sales phone call, get brochure, or transfer to human, reply ONLY in JSON format: {"action": "execute_tool", "toolName": "<name>", "inputs": {...}}. If no tool is needed, respond with standard friendly, concise text.`;
 
-    // LAYER 7: Media & Multimodal Context
+    // LAYER 8: Media Context
     if (ctx.mediaContext) {
       prompt += `\n\n[MEDIA CONTEXT]:\n${ctx.mediaContext}\n`;
+    }
+
+    if (masterPrompt) {
+      prompt += `\n\nREMINDER: Strictly follow the persona, tone, language, and guidelines defined in the MASTER SYSTEM PROMPT above.`;
     }
 
     return prompt;
@@ -172,7 +220,7 @@ export class PromptEngineService {
       if (comp) {
         companyContext = {
           companyName: comp.name || "Sharyx",
-          servicesList: "AI Autonomous Workforce, WhatsApp Cloud Automation, Email AI Copilot, CRM Integration",
+          servicesList: "AI Autonomous Workforce, WhatsApp Cloud Automation, Email AI Copilot, Voice Telephony, CRM Integration",
           address: comp.address || "Singapore / India",
           businessEmail: comp.email || "support@sharyx.ai",
         };
@@ -203,7 +251,24 @@ export class PromptEngineService {
       }
     }
 
-    // 3. Omnichannel Touchpoints & Active Appointment (Check conversation)
+    // 3. CRM Lead / Candidate Profile lookup
+    let leadInfo: any = undefined;
+    try {
+      const ld = await lead.findOne({ where: { phone: senderPhone } });
+      if (ld) {
+        leadInfo = {
+          name: ld.name,
+          email: ld.email,
+          lead_status: ld.lead_status,
+          deal_value: ld.score,
+          interested_service: ld.notes,
+          is_candidate: ld.is_candidate,
+          candidate_stage: ld.candidate_stage,
+        };
+      }
+    } catch {}
+
+    // 4. Omnichannel Touchpoints & Active Appointment
     let lastWhatsAppMsg: string | undefined;
     let activeAppointment: any = undefined;
     try {
@@ -222,22 +287,34 @@ export class PromptEngineService {
       }
     } catch {}
 
+    // 5. Live HR Openings from database
+    let openRolesContext: string | undefined;
+    try {
+      if (this.openingsService) {
+        const { promptBlock } = await this.openingsService.formatOpenRolesForPrompt(tenantId || "default");
+        openRolesContext = promptBlock;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not load open roles: ${err.message}`);
+    }
+
     return {
       tenantId: tenantId || "default",
       senderPhone,
       senderName: senderName || senderPhone,
       messageText,
       conversationHistory: history,
+      leadInfo: leadInfo || {
+        name: senderName,
+        lead_status: "ACTIVE_INQUIRY",
+        interested_service: "WhatsApp AI & Voice Workforce",
+      },
       activeAppointment,
+      openRolesContext,
       tenantBusinessContext: companyContext || {
         companyName: "Sharyx",
         servicesList: "AI Workforce Solutions & WhatsApp Cloud Automation",
         businessEmail: "support@sharyx.ai",
-      },
-      leadInfo: {
-        name: senderName,
-        lead_status: "ACTIVE_INQUIRY",
-        interested_service: "WhatsApp AI & Voice Workforce",
       },
       omnichannelLogs: {
         lastWhatsAppMsg,
@@ -247,7 +324,7 @@ export class PromptEngineService {
     };
   }
 
-  // ── 3. Call LLM (OpenAI or Gemini) using 7-Layer Context ────────────────
+  // ── 3. Call LLM (Google Gemini or OpenAI) using Context & Tools ──────────
   public async generateReply(
     ctx: ConversationContext,
     aiConfig?: any
@@ -270,43 +347,63 @@ export class PromptEngineService {
     const customPrompt = aiConfig?.system_prompt;
     const systemPrompt = this.buildSystemPrompt(ctx, customPrompt);
 
-    // API Key priority: backend env key -> UI saved key
-    const openAiKey = process.env.OPENAI_API_KEY || aiConfig?.api_key;
-    const geminiKey = process.env.GEMINI_API_KEY || aiConfig?.api_key;
+    // Prioritize UI Key configured in AI Brain & Copilot page over backend .env
+    const userApiKey = (aiConfig?.api_key || "").trim();
+    const openAiKey = (userApiKey.startsWith("sk-") ? userApiKey : "") || (process.env.OPENAI_API_KEY || "").trim();
+    const geminiKey = (!userApiKey.startsWith("sk-") && userApiKey ? userApiKey : "") || (process.env.GEMINI_API_KEY || "").trim();
     const isGemini =
-      aiConfig?.llm_provider === "gemini" || (aiConfig?.api_key && aiConfig.api_key.startsWith("AIzaSy"));
+      aiConfig?.llm_provider === "gemini" ||
+      (!aiConfig?.llm_provider && Boolean(geminiKey)) ||
+      (userApiKey && !userApiKey.startsWith("sk-"));
 
     // ── A. Google Gemini Provider ──────────────────────────────────────────
     if (isGemini && geminiKey) {
       try {
         let model = aiConfig?.llm_model || "gemini-2.5-flash";
-        if (model === "gemini-2.0-flash") {
+        if (model === "gemini-2.0-flash" || model === "gemini-3.8-flash") {
           model = "gemini-2.5-flash";
         }
-        const promptContents = [
+
+        const candidateModels = [model, "gemini-2.5-flash", "gemini-flash-latest", "gemini-1.5-flash"];
+
+        // Format history with Gemini's native 'user' and 'model' roles
+        const contents = [
+          ...ctx.conversationHistory.slice(-10).map((h) => ({
+            role: h.role === "assistant" ? "model" : "user",
+            parts: [{ text: h.content }],
+          })),
           {
-            parts: [{ text: `${systemPrompt}\n\nRecent Conversation:\n${JSON.stringify(ctx.conversationHistory)}\n\nCustomer Inquiry: ${ctx.messageText}` }],
+            role: "user",
+            parts: [{ text: ctx.messageText }],
           },
         ];
 
         let response: any;
-        try {
-          response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-            { contents: promptContents },
-            { timeout: 15000 }
-          );
-        } catch (apiErr: any) {
-          // Auto fallback to gemini-flash-latest or gemini-2.5-flash if model name differs
-          this.logger.warn(`Model ${model} failed, trying gemini-flash-latest...`);
-          response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey}`,
-            { contents: promptContents },
-            { timeout: 15000 }
-          );
+        for (const m of candidateModels) {
+          try {
+            response = await axios.post(
+              `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
+              {
+                systemInstruction: {
+                  parts: [{ text: systemPrompt }],
+                },
+                contents,
+                generationConfig: {
+                  temperature: 0.3,
+                  maxOutputTokens: 600,
+                },
+              },
+              { timeout: 15000 }
+            );
+            if (response?.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+              break;
+            }
+          } catch (modelErr: any) {
+            this.logger.warn(`Gemini model ${m} attempt failed, trying next fallback...`);
+          }
         }
 
-        const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        const rawText = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
         // Check for Tool Execution JSON
         const toolCall = this.parseToolCall(rawText);
@@ -323,10 +420,13 @@ export class PromptEngineService {
     // ── B. OpenAI Provider ─────────────────────────────────────────────────
     if (!isGemini && openAiKey) {
       try {
-        const model = aiConfig?.llm_model || "gpt-4o-mini";
+        const model = aiConfig?.llm_model && !aiConfig.llm_model.startsWith("gemini") ? aiConfig.llm_model : "gpt-4o-mini";
         const messages = [
           { role: "system", content: systemPrompt },
-          ...ctx.conversationHistory.slice(-8),
+          ...ctx.conversationHistory.slice(-8).map((h) => ({
+            role: h.role === "assistant" ? "assistant" : "user",
+            content: h.content,
+          })),
           { role: "user", content: ctx.messageText },
         ];
 
@@ -335,8 +435,8 @@ export class PromptEngineService {
           {
             model,
             messages,
-            temperature: 0.4,
-            max_tokens: 300,
+            temperature: 0.3,
+            max_tokens: 500,
           },
           {
             headers: {
@@ -372,7 +472,23 @@ export class PromptEngineService {
   // ── 4. Helper: Parse JSON Tool Calls ─────────────────────────────────────
   private parseToolCall(rawText: string): ToolCallExecution | null {
     try {
-      const trimmed = rawText.trim();
+      let trimmed = rawText.trim();
+      if (trimmed.startsWith("```json")) {
+        trimmed = trimmed.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      } else if (trimmed.startsWith("```")) {
+        trimmed = trimmed.replace(/^```\s*/, "").replace(/```$/, "").trim();
+      }
+
+      if (trimmed.includes('{"action": "execute_tool"') || trimmed.includes('{"action":"execute_tool"')) {
+        const jsonMatch = trimmed.match(/\{[\s\S]*"action"\s*:\s*"execute_tool"[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.action === "execute_tool" && parsed.toolName) {
+            return parsed;
+          }
+        }
+      }
+
       if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
         const parsed = JSON.parse(trimmed);
         if (parsed.action === "execute_tool" && parsed.toolName) {
@@ -389,13 +505,16 @@ export class PromptEngineService {
   public async getToolConfirmation(tool: ToolCallExecution, ctx?: ConversationContext): Promise<string> {
     switch (tool.toolName) {
       case "book_appointment": {
-        const slot = tool.inputs?.slot || "Tomorrow at 10:00 AM";
+        const slot = tool.inputs?.slot || "Tomorrow at 11:00 AM";
+        const meetingType = tool.inputs?.type || "demo";
+        const isInterview = /(?:interview|candidate|job)/i.test(`${meetingType} ${ctx?.senderName || ""}`);
+        
         const meetRoom = await CalendarHelper.createGoogleMeetRoom(
-          `Consultation & Demo with ${ctx?.senderName || "Customer"}`,
+          `${isInterview ? "Interview" : "Demo & Consultation"} with ${ctx?.senderName || "Customer"}`,
           slot
         );
 
-        // Save into conversation in DB
+        // Save into conversation in DB and update lead
         try {
           if (ctx?.senderPhone) {
             const conv = await WhatsAppConversation.findOne({
@@ -409,35 +528,148 @@ export class PromptEngineService {
               };
               await conv.save();
             }
+
+            const ld = await lead.findOne({ where: { phone: ctx.senderPhone } });
+            if (ld) {
+              ld.preferred_interview_slot = slot;
+              ld.interview_link = meetRoom.meetUrl;
+              if (isInterview) {
+                ld.is_candidate = true;
+                ld.lead_status = "INTERVIEW_SCHEDULED";
+              }
+              await ld.save();
+
+              // Trigger Email outcome with Google Meet link if candidate has email on file
+              if (ld.email) {
+                this.events.emit("agent.outcome", {
+                  tenantId: ctx?.tenantId || "default",
+                  phone: ctx.senderPhone,
+                  email: ld.email,
+                  leadName: ld.name || ctx?.senderName || "Candidate",
+                  outcome: isInterview ? "Interview Scheduled" : "Demo Booked",
+                  event: isInterview ? "interview_booked" : "demo_booked",
+                  summary: `${isInterview ? "Interview" : "Demo"} confirmed for ${slot}. Google Meet link: ${meetRoom.meetUrl}`,
+                  agentName: "Sharyx AI",
+                  channel: "whatsapp",
+                  meetUrl: meetRoom.meetUrl,
+                  customVariables: {
+                    applied_role: ld.job_title || "Backend Developer",
+                    meeting_slot: slot,
+                    meet_url: meetRoom.meetUrl,
+                  },
+                });
+                this.logger.log(`📧 [EMAIL CONFIRMATION TRIGGERED] Sent meet link to ${ld.email}`);
+              }
+            }
           }
         } catch (err: any) {
           this.logger.error("Failed to save meeting_info to conversation:", err.message);
         }
 
-        // Emit voice call request event to connected provider (Vapi / SaaS)
+        // Emit voice call notification event to connected provider (Vapi / SaaS)
         if (ctx?.senderPhone) {
-          const isInterview = /(?:interview|candidate|job)/i.test(`${tool.inputs?.type || ""} ${ctx?.senderName || ""}`);
           this.events.emit("voice.call.requested", {
             tenantId: ctx.tenantId || "default",
             phone: ctx.senderPhone,
             customerName: ctx.senderName,
             scheduledType: isInterview ? "interview" : "demo",
-            reason: isInterview ? "Interview scheduled" : "You scheduled demo",
+            reason: isInterview ? "Interview scheduled" : "Demo consultation scheduled",
             meetingSlot: slot,
             meetUrl: meetRoom.meetUrl,
             agentKey: isInterview ? "recruitment" : "sales",
           });
-          this.logger.log(`📞 [PROMPT ENGINE CALL TRIGGER] Dispatched voice call to ${ctx.senderPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`);
         }
 
-        return `🎉 Perfect! I have scheduled your consultation slot for *${slot}*.\n\n🎥 *Google Meet Link*: ${meetRoom.meetUrl}\n\nPlease join on time from a quiet place. Looking forward to speaking with you! 👍`;
+        return `🎉 Perfect! I have scheduled your ${isInterview ? "interview" : "consultation"} for *${slot}*.\n\n🎥 *Google Meet Link*: ${meetRoom.meetUrl}\n\nPlease click the link to join at the scheduled time. Looking forward to speaking with you! 👍`;
       }
+
+      case "capture_contact": {
+        const { name, email, phone, company: compName, role, preferred_location, relocation } = tool.inputs || {};
+        try {
+          const targetPhone = phone || ctx?.senderPhone;
+          let ld = targetPhone ? await lead.findOne({ where: { phone: targetPhone } }) : null;
+          if (!ld && ctx?.senderPhone) {
+            ld = await lead.findOne({ where: { phone: ctx.senderPhone } });
+          }
+          if (!ld) {
+            ld = new lead();
+            ld.tenant_id = ctx?.tenantId || "default";
+            ld.phone = targetPhone || ctx?.senderPhone || "unknown";
+            ld.source = LeadSource.WHATSAPP;
+            ld.lead_status = LeadStatus.NEW;
+          }
+          if (name) ld.name = name;
+          if (email) ld.email = email;
+          if (compName) ld.company_name = compName;
+          if (role) {
+            ld.is_candidate = true;
+            ld.notes = `${ld.notes || ""}\nRole: ${role}, Location: ${preferred_location || "N/A"}, Relocation: ${relocation || "N/A"}`.trim();
+          }
+          ld.last_contacted_at = new Date();
+          await ld.save();
+
+          if (ctx?.senderPhone) {
+            const conv = await WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone } });
+            if (conv) {
+              if (name) conv.customer_name = name;
+              if (ld.id) conv.lead_id = ld.id;
+              await conv.save();
+            }
+          }
+        } catch (err: any) {
+          this.logger.error("Failed to capture contact to CRM:", err.message);
+        }
+
+        const candidateName = name || ctx?.senderName || "there";
+        const targetRole = role ? `for the *${role}* position` : "";
+
+        return `Great to connect with you, ${candidateName}! 🌟 I have noted your application ${targetRole}.
+
+To complete your candidate profile, could you please share:
+1. Your email address (so we can send calendar invites & meet links)
+2. Total & relevant experience
+3. Current company & employment status (serving notice / relieved)
+4. Expected CTC
+5. Your updated resume / CV (PDF link or attach file)
+
+Whenever you're ready, we can also schedule a quick Google Meet interview round! 🚀`;
+      }
+
+      case "dispatch_voice_call": {
+        const callPhone = tool.inputs?.phone || ctx?.senderPhone;
+        const reason = tool.inputs?.reason || "Customer requested live sales phone call";
+        if (callPhone) {
+          this.events.emit("voice.call.requested", {
+            tenantId: ctx?.tenantId || "default",
+            phone: callPhone,
+            customerName: ctx?.senderName,
+            scheduledType: "sales_call",
+            reason,
+            agentKey: "sales",
+          });
+          return `📞 I have initiated an immediate outbound phone call to *${callPhone}*! Our AI Sales Specialist is calling you right now. Please check your phone! 👍`;
+        }
+        return `I'd be glad to connect you with our sales team! Could you please share your phone number so we can call you right away?`;
+      }
+
       case "send_brochure":
-        return `📄 I've dispatched our official Sharyx 2026 Enterprise brochure and solutions overview PDF to your WhatsApp! Let me know if you have any questions.`;
-      case "transfer_to_human":
-        return `👨‍💼 Certainly! I am transferring this chat to one of our senior team members. Someone will be with you right away.`;
+        return `📄 I've shared our official Sharyx 2026 product guide and enterprise brochure. Please feel free to ask any questions or let me know if you would like to book a demo!`;
+
+      case "transfer_to_human": {
+        try {
+          if (ctx?.senderPhone) {
+            const conv = await WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone } });
+            if (conv) {
+              conv.conversation_status = "human_takeover";
+              await conv.save();
+            }
+          }
+        } catch {}
+        return `👨‍💼 Certainly! I have escalated this conversation to our senior team. A team representative will connect with you shortly.`;
+      }
+
       default:
-        return `Action "${tool.toolName}" has been executed successfully. How else can I assist you today?`;
+        return `Action "${tool.toolName}" has been executed successfully. How else can I help you today?`;
     }
   }
 }

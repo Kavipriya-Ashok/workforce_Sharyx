@@ -20,4 +20,7 @@ export class EmailAIConfig extends BaseTable {
 
   @Column({ length: 50, default: "gpt-4o-mini" })
   llm_model: string;
+
+  @Column({ type: "text", nullable: true })
+  api_key: string;
 }

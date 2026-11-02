@@ -23,6 +23,9 @@ interface AuthContextType {
   isLoading: boolean;
   login: (userData: any) => Promise<boolean>;
   signup: (userData: any) => Promise<boolean>;
+  sendSignupOtp: (email: string, name?: string) => Promise<{ success: boolean; message: string; debugOtp?: string }>;
+  verifySignupOtp: (payload: any) => Promise<boolean>;
+  googleAuth: (payload: { code?: string; redirect_uri?: string; credential?: string }) => Promise<boolean>;
   completeOnboarding: (data: any) => Promise<boolean>;
   logout: () => void;
 }
@@ -115,6 +118,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendSignupOtp = async (email: string, name?: string): Promise<{ success: boolean; message: string; debugOtp?: string }> => {
+    const res = await axios.post('/api/v1/Auth/SendSignupOtp', { email, name });
+    const data = res.data?.result || res.data;
+    return {
+      success: true,
+      message: data?.message || 'OTP sent to your email address',
+      debugOtp: data?.otp,
+    };
+  };
+
+  const verifySignupOtp = async (payload: any): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const res = await axios.post('/api/v1/Auth/VerifySignupOtp', payload);
+      const loggedUser = res.data?.result || res.data;
+      setUser(loggedUser);
+      localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
+      return true;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const googleAuth = async (payload: { code?: string; redirect_uri?: string; credential?: string }): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const res = await axios.post('/api/v1/Auth/GoogleAuth', payload);
+      const loggedUser = res.data?.result || res.data;
+      setUser(loggedUser);
+      localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
+      return true;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const completeOnboarding = async (data: any): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -140,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, completeOnboarding, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, sendSignupOtp, verifySignupOtp, googleAuth, completeOnboarding, logout }}>
       {children}
     </AuthContext.Provider>
   );

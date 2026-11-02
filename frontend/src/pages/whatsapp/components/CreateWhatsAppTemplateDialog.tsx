@@ -147,6 +147,67 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 1-Click Quick Auto-Fill Presets */}
+          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-blue-900">⚡ 1-Click Auto-Fill Presets:</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    name: "demo_meeting_link_confirmation",
+                    category: "UTILITY",
+                    header_text: "Live Product Demo & Google Meet Link",
+                    body_text:
+                      "Hello {{1}}! 👋 Your Live Product Demo & Appointment with Sharyx AI is confirmed.\n\n📋 Session Details: {{2}}\n🔗 Google Meet Link: {{3}}\n\nPlease click the Google Meet link above to join at your scheduled time. Thank you.",
+                    footer_text: "Sharyx AI • Reply STOP to unsubscribe",
+                    outcome_filter: "Demo Booked",
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                🎥 Fill Demo Meet Link Template
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    name: "interview_meeting_link_confirmation",
+                    category: "UTILITY",
+                    header_text: "Placement & Interview Google Meet Link",
+                    body_text:
+                      "Hello {{1}}! 🎓 Congratulations! Your Placement & Recruitment Interview with Sharyx Talent Acquisition is scheduled.\n\n📋 Interview Stage: {{2}}\n🔗 Google Meet Link: {{3}}\n\nPlease join the Google Meet link 5 minutes early and keep your Resume ready. Thank you.",
+                    footer_text: "Sharyx Talent Acquisition • HR Desk",
+                    outcome_filter: "Interview Scheduled",
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                🎓 Fill Interview Meet Link Template
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    name: "quotation_dispatch",
+                    category: "UTILITY",
+                    header_text: "Requested Pricing & Product Details",
+                    body_text:
+                      "Hello {{1}}! 📄 Thank you for speaking with Sharyx AI. Here are the pricing & service details you requested on WhatsApp:\n\n💼 Starter AI Plan: ₹15,000/month\n💼 Growth Voice + WA Plan: ₹18,000/month\n📝 Summary: {{2}}\n\nReply directly to this message if you have any questions. Thank you.",
+                    footer_text: "Sharyx AI Workforce",
+                    outcome_filter: "Quotation Requested",
+                  })
+                }
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                📄 Fill Pricing / WhatsApp Details Template
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Form Fields (7 Columns) */}
             <div className="lg:col-span-7 space-y-4">

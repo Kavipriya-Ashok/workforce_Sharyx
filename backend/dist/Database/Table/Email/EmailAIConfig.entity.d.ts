@@ -6,4 +6,5 @@ export declare class EmailAIConfig extends BaseTable {
     tone: string;
     llm_provider: string;
     llm_model: string;
+    api_key: string;
 }

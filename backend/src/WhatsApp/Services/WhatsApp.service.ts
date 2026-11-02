@@ -159,13 +159,13 @@ export class WhatsAppService {
       metaResponse = response.data;
       metaMessageId = metaResponse?.messages?.[0]?.id || metaMessageId;
     } catch (error: any) {
-      this.logger.error("Meta Graph API error:", error?.response?.data || error.message);
+      this.logger.error("Meta Graph API error:", JSON.stringify(error?.response?.data || error.message));
       deliveryStatus = "failed";
       const metaErr = error?.response?.data?.error;
       if (metaErr?.code === 190) {
         throw new Error("Meta Access Token has expired or is invalid (Error 190). Please paste a new Permanent Access Token in Settings.");
       }
-      throw new Error(metaErr?.message || error.message);
+      throw new Error(metaErr?.message || error?.message || "Unknown Meta Graph error");
     }
 
     // 1. Get or create conversation thread

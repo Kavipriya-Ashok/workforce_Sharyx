@@ -192,12 +192,22 @@ let VapiProvider = VapiProvider_1 = class VapiProvider {
                 payload.phoneNumberId = resolvedPhoneId;
             }
             if (dto.custom_variables) {
-                payload.assistantOverrides = Object.assign(Object.assign({ variableValues: dto.custom_variables }, (dto.custom_variables.first_message ? { firstMessage: dto.custom_variables.first_message } : {})), (dto.custom_variables.system_prompt
+                const cleanVars = {};
+                for (const [k, v] of Object.entries(dto.custom_variables)) {
+                    if (k === "system_prompt" || k === "first_message" || k === "force_override")
+                        continue;
+                    if (v !== null && v !== undefined && (typeof v === "string" || typeof v === "number" || typeof v === "boolean")) {
+                        cleanVars[k] = v;
+                    }
+                }
+                payload.assistantOverrides = Object.assign(Object.assign({ variableValues: cleanVars }, (dto.custom_variables.first_message
+                    ? { firstMessage: dto.custom_variables.first_message }
+                    : {})), (dto.custom_variables.system_prompt
                     ? {
                         model: {
                             provider: "openai",
                             model: "gpt-4o-mini",
-                            temperature: 0.7,
+                            temperature: 0.5,
                             messages: [{ role: "system", content: dto.custom_variables.system_prompt }],
                         },
                     }

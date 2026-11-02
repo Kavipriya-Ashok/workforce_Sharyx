@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { WhatsAppLiveChat } from './components/WhatsAppLiveChat';
 import { WhatsAppAIBrainPage } from './components/WhatsAppAIBrainPage';
 import { WhatsAppCampaignFormPage } from './components/WhatsAppCampaignFormPage';
@@ -10,7 +11,6 @@ import { WhatsAppAnalyticsPage } from './components/WhatsAppAnalyticsPage';
 import { WhatsAppSyncSection } from './components/WhatsAppSyncSection';
 import { WhatsAppSettingsDialog } from './components/WhatsAppSettingsDialog';
 import { CreateWhatsAppTemplateDialog } from './components/CreateWhatsAppTemplateDialog';
-import { MultiAgentHub } from './components/MultiAgentHub';
 import { whatsappService } from '@/service/whatsappService';
 import { WhatsAppConfig } from '@/types/whatsapp';
 import {
@@ -26,18 +26,20 @@ import {
   CheckCircle2,
   Layers,
   LayoutTemplate,
-  Users,
+  Activity,
   RefreshCw,
 } from 'lucide-react';
 
 interface WhatsAppAutomationProps {
   initialTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialTab = 'live_chat' }) => {
+export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialTab = 'live_chat', onTabChange }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [config, setConfig] = useState<WhatsAppConfig | null>(null);
 
   useEffect(() => {
@@ -45,6 +47,11 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   const loadConfig = async () => {
     try {
@@ -98,11 +105,23 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Omnichannel WhatsApp business messaging, Meta message templates, autonomous AI copilot, live DB sync, and automated campaigns.
+            Omnichannel WhatsApp business messaging, Meta message templates, autonomous AI copilot, and automated campaigns.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Quick Diagnostic Modal Trigger */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDiagnosticOpen(true)}
+            className="text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50 gap-1.5"
+            title="Open real-time diagnostics, webhook tester & DB sync"
+          >
+            <Activity className="h-4 w-4 text-cyan-600" />
+            Diagnostics & Health
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -112,6 +131,7 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
             <PlusCircle className="h-4 w-4 text-blue-600" />
             Meta Template
           </Button>
+
           <Button
             size="sm"
             onClick={() => setSettingsOpen(true)}
@@ -123,7 +143,7 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
         </div>
       </div>
 
-      {/* 🟢 Live Telemetry & Connected Account Card */}
+      {/* Live Telemetry & Connected Account Card */}
       <div className="p-4 sm:p-5 rounded-2xl border border-blue-150 bg-white shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
@@ -178,16 +198,16 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => setDiagnosticOpen(true)}
             className="text-xs font-semibold text-blue-700 border-blue-200 hover:bg-blue-50"
           >
-            Configure
+            Inspect
           </Button>
         </div>
       </div>
 
-      {/* Tabs Hub */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      {/* Clean 5-Tab Navigation Hub */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="flex flex-wrap items-center gap-1.5 p-1.5 bg-white border border-blue-150 rounded-2xl shadow-xs">
           <TabsTrigger
             value="live_chat"
@@ -197,11 +217,11 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
             Live Chat Inbox
           </TabsTrigger>
           <TabsTrigger
-            value="sync_section"
+            value="campaigns"
             className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Live Sync & Diagnostics
+            <Megaphone className="h-3.5 w-3.5" />
+            Campaigns & Broadcast
           </TabsTrigger>
           <TabsTrigger
             value="templates"
@@ -209,13 +229,6 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
           >
             <LayoutTemplate className="h-3.5 w-3.5" />
             Meta Templates
-          </TabsTrigger>
-          <TabsTrigger
-            value="campaigns"
-            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
-          >
-            <Megaphone className="h-3.5 w-3.5" />
-            Campaigns
           </TabsTrigger>
           <TabsTrigger
             value="ai_brain"
@@ -229,14 +242,7 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
             className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
           >
             <BarChart3 className="h-3.5 w-3.5" />
-            Telemetry
-          </TabsTrigger>
-          <TabsTrigger
-            value="multi_agent"
-            className="gap-2 text-xs font-semibold px-3 py-2 rounded-xl text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all"
-          >
-            <Users className="h-3.5 w-3.5" />
-            AI Squad
+            Telemetry & SLAs
           </TabsTrigger>
         </TabsList>
 
@@ -244,16 +250,12 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
           <WhatsAppLiveChat />
         </TabsContent>
 
-        <TabsContent value="sync_section" className="mt-4">
-          <WhatsAppSyncSection />
+        <TabsContent value="campaigns" className="mt-4">
+          <WhatsAppCampaignFormPage />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
           <WhatsAppTemplatesTab />
-        </TabsContent>
-
-        <TabsContent value="campaigns" className="mt-4">
-          <WhatsAppCampaignFormPage />
         </TabsContent>
 
         <TabsContent value="ai_brain" className="mt-4">
@@ -263,13 +265,27 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
         <TabsContent value="analytics" className="mt-4">
           <WhatsAppAnalyticsPage />
         </TabsContent>
-
-        <TabsContent value="multi_agent" className="mt-4">
-          <MultiAgentHub />
-        </TabsContent>
       </Tabs>
 
-      {/* Dialog Modals */}
+      {/* Diagnostics Modal: Real-time Database sync, Webhook tests, and audit telemetry */}
+      <Dialog open={diagnosticOpen} onOpenChange={setDiagnosticOpen}>
+        <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto bg-white border border-blue-150 shadow-2xl p-6 text-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+              <Activity className="h-5 w-5 text-cyan-600" />
+              WhatsApp Live Diagnostics & Synchronization
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Verify database record sync, Meta API credentials, and live webhook handshakes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <WhatsAppSyncSection />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings & Template Creation Modals */}
       <WhatsAppSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <CreateWhatsAppTemplateDialog open={templateOpen} onOpenChange={setTemplateOpen} />
     </div>

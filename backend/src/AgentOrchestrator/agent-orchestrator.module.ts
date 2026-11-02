@@ -4,6 +4,7 @@ import { AgentOrchestratorService } from "./Services/AgentOrchestrator.service";
 import { AgentLlmService } from "./Services/AgentLlm.service";
 import { AgentToolsService } from "./Services/AgentTools.service";
 import { AiAgentService } from "./Services/AiAgent.service";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 
 /**
  * Multi-agent LLM team for WhatsApp + Email:
@@ -11,7 +12,7 @@ import { AiAgentService } from "./Services/AiAgent.service";
  */
 @Module({
   controllers: [AiAgentController],
-  providers: [AgentOrchestratorService, AgentLlmService, AgentToolsService, AiAgentService],
-  exports: [AgentOrchestratorService, AiAgentService, AgentLlmService],
+  providers: [AgentOrchestratorService, AgentLlmService, AgentToolsService, AiAgentService, JobOpeningsService],
+  exports: [AgentOrchestratorService, AiAgentService, AgentLlmService, JobOpeningsService],
 })
 export class AgentOrchestratorModule {}

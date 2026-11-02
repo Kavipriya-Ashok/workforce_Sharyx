@@ -48,6 +48,7 @@ import { LeadService } from "@/service/leadService";
 import { VoiceService, VoiceAgentDto } from "@/service/voiceService";
 import { LeadFormDialog } from "./components/LeadFormDialog";
 import { LeadDetailDrawer } from "./components/LeadDetailDrawer";
+import { LeadDetailPage } from "./components/LeadDetailPage";
 import { LeadImportDialog } from "./components/LeadImportDialog";
 import { SendLeadEmailModal } from "./components/SendLeadEmailModal";
 import { toast } from "sonner";
@@ -149,6 +150,21 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
   const scheduledInterviews = leads.filter(
     (l) => l.interview_link || l.interview_date || l.preferred_interview_slot || l.candidate_stage === "interview_scheduled"
   );
+
+  if (drawerLeadId) {
+    return (
+      <LeadDetailPage
+        leadId={drawerLeadId}
+        onBack={() => setDrawerLeadId(null)}
+        onUpdate={fetchData}
+        onEdit={(lead) => {
+          setEditLead(lead);
+          setFormOpen(true);
+        }}
+        onOpenVoiceCall={(l) => setCallModalLead(l)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -677,10 +693,7 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-slate-400 hover:text-white"
-                            onClick={() => {
-                              setEditLead(l);
-                              setFormOpen(true);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); setDrawerLeadId(l.id); }}
                           >
                             <ChevronRight className="h-4 w-4" />
                           </Button>
@@ -694,48 +707,164 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
           </div>
         </div>
       ) : (
-        /* ── Kanban Board View ───────────────────────────────────────── */
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 overflow-x-auto pb-4">
-          {STAGES.map((stage) => {
-            const stageLeads = leads.filter((l) => l.lead_status === stage.key);
-            return (
-              <div
-                key={stage.key}
-                className={`rounded-2xl border ${stage.border} ${stage.bg} p-3 flex flex-col min-w-[220px] shadow-sm`}
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${stage.color}`}>
-                    {stage.label}
-                  </span>
-                  <Badge className="bg-slate-800/80 text-white text-[10px] px-1.5 py-0 border-0">
-                    {stageLeads.length}
-                  </Badge>
-                </div>
-                <div className="space-y-2 flex-1">
-                  {stageLeads.map((l) => (
-                    <div
-                      key={l.id}
-                      onClick={() => setDrawerLeadId(l.id)}
-                      className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-sm hover:border-slate-700 transition-all cursor-pointer space-y-1.5"
-                    >
-                      <div className="font-semibold text-xs text-white">{l.name}</div>
-                      {l.company_name && (
-                        <div className="text-[11px] text-slate-400">{l.company_name}</div>
-                      )}
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800/60 mt-1">
-                        <span className="text-cyan-400 font-mono text-[10px]">
-                          {l.phone || l.email}
+        /* ── Modern Interactive Kanban Board View ───────────────────────── */
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+            <span>💡 Drag & drop cards between stages to update status, or use the quick action buttons on each card.</span>
+            <span className="font-semibold text-slate-700">{leads.length} Total Records</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 overflow-x-auto pb-4">
+            {STAGES.map((stage) => {
+              const stageLeads = leads.filter((l) => (l.lead_status || 'NEW').toUpperCase() === stage.key);
+              const stageValue = stageLeads.reduce((acc, curr) => acc + (Number(curr.deal_value) || 0), 0);
+
+              return (
+                <div
+                  key={stage.key}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    if (draggedId) {
+                      const item = leads.find((l) => l.id === draggedId);
+                      if (item && item.lead_status !== stage.key) {
+                        handleStatusChange(draggedId, stage.key);
+                      }
+                    }
+                  }}
+                  className={`rounded-2xl border ${stage.border} ${stage.bg} p-3 flex flex-col min-w-[240px] shadow-xs transition-colors hover:border-blue-400/50`}
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800 mb-3">
+                    <div>
+                      <span className={`text-xs font-black uppercase tracking-wider ${stage.color} block`}>
+                        {stage.label}
+                      </span>
+                      {stageValue > 0 && (
+                        <span className="text-[10px] font-mono font-bold text-emerald-600 block mt-0.5">
+                          ₹{stageValue.toLocaleString('en-IN')}
                         </span>
-                        {l.deal_value > 0 && (
-                          <span className="font-semibold text-emerald-400">₹{l.deal_value}</span>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  ))}
+                    <Badge className="bg-white text-slate-800 dark:bg-slate-800 dark:text-white text-[10px] font-bold px-2 py-0.5 border border-slate-200 dark:border-slate-700">
+                      {stageLeads.length}
+                    </Badge>
+                  </div>
+
+                  {/* Cards Container */}
+                  <div className="space-y-2.5 flex-1 min-h-[120px]">
+                    {stageLeads.map((l) => (
+                      <div
+                        key={l.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', l.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onClick={() => setDrawerLeadId(l.id)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl p-3 shadow-xs hover:shadow-md hover:border-blue-400 transition-all cursor-pointer space-y-2 group"
+                      >
+                        {/* Header: Name & Avatar */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 shadow-xs">
+                              {l.name ? l.name[0].toUpperCase() : 'L'}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-bold text-xs text-slate-900 dark:text-white block truncate group-hover:text-blue-600 transition-colors">
+                                {l.name}
+                              </span>
+                              <span className="text-[10px] text-slate-500 truncate block">
+                                {l.company_name || (l.is_candidate ? l.job_title : 'Direct Contact')}
+                              </span>
+                            </div>
+                          </div>
+                          {l.is_candidate ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shrink-0">
+                              Candidate
+                            </span>
+                          ) : (
+                            l.deal_value > 0 && (
+                              <span className="text-[10px] font-mono font-bold text-emerald-600 shrink-0">
+                                ₹{Number(l.deal_value).toLocaleString('en-IN')}
+                              </span>
+                            )
+                          )}
+                        </div>
+
+                        {/* Middle info */}
+                        <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                          <span className="text-slate-600 dark:text-slate-400 font-mono text-[10px] truncate max-w-[140px]">
+                            {l.phone || l.email}
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                            {l.source || 'Voice'}
+                          </span>
+                        </div>
+
+                        {/* Quick action buttons on card */}
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            {l.phone && (
+                              <button
+                                type="button"
+                                title="Call via Voice AI"
+                                onClick={() => setCallModalLead(l)}
+                                className="p-1 rounded-md text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-colors"
+                              >
+                                <PhoneCall className="h-3 w-3" />
+                              </button>
+                            )}
+                            {l.phone && (
+                              <a
+                                href={`https://wa.me/${l.phone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Chat on WhatsApp"
+                                className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              title="Send Email"
+                              onClick={() => setEmailModalLead(l)}
+                              className="p-1 rounded-md text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                            >
+                              <Mail className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          {/* Quick stage advance pill */}
+                          <select
+                            value={l.lead_status || 'NEW'}
+                            onChange={(e) => handleStatusChange(l.id, e.target.value)}
+                            className="text-[9px] font-bold bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 cursor-pointer hover:bg-slate-100"
+                          >
+                            {STAGES.map((s) => (
+                              <option key={s.key} value={s.key}>
+                                → {s.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                    {stageLeads.length === 0 && (
+                      <div className="h-24 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-[11px] text-slate-400">
+                        Drop leads here
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 

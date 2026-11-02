@@ -52,6 +52,12 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], EmailAIConfigModel.prototype, "llm_model", void 0);
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: "AIzaSy..." }),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], EmailAIConfigModel.prototype, "api_key", void 0);
 class GenerateEmailAIDraftModel {
 }
 exports.GenerateEmailAIDraftModel = GenerateEmailAIDraftModel;

@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoiceModule = void 0;
 const common_1 = require("@nestjs/common");
+const agent_orchestrator_module_1 = require("../AgentOrchestrator/agent-orchestrator.module");
 const Vapi_provider_1 = require("./Providers/Vapi.provider");
 const Retell_provider_1 = require("./Providers/Retell.provider");
 const Bland_provider_1 = require("./Providers/Bland.provider");
@@ -25,6 +26,7 @@ let VoiceModule = class VoiceModule {
 exports.VoiceModule = VoiceModule;
 exports.VoiceModule = VoiceModule = __decorate([
     (0, common_1.Module)({
+        imports: [agent_orchestrator_module_1.AgentOrchestratorModule],
         controllers: [
             VoiceAgent_controller_1.VoiceAgentController,
             VoiceCall_controller_1.VoiceCallController,

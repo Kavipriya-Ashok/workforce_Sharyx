@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WhatsAppService } from "@/service/whatsappService";
 import { WhatsAppTemplate } from "@/types/whatsapp";
-import { CreateWhatsAppTemplateDialog } from "./CreateWhatsAppTemplateDialog";
+import { WhatsAppTemplateEditorPage } from "./WhatsAppTemplateEditorPage";
 import {
   LayoutTemplate,
   RefreshCw,
@@ -67,6 +67,19 @@ export const WhatsAppTemplatesTab: React.FC = () => {
       toast.error(err.message || "Failed to delete template");
     }
   };
+
+  if (dialogOpen) {
+    return (
+      <WhatsAppTemplateEditorPage
+        templateToEdit={editingTemplate}
+        onBack={() => {
+          setDialogOpen(false);
+          setEditingTemplate(null);
+        }}
+        onSuccess={fetchTemplates}
+      />
+    );
+  }
 
   const getStatusBadge = (status?: string) => {
     switch (status?.toUpperCase()) {
@@ -252,14 +265,6 @@ export const WhatsAppTemplatesTab: React.FC = () => {
           ))}
         </div>
       )}
-
-      {/* Dialog for Creating/Editing Template */}
-      <CreateWhatsAppTemplateDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        templateToEdit={editingTemplate}
-        onSuccess={fetchTemplates}
-      />
     </div>
   );
 };

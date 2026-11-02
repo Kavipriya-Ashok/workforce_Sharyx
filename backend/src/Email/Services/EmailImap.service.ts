@@ -8,6 +8,8 @@ import { EmailCampaign } from "@Database/Table/Email/EmailCampaign.entity";
 import { EmailLog } from "@Database/Table/Email/EmailLog.entity";
 import { lead, LeadStatus, LeadSource } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
+import { WhatsAppConversation } from "@Database/Table/WhatsApp/WhatsAppConversation.entity";
+import { ConversationAgentState } from "@Database/Table/Agent/ConversationAgentState.entity";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
 import { EmailService } from "./Email.service";
@@ -96,6 +98,146 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         }
       }
     }
+    return null;
+  }
+
+  // Extract scheduled date/time slot from email reply, thread, or lead CRM record
+  extractScheduledSlot(replyHtml: string, bodyText: string, leadRecord?: lead | null): string {
+    if (leadRecord?.preferred_interview_slot && leadRecord.preferred_interview_slot.trim().length > 3) {
+      return leadRecord.preferred_interview_slot.trim();
+    }
+
+    const cleanText = `${replyHtml} ${bodyText}`
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ");
+
+    // Pattern 1: Explicit slot labels like "Date & Time: ...", "Slot: ...", "Scheduled for: ..."
+    const labelMatch = cleanText.match(
+      /(?:Date\s*&?\s*Time|Scheduled\s+for|Interview\s+Slot|Slot|Timing)[\s:*_–-]+([A-Za-z0-9,:\s/–-]{4,55}?(?:IST|GMT|AM|PM|am|pm))/i
+    );
+    if (labelMatch && labelMatch[1]) {
+      const slot = labelMatch[1].trim();
+      return /IST|GMT/i.test(slot) ? slot : `${slot} IST (GMT+5:30)`;
+    }
+
+    // Pattern 2: Explicit date & time mentions (e.g. "Monday, Nov 3 at 11:00 AM", "24th Oct at 3:00 PM")
+    const dateMatch = cleanText.match(
+      /(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[\s,]+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+[0-9]{1,2}(?:st|nd|rd|th)?(?:[\s,]+[0-9]{4})?(?:[\s,]+(?:at\s+)?[0-9]{1,2}(?::[0-9]{2})?\s*(?:AM|PM|am|pm))?/i
+    );
+    if (dateMatch && dateMatch[0] && dateMatch[0].length >= 6) {
+      const slot = dateMatch[0].trim();
+      return /IST|GMT/i.test(slot) ? slot : `${slot} IST (GMT+5:30)`;
+    }
+
+    // Pattern 3: Relative weekday or day mentions (e.g. "Tomorrow at 11:00 AM", "Friday at 3 PM")
+    const relMatch = cleanText.match(
+      /(?:tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+at\s+[0-9]{1,2}(?::[0-9]{2})?\s*(?:AM|PM|am|pm)?/i
+    );
+    if (relMatch && relMatch[0]) {
+      const slot = relMatch[0].trim();
+      return `${slot.charAt(0).toUpperCase() + slot.slice(1)} IST (GMT+5:30)`;
+    }
+
+    return "Tomorrow at 11:00 AM IST (GMT+5:30)";
+  }
+
+  // Extract applied role or position title from subject, thread, or CRM lead
+  extractAppliedRole(subject: string, bodyText: string, replyHtml: string, leadRecord?: lead | null): string {
+    if (leadRecord?.job_title && leadRecord.job_title.trim().length > 1) {
+      return leadRecord.job_title.trim();
+    }
+
+    const cleanText = `${subject} ${bodyText} ${replyHtml}`
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+
+    const rolePattern = /(?:interview for|applied for|applying for|position of|role of|job profile|position|role)[\s:*_–-]+([A-Za-z0-9\s/&.-]{3,40}?)(?=[,.\n\r<]|at\s|on\s|$)/i;
+    const match = cleanText.match(rolePattern);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (!/^(the|a|an|your|this|our|scheduled|interview|demo|meeting)$/i.test(candidate)) {
+        return candidate;
+      }
+    }
+
+    const standardRoles = [
+      "Full Stack Developer",
+      "Frontend Developer",
+      "Backend Developer",
+      "AI Solutions Engineer",
+      "Software Engineer",
+      "Business Development Executive",
+      "Sales Specialist",
+      "Product Designer",
+      "QA Automation Engineer",
+      "HR Recruiter",
+      "DevOps Engineer",
+    ];
+    for (const r of standardRoles) {
+      if (new RegExp(r, "i").test(cleanText)) {
+        return r;
+      }
+    }
+
+    return "Candidate Role";
+  }
+
+  // Smart Candidate Phone Resolution across Lead, Email Body/Signature, WhatsApp, and Agent State
+  async resolveCandidatePhone(
+    bodyText: string,
+    replyHtml: string,
+    leadRecord: lead | null,
+    fromEmail: string,
+    tenantId: string = "default"
+  ): Promise<string | null> {
+    // 1. Direct phone on CRM lead
+    if (leadRecord?.phone && leadRecord.phone.trim().length >= 8) {
+      return leadRecord.phone.trim();
+    }
+
+    // 2. Extracted from incoming body text
+    const phoneFromBody = this.extractPhoneNumber(bodyText);
+    if (phoneFromBody) return phoneFromBody;
+
+    // 3. Extracted from outbound reply text
+    const phoneFromReply = this.extractPhoneNumber(replyHtml);
+    if (phoneFromReply) return phoneFromReply;
+
+    // 4. Look up in ConversationAgentState (cross-channel memory)
+    try {
+      const state = await ConversationAgentState.findOne({
+        where: [
+          { conversation_ref: fromEmail.toLowerCase() },
+          { customer_email: fromEmail.toLowerCase() },
+        ],
+        order: { updated_on: "DESC" },
+      });
+      if (state?.customer_phone && state.customer_phone.trim().length >= 8) {
+        return state.customer_phone.trim();
+      }
+      if (state?.collected_slots?.phone) {
+        return String(state.collected_slots.phone).trim();
+      }
+      if (state?.collected_slots?.mobile) {
+        return String(state.collected_slots.mobile).trim();
+      }
+    } catch {}
+
+    // 5. Look up in WhatsAppConversation by customer name
+    try {
+      if (leadRecord?.name) {
+        const waConv = await WhatsAppConversation.findOne({
+          where: { customer_name: leadRecord.name, tenant_id: tenantId },
+          order: { updated_on: "DESC" },
+        });
+        if (waConv?.customer_phone && waConv.customer_phone.trim().length >= 8) {
+          return waConv.customer_phone.trim();
+        }
+      }
+    } catch {}
+
     return null;
   }
 
@@ -244,60 +386,24 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         replySubject = activeCampaign.subject.replace(/{{name}}/g, recipientName);
         replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${templated}</div>`;
       } else {
-        // 2a. Multi-agent team (Receptionist -> Sales / Appointment / Support)
-        let agentReply: string | null = null;
-        try {
-          const result = await this.orchestrator.handle({
-            channel: "email",
-            tenantId,
-            conversationRef: fromEmail.toLowerCase(),
-            message: bodyText,
+        // 2. Autonomous AI Responder logic using configured Email AI Brain
+        const draft = await this.aiService.generateDraft(
+          {
+            from_email: fromEmail,
             subject,
-            email: fromEmail,
-            phone: leadRecord?.phone || undefined,
-            name: leadRecord?.name || undefined,
-            leadId: leadRecord?.id,
-            llm: { provider: aiConfig.llm_provider, model: aiConfig.llm_model },
-          });
-          if (result?.humanTakeover && !result.reply) {
-            this.logger.log(`👨‍💼 [EMAIL] ${fromEmail} is with a human agent - skipping AI reply`);
-            return;
-          }
-          if (result?.reply) {
-            agentReply = result.reply;
-            this.logger.log(`🤝 [MULTI-AGENT EMAIL] ${result.agentName} replied to ${fromEmail}`);
-          }
-        } catch (err: any) {
-          this.logger.warn(`Multi-agent email failed, using legacy draft: ${err.message}`);
-        }
+            incoming_body: bodyText,
+            lead_name: leadRecord?.name || fromEmail.split("@")[0],
+            conversation_history: conversationHistory,
+            has_phone: hasPhone,
+            phone_number: leadRecord?.phone || undefined,
+            company_name: leadRecord?.company_name || undefined,
+          },
+          tenantId
+        );
 
-        if (agentReply) {
-          replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${agentReply
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')
-            .replace(/\n/g, "<br/>")}</div>`;
-        } else {
-          // 2b. Legacy single-prompt AI Copilot with thread context
-          const draft = await this.aiService.generateDraft(
-            {
-              from_email: fromEmail,
-              subject,
-              incoming_body: bodyText,
-              lead_name: leadRecord?.name || fromEmail.split("@")[0],
-              conversation_history: conversationHistory,
-              has_phone: hasPhone,
-              phone_number: leadRecord?.phone || undefined,
-              company_name: leadRecord?.company_name || undefined,
-            },
-            tenantId
-          );
-
-          if (!draft?.draft) return;
-          replySubject = draft.subject;
-          replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
-        }
+        if (!draft?.draft) return;
+        replySubject = draft.subject;
+        replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
       }
 
       // 3. Dispatch outbound reply via Gmail REST API
@@ -315,29 +421,95 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
 
       this.logger.log(`🤖 [AFTER-REPLY AUTOMATION DISPATCHED] To: ${fromEmail} | Subject: "${replySubject}"`);
 
-      // After final GMeet email message: trigger automated call via connected voice platform (Vapi / SaaS)
+      // After interview / demo scheduled with Google Meet: trigger automated call via connected voice platform
       const hasGMeet = /meet\.google\.com/i.test(replyHtml);
-      const isInterview = /(?:interview|candidate|job|applicant|hiring)/i.test(`${subject} ${bodyText} ${replySubject}`);
-      const targetPhone = leadRecord?.phone || this.extractPhoneNumber(bodyText);
+      const isInterview = /(?:interview|candidate|job|applicant|hiring|application|vacancy|resume)/i.test(
+        `${subject} ${bodyText} ${replySubject} ${replyHtml}`
+      );
+      const isBooking = hasGMeet || /(?:interview|demo|meeting)[\s\w]*(?:confirmed|scheduled|booked|invite)/i.test(replyHtml);
 
-      if (hasGMeet && targetPhone) {
-        const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
-        const meetUrl = meetMatch ? meetMatch[0] : "https://meet.google.com";
+      if (isBooking) {
+        const resolvedPhone = await this.resolveCandidatePhone(bodyText, replyHtml, leadRecord, fromEmail, tenantId);
 
-        this.events.emit("voice.call.requested", {
-          tenantId,
-          phone: targetPhone,
-          customerName: leadRecord?.name || fromEmail.split("@")[0],
-          scheduledType: isInterview ? "interview" : "demo",
-          reason: isInterview ? "Interview scheduled" : "You scheduled demo",
-          meetingSlot: "Scheduled Session",
-          meetUrl,
-          leadId: leadRecord?.id,
-          agentKey: isInterview ? "recruitment" : "sales",
-        });
-        this.logger.log(
-          `📞 [VOICE CALL TRIGGERED AFTER EMAIL GMEET] Dispatched call to ${targetPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`
-        );
+        if (resolvedPhone) {
+          // If lead record exists but didn't have phone saved, save it now!
+          if (leadRecord && !leadRecord.phone) {
+            leadRecord.phone = resolvedPhone;
+            await leadRecord.save().catch(() => {});
+          }
+
+          const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
+          const meetUrl = meetMatch ? meetMatch[0] : (leadRecord?.interview_link || "https://meet.google.com");
+
+          const scheduledSlot = this.extractScheduledSlot(replyHtml, bodyText, leadRecord);
+          const appliedRole = this.extractAppliedRole(subject, bodyText, replyHtml, leadRecord);
+          const customerName = leadRecord?.name || fromEmail.split("@")[0];
+
+          // Persist slot and meet link to lead record for CRM synchronization
+          if (leadRecord) {
+            if (!leadRecord.preferred_interview_slot) leadRecord.preferred_interview_slot = scheduledSlot;
+            if (!leadRecord.interview_link) leadRecord.interview_link = meetUrl;
+            if (isInterview && !leadRecord.job_title && appliedRole !== "Candidate Role") leadRecord.job_title = appliedRole;
+            await leadRecord.save().catch(() => {});
+          }
+
+          const reason = isInterview
+            ? `Interview for ${appliedRole} scheduled for ${scheduledSlot}`
+            : `Product demo scheduled for ${scheduledSlot}`;
+
+          const emailSummary = `Email thread with ${fromEmail} | ${
+            isInterview ? 'Interview Invitation' : 'Demo Booking'
+          } | Role: ${appliedRole} | Scheduled Slot: ${scheduledSlot} | Meet Link: ${meetUrl}`;
+
+          this.events.emit("voice.call.requested", {
+            tenantId,
+            phone: resolvedPhone,
+            customerName,
+            scheduledType: isInterview ? "interview" : "demo",
+            reason,
+            meetingSlot: scheduledSlot,
+            meetUrl,
+            leadId: leadRecord?.id,
+            agentKey: isInterview ? "recruitment" : "sales",
+            appliedRole,
+            customVariables: {
+              applied_role: appliedRole,
+              meeting_slot: scheduledSlot,
+              meet_url: meetUrl,
+              email_summary: emailSummary,
+              scheduled_slot: scheduledSlot,
+              role: appliedRole,
+              discussion_points: isInterview
+                ? `Confirming interview attendance for ${appliedRole} on ${scheduledSlot}. Google Meet: ${meetUrl}. Addressing candidate questions.`
+                : `Confirming product demo on ${scheduledSlot}. Google Meet: ${meetUrl}.`,
+            },
+          });
+
+          this.logger.log(
+            `📞 [VOICE CALL TRIGGERED AFTER EMAIL INTERVIEW SCHEDULED] Dispatched call to ${resolvedPhone} | Role: "${appliedRole}" | Slot: "${scheduledSlot}" | Meet: ${meetUrl}`
+          );
+
+          // Omnichannel sync: Dispatch interview confirmation & Google Meet link to WhatsApp as well!
+          try {
+            const { WhatsAppService } = await import("../../WhatsApp/Services/WhatsApp.service");
+            const waService = new WhatsAppService();
+            const waText = `Hello ${customerName}! 👋\n\nYour interview for the *${appliedRole}* role has been confirmed for *${scheduledSlot}*.\n\n🎥 *Google Meet Link*: ${meetUrl}\n\nWe have also sent the confirmation details to your email (${fromEmail}). Looking forward to speaking with you! 🚀`;
+            await waService.sendMessage({
+              to: resolvedPhone,
+              text: waText,
+              message_type: "text",
+            }, "system", true);
+            this.logger.log(`💬 [WHATSAPP CONFIRMATION TRIGGERED FROM EMAIL] Sent meet link to WhatsApp: ${resolvedPhone}`);
+          } catch (waErr: any) {
+            this.logger.warn(`Could not dispatch WhatsApp confirmation from email flow: ${waErr.message}`);
+          }
+        } else {
+          this.logger.warn(
+            `📞 [VOICE CALL SKIPPED] ${fromEmail} scheduled ${
+              isInterview ? "interview" : "demo"
+            }, but no phone number could be resolved from email body, CRM lead, or WhatsApp threads.`
+          );
+        }
       }
     } catch (err: any) {
       this.logger.warn(`After-reply automation could not be sent: ${err.message}`);

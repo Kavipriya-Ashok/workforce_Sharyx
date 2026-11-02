@@ -7,13 +7,14 @@ export declare class WhatsAppWebhookService {
     private readonly events;
     private readonly logger;
     private static readonly processedMetaIds;
+    private static readonly phoneQueues;
     constructor(whatsAppService: WhatsAppService, aiService: WhatsAppAIService, events: EventEmitter2);
     verifyHandshake(mode: string, token: string, challenge: string): Promise<string | null>;
     processIncomingWebhook(body: any): Promise<{
         status: string;
-        error?: undefined;
+        error: any;
     } | {
         status: string;
-        error: any;
     }>;
+    private processSingleCandidateMessage;
 }

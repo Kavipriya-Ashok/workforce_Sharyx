@@ -51,6 +51,9 @@ export function App() {
             <Route path="/oauth/callback" component={OAuthCallback} />
 
             {/* Protected Admin Command Center Routes */}
+            <Route path="/admin/*">
+              <AdminRoute component={AdminLayout} />
+            </Route>
             <Route path="/admin">
               <AdminRoute component={AdminLayout} />
             </Route>

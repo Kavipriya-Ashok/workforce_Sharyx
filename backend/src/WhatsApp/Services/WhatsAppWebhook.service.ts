@@ -4,6 +4,7 @@ import { WhatsAppConversation } from "@Database/Table/WhatsApp/WhatsAppConversat
 import { lead, LeadStatus, LeadSource } from "@Database/Table/Lead/lead";
 import { lead_activity } from "@Database/Table/Lead/lead_activity";
 import { WhatsAppMessage } from "@Database/Table/WhatsApp/WhatsAppMessage.entity";
+import { ProcessedMessage } from "@Database/Table/WhatsApp/ProcessedMessage.entity";
 import { WhatsAppAIService } from "./WhatsAppAI.service";
 import { WhatsAppService } from "./WhatsApp.service";
 
@@ -11,6 +12,7 @@ import { WhatsAppService } from "./WhatsApp.service";
 export class WhatsAppWebhookService {
   private readonly logger = new Logger(WhatsAppWebhookService.name);
   private static readonly processedMetaIds = new Set<string>();
+  private static readonly phoneQueues = new Map<string, Promise<any>>();
 
 
   constructor(
@@ -64,26 +66,83 @@ export class WhatsAppWebhookService {
       let messageText = messageType === "text" ? message.text?.body : `[Media message: ${messageType}]`;
       const metaMessageId = message.id;
 
-      // Meta Webhook Inbound Deduplication
+      // 1. Atomic Idempotency Check (in-memory + processed_messages table + WhatsAppMessage table)
       if (metaMessageId) {
         if (WhatsAppWebhookService.processedMetaIds.has(metaMessageId)) {
-          this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already processing: ${metaMessageId}`);
+          this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already in memory set: ${metaMessageId}`);
           return { status: "duplicate_ignored" };
         }
         WhatsAppWebhookService.processedMetaIds.add(metaMessageId);
-        if (WhatsAppWebhookService.processedMetaIds.size > 1000) {
+        if (WhatsAppWebhookService.processedMetaIds.size > 2000) {
           const first = WhatsAppWebhookService.processedMetaIds.values().next().value;
           if (first) WhatsAppWebhookService.processedMetaIds.delete(first);
         }
 
-        const existingMsg = await WhatsAppMessage.findOne({
-          where: { meta_message_id: metaMessageId },
-        });
-        if (existingMsg) {
-          this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already in database: ${metaMessageId}`);
-          return { status: "duplicate_ignored" };
+        try {
+          const insertRes = await WhatsAppMessage.query(
+            `INSERT INTO processed_messages (wamid, sender_phone, created_at) VALUES ($1, $2, NOW()) ON CONFLICT (wamid) DO NOTHING RETURNING wamid`,
+            [metaMessageId, senderPhone]
+          );
+          if (!Array.isArray(insertRes) || insertRes.length === 0) {
+            this.logger.log(`⚠️ [DUPLICATE IGNORED] wamid already in processed_messages table: ${metaMessageId}`);
+            return { status: "duplicate_ignored" };
+          }
+        } catch (dbDedupErr: any) {
+          // Fallback check on WhatsAppMessage if table is still initializing
+          const existingMsg = await WhatsAppMessage.findOne({
+            where: { meta_message_id: metaMessageId },
+          });
+          if (existingMsg) {
+            this.logger.log(`⚠️ [DUPLICATE IGNORED] Message ID already in WhatsAppMessage: ${metaMessageId}`);
+            return { status: "duplicate_ignored" };
+          }
         }
       }
+
+      // 2. Per-Candidate Sequential Lock / Queue so two messages from the same number are processed in strict order
+      const cleanPhoneKey = (senderPhone || "unknown").replace(/\D/g, "").slice(-10) || senderPhone;
+      const previousTask = WhatsAppWebhookService.phoneQueues.get(cleanPhoneKey) || Promise.resolve();
+
+      const nextTask = previousTask
+        .catch(() => {})
+        .then(() =>
+          this.processSingleCandidateMessage({
+            value,
+            message,
+            senderPhone,
+            myPhoneNumber,
+            messageType,
+            messageText,
+            metaMessageId,
+          })
+        );
+
+      WhatsAppWebhookService.phoneQueues.set(cleanPhoneKey, nextTask);
+      try {
+        return await nextTask;
+      } finally {
+        if (WhatsAppWebhookService.phoneQueues.get(cleanPhoneKey) === nextTask) {
+          WhatsAppWebhookService.phoneQueues.delete(cleanPhoneKey);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error("Error processing incoming WhatsApp webhook:", err.message);
+      return { status: "error", error: err.message };
+    }
+  }
+
+  private async processSingleCandidateMessage(params: {
+    value: any;
+    message: any;
+    senderPhone: string;
+    myPhoneNumber: string;
+    messageType: string;
+    messageText: string;
+    metaMessageId: string;
+  }) {
+    const { value, message, senderPhone, myPhoneNumber, messageType, metaMessageId } = params;
+    let { messageText } = params;
+    try {
 
       // Detect PDF Resume or Document Attachment
       let isPdfAttachment = false;
@@ -104,8 +163,13 @@ export class WhatsAppWebhookService {
 
       this.logger.log(`💬 [WHATSAPP RECEIVED] From: ${senderPhone} | Type: ${messageType} | Content: "${messageText}"`);
 
-      // 1. Find or create Lead in CRM
+      // 1. Find or create Lead / Candidate in CRM (auto-detect placement/job/interview inquiries)
       const customerProfileName = value?.contacts?.[0]?.profile?.name || senderPhone;
+      const isCandidateInquiry =
+        isPdfAttachment ||
+        /\b(placement|job|interview|vacancy|hiring|career|internship|fresher|resume|cv|ctc|recruitment|role|opening|apply|application)\b/i.test(
+          messageText || ""
+        );
       let existingLead: any = null;
       try {
         existingLead = await lead.findOne({
@@ -117,6 +181,10 @@ export class WhatsAppWebhookService {
           existingLead.phone = senderPhone;
           existingLead.source = LeadSource.WHATSAPP;
           existingLead.lead_status = LeadStatus.NEW;
+          existingLead.is_candidate = isCandidateInquiry;
+          if (isCandidateInquiry) {
+            existingLead.candidate_stage = isPdfAttachment ? "screening" : "new";
+          }
           existingLead.score = 65;
           existingLead.notes = `Inquired on WhatsApp: "${messageText}"`;
           existingLead.tenant_id = "default";
@@ -127,7 +195,7 @@ export class WhatsAppWebhookService {
           const act = new lead_activity();
           act.lead_id = existingLead.id;
           act.activity_type = "WHATSAPP";
-          act.title = "WhatsApp Inbound Inquiry";
+          act.title = isCandidateInquiry ? "Placement / Candidate WhatsApp Inquiry" : "WhatsApp Inbound Inquiry";
           act.description = messageText;
           act.performer_name = customerProfileName;
           act.tenant_id = "default";
@@ -135,7 +203,60 @@ export class WhatsAppWebhookService {
           act.created_on = new Date();
           await act.save();
         } else {
+          if (isCandidateInquiry && !existingLead.is_candidate) {
+            existingLead.is_candidate = true;
+            existingLead.candidate_stage = existingLead.candidate_stage || "screening";
+          }
           existingLead.last_contacted_at = new Date();
+
+          // Auto-extract candidate profile fields from incoming message or attachment
+          if (isPdfAttachment) {
+            existingLead.is_candidate = true;
+            existingLead.resume_url = docFilename;
+            existingLead.candidate_stage = "screening";
+          }
+          const expMatch = messageText.match(/(\d+(?:\.\d+)?)\s*(?:years?|yrs?)(?:\s*(?:of)?\s*exp)?/i);
+          if (expMatch) {
+            existingLead.is_candidate = true;
+            existingLead.total_experience = parseFloat(expMatch[1]);
+            existingLead.relevant_experience = parseFloat(expMatch[1]);
+          }
+          const noticeMatch = messageText.match(/(\d+)\s*days?\s*notice/i) || messageText.match(/serving\s*(\d+)\s*days/i);
+          if (noticeMatch) {
+            existingLead.is_candidate = true;
+            existingLead.employment_status = `Notice (${noticeMatch[1]} days)`;
+          } else if (/serving\s*notice/i.test(messageText)) {
+            existingLead.is_candidate = true;
+            existingLead.employment_status = "Serving Notice";
+          } else if (/relieved|immediate/i.test(messageText)) {
+            existingLead.is_candidate = true;
+            existingLead.employment_status = "Relieved / Immediate";
+          }
+          const currentCtcMatch = messageText.match(/current\s*(?:ctc)?\s*(?:is|:)?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?)/i);
+          if (currentCtcMatch) {
+            existingLead.is_candidate = true;
+            existingLead.current_ctc = parseFloat(currentCtcMatch[1]);
+          }
+          const expectedCtcMatch = messageText.match(/expected\s*(?:ctc)?\s*(?:is|:)?\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?)/i);
+          if (expectedCtcMatch) {
+            existingLead.is_candidate = true;
+            existingLead.expected_ctc = parseFloat(expectedCtcMatch[1]);
+          }
+          if (/okay\s*to\s*relocate|willing\s*to\s*relocate|open\s*to\s*relocat|relocate\s*to/i.test(messageText)) {
+            existingLead.is_candidate = true;
+            existingLead.relocation = "Yes (Open to relocate)";
+          }
+          const emailMatch = messageText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+          if (emailMatch) {
+            existingLead.email = emailMatch[1].trim();
+          }
+          const roleMatch = messageText.match(/(?:role|position|interested in|for)\s*(?:is|as)?\s*[:*]?\s*(backend developer|frontend developer|ai solutions engineer|business development executive|full stack developer)/i)
+            || messageText.match(/^(backend developer|frontend developer|ai solutions engineer|business development executive)$/i);
+          if (roleMatch) {
+            existingLead.is_candidate = true;
+            existingLead.job_title = roleMatch[1].trim();
+          }
+
           await existingLead.save();
 
           const act = new lead_activity();
@@ -202,35 +323,11 @@ export class WhatsAppWebhookService {
         const announcement = typeof res === "object" ? res?.announcement : null;
         let aiReply = typeof res === "object" ? res?.reply : (typeof res === "string" ? res : null);
 
-        // If aiReply accidentally contains the announcement text, strip it so it doesn't repeat
-        if (announcement && aiReply) {
-          const trimmedAnn = announcement.trim();
-          if (aiReply.startsWith(trimmedAnn)) {
-            aiReply = aiReply.slice(trimmedAnn.length).trim();
-          }
+        // Enforce strictly ONE outbound reply per inbound message (TASK 1)
+        if (!aiReply && announcement) {
+          aiReply = announcement;
         }
 
-        // 1. If handoff announcement exists, dispatch as a distinct separate message first!
-        if (announcement) {
-          this.logger.log(`🤝 [HANDOFF SEPARATE MESSAGE] Sending to ${senderPhone}: "${announcement}"`);
-          try {
-            await this.whatsAppService.sendMessage(
-              {
-                to: senderPhone,
-                text: announcement,
-                conversation_id: conversation.id,
-              },
-              "ai_copilot",
-              true
-            );
-            // Sequential delay for realistic chat experience
-            await new Promise((resolve) => setTimeout(resolve, 800));
-          } catch (annErr: any) {
-            this.logger.warn(`Could not deliver handoff announcement: ${annErr.message}`);
-          }
-        }
-
-        // 2. Dispatch main agent reply
         if (aiReply) {
           this.logger.log(`🤖 [AI AUTO-REPLY] Replying to ${senderPhone}: "${aiReply}"`);
           try {

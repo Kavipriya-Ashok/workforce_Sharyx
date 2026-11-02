@@ -87,16 +87,19 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
         config.tone = data.tone || "professional";
         config.llm_provider = data.llm_provider || "gemini";
         config.llm_model = data.llm_model || "gemini-2.5-flash";
+        if (data.api_key !== undefined) {
+            config.api_key = data.api_key;
+        }
         config.updated_by_id = userId || "system";
         config.updated_on = new Date();
         return await config.save();
     }
     async generateDraft(dto, tenantId = "default") {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w;
         const config = await this.getConfig(tenantId);
         const recipientName = dto.lead_name || "Valued Client";
-        const openAiKey = process.env.OPENAI_API_KEY;
-        const geminiKey = process.env.GEMINI_API_KEY;
+        const openAiKey = (config === null || config === void 0 ? void 0 : config.api_key) && (config === null || config === void 0 ? void 0 : config.llm_provider) === "openai" ? config.api_key : process.env.OPENAI_API_KEY;
+        const geminiKey = (config === null || config === void 0 ? void 0 : config.api_key) && (config === null || config === void 0 ? void 0 : config.llm_provider) === "gemini" ? config.api_key : (process.env.GEMINI_API_KEY || process.env.GEMINI_KEY);
         let gmeetUrl = "https://meet.google.com/shx-demo-room";
         try {
             const { CalendarHelper } = await Promise.resolve().then(() => __importStar(require("../../WhatsApp/Helpers/CalendarHelper")));
@@ -105,7 +108,7 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
                 gmeetUrl = meetRes.meetUrl;
             }
         }
-        catch (_w) { }
+        catch (_x) { }
         const combinedText = `${dto.subject || ""} ${dto.incoming_body || ""}`.toLowerCase();
         const isRecruitment = /(?:job|vacancy|career|resume|cv|hiring|apply|applicant|candidate|interview|opening|employment|ctc|notice period|reliev)/i.test(combinedText);
         const isDemoAccepted = /(?:(?:yes|yeah|sure|okay|ok|let's|book|schedule|share|send|provide).*(?:demo|meet|link|call|walkthrough|session|slot)|^(?:yes|yeah|sure|okay|ok|fine|yep|definitely|let's do it|let's book|agreed)[!.,\s]*$)/i.test(((_a = dto.incoming_body) === null || _a === void 0 ? void 0 : _a.trim()) || "");
@@ -121,16 +124,30 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
             : dto.has_phone
                 ? `Customer Phone on File: YES (Provided)`
                 : `Customer Phone on File: NO (Not provided yet)`;
+        const customInstruction = ((_b = config === null || config === void 0 ? void 0 : config.system_prompt) === null || _b === void 0 ? void 0 : _b.trim())
+            ? `\n\nADMIN CONFIGURED INSTRUCTIONS & KNOWLEDGE BASE:\n${config.system_prompt.trim()}\n`
+            : "";
         const systemPrompt = `You are "Sharyx AI", the official executive assistant and qualification copilot for Sharyx.
-Tone: ${(config === null || config === void 0 ? void 0 : config.tone) || "professional, warm, direct, and helpful"}.
+Tone: ${(config === null || config === void 0 ? void 0 : config.tone) || "professional, warm, direct, and helpful"}.${customInstruction}
 
 CRITICAL CONVERSATIONAL RULES (Follow strictly based on track):
 
-TRACK A: RECRUITMENT & JOB CANDIDATE (REC Use Cases):
+TRACK A: RECRUITMENT & JOB CANDIDATE (REC-001 to REC-040 Use Cases):
 - If the sender is inquiring about jobs, vacancies, or submitted a resume:
-  * Acknowledge their application warmly.
-  * Collect any missing screening details: Role applied for, Total/relevant experience, Current employment status (working, serving notice, or relieved), Notice period / relieving date, and Expected salary/CTC.
-  * If the candidate is ready for an interview or confirmed their slot, confirm the interview and share this confirmed Google Meet link: ${gmeetUrl}.
+  * Acknowledge their application warmly in the email thread.
+  * NEVER ask again for details already provided in the incoming email or thread history (REC-022, REC-023).
+  * Collect ONLY the missing screening details from the 14 required fields:
+    1) Full name & Mobile number (with country code, required for scheduling/follow-up)
+    2) Resume/CV in PDF format (or accessible PDF link; if corrupted/non-PDF, politely request PDF; if candidate cannot share resume right now, collect contact & essential profile details)
+    3) Job title / role applied for (*Frontend Developer*, *AI Solutions Engineer*, *Business Development Executive*)
+    4) Total and relevant experience (clarify if ambiguous)
+    5) Current/last company
+    6) Employment status (working, serving notice, or relieved — DO NOT assume they have left their job! Ask employment status first, then conditionally ask notice period/expected relieving date if employed, or last working date if relieved)
+    7) Current/last and expected salary (record separately; clarify monthly/annual & CTC basis; if candidate declines current salary disclosure, accept politely and continue)
+    8) Relocation availability (Yes/No/Conditional; if cannot relocate, note constraint for HR assessment)
+    9) Preferred interview date & time (Mon-Sat, 10:00 AM - 6:00 PM IST)
+  * If the candidate is ready for an interview or selected an available slot, confirm the interview and include: Role, Date, Time, Timezone (IST / GMT+5:30), and this confirmed Google Meet link: ${gmeetUrl}.
+  * Handle rescheduling, cancellation, or data correction/deletion requests politely.
 
 TRACK B: SERVICES INQUIRY & SALES DEMO QUALIFICATION (SAL Use Cases):
 - DO NOT mention WhatsApp! Keep the communication professional and direct.
@@ -174,37 +191,39 @@ GENERAL MEMORY & FORMATTING:
                         "Content-Type": "application/json",
                     },
                 });
-                const draftedText = (_f = (_e = (_d = (_c = (_b = response.data) === null || _b === void 0 ? void 0 : _b.choices) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.message) === null || _e === void 0 ? void 0 : _e.content) === null || _f === void 0 ? void 0 : _f.trim();
+                const draftedText = (_g = (_f = (_e = (_d = (_c = response.data) === null || _c === void 0 ? void 0 : _c.choices) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.message) === null || _f === void 0 ? void 0 : _f.content) === null || _g === void 0 ? void 0 : _g.trim();
                 return {
-                    subject: ((_g = dto.subject) === null || _g === void 0 ? void 0 : _g.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
+                    subject: ((_h = dto.subject) === null || _h === void 0 ? void 0 : _h.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
                     draft: draftedText,
                 };
             }
             catch (err) {
-                this.logger.error("OpenAI email draft generation failed:", ((_h = err === null || err === void 0 ? void 0 : err.response) === null || _h === void 0 ? void 0 : _h.data) || err.message);
+                this.logger.error("OpenAI email draft generation failed:", ((_j = err === null || err === void 0 ? void 0 : err.response) === null || _j === void 0 ? void 0 : _j.data) || err.message);
             }
         }
         if (geminiKey) {
-            const fullPrompt = `${systemPrompt}\n\n${userPromptContent}`;
-            const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-            for (const model of modelsToTry) {
+            const selectedModel = (config === null || config === void 0 ? void 0 : config.llm_model) || "gemini-2.5-flash";
+            const modelsToTry = [selectedModel, "gemini-2.5-flash", "gemini-flash-latest"];
+            const uniqueModels = [...new Set(modelsToTry)];
+            for (const model of uniqueModels) {
                 try {
                     const response = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
-                        contents: [{ parts: [{ text: fullPrompt }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        contents: [{ parts: [{ text: userPromptContent }] }],
                     }, { timeout: 15000 });
-                    const draftedText = (_q = (_p = (_o = (_m = (_l = (_k = (_j = response.data) === null || _j === void 0 ? void 0 : _j.candidates) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.content) === null || _m === void 0 ? void 0 : _m.parts) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.text) === null || _q === void 0 ? void 0 : _q.trim();
+                    const draftedText = (_r = (_q = (_p = (_o = (_m = (_l = (_k = response.data) === null || _k === void 0 ? void 0 : _k.candidates) === null || _l === void 0 ? void 0 : _l[0]) === null || _m === void 0 ? void 0 : _m.content) === null || _o === void 0 ? void 0 : _o.parts) === null || _p === void 0 ? void 0 : _p[0]) === null || _q === void 0 ? void 0 : _q.text) === null || _r === void 0 ? void 0 : _r.trim();
                     if (draftedText) {
                         return {
-                            subject: ((_r = dto.subject) === null || _r === void 0 ? void 0 : _r.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
+                            subject: ((_s = dto.subject) === null || _s === void 0 ? void 0 : _s.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
                             draft: draftedText,
                         };
                     }
                 }
                 catch (err) {
-                    const errMsg = ((_u = (_t = (_s = err === null || err === void 0 ? void 0 : err.response) === null || _s === void 0 ? void 0 : _s.data) === null || _t === void 0 ? void 0 : _t.error) === null || _u === void 0 ? void 0 : _u.message) || err.message;
+                    const errMsg = ((_v = (_u = (_t = err === null || err === void 0 ? void 0 : err.response) === null || _t === void 0 ? void 0 : _t.data) === null || _u === void 0 ? void 0 : _u.error) === null || _v === void 0 ? void 0 : _v.message) || err.message;
                     this.logger.warn(`Gemini (${model}) draft failed: ${errMsg}`);
                     if ((errMsg === null || errMsg === void 0 ? void 0 : errMsg.includes("API_KEY_INVALID")) || (errMsg === null || errMsg === void 0 ? void 0 : errMsg.includes("API key not valid"))) {
-                        this.logger.error("The provided GEMINI_API_KEY in .env is invalid. Gemini keys from Google AI Studio must start with 'AIzaSy'.");
+                        this.logger.error("The provided GEMINI_API_KEY is invalid. Gemini keys from Google AI Studio must start with 'AIzaSy'.");
                         break;
                     }
                 }
@@ -232,7 +251,7 @@ GENERAL MEMORY & FORMATTING:
             }
         }
         return {
-            subject: ((_v = dto.subject) === null || _v === void 0 ? void 0 : _v.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
+            subject: ((_w = dto.subject) === null || _w === void 0 ? void 0 : _w.startsWith("Re:")) ? dto.subject : `Re: ${dto.subject || "Inquiry"}`,
             draft: fallbackDraft,
         };
     }

@@ -54,13 +54,23 @@ import {
 export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | 'catalog' | 'dispatch' | 'logs' }> = ({
   initialTab = 'dispatch',
 }) => {
-  const [activeTab, setActiveTab] = useState<'providers' | 'agents' | 'catalog' | 'dispatch' | 'logs'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'providers' | 'agents' | 'catalog' | 'dispatch' | 'logs'>(
+    initialTab === 'catalog' ? 'agents' : initialTab
+  );
+  const [voiceSubTab, setVoiceSubTab] = useState<'all' | 'live' | 'templates'>(
+    initialTab === 'catalog' ? 'templates' : 'all'
+  );
   const [loading, setLoading] = useState(false);
 
   // Sync activeTab when initialTab prop updates
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      if (initialTab === 'catalog') {
+        setActiveTab('agents');
+        setVoiceSubTab('templates');
+      } else {
+        setActiveTab(initialTab);
+      }
     }
   }, [initialTab]);
 
@@ -657,27 +667,19 @@ export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | '
 
         <button
           onClick={() => {
-            setActiveTab('catalog');
+            setActiveTab('agents');
             loadCatalog(catalogProvider);
           }}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'catalog'
-            ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-sm shadow-orange-500/20'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-        >
-          <Sparkles className="h-3.5 w-3.5 fill-current" />
-          <span>Default Personas ({catalogItems.filter((i) => i.is_enabled).length}/5)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('agents')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${activeTab === 'agents'
-            ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/20'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'agents' || activeTab === 'catalog'
+            ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 text-white shadow-sm shadow-purple-600/20'
             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
         >
           <Bot className="h-3.5 w-3.5" />
-          <span>Voice Agents Studio ({agents.length})</span>
+          <span>AI Voice Agents & Personas ({agents.length})</span>
+          <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full font-mono">
+            {catalogItems.filter((i) => i.is_enabled).length}/5 Personas
+          </span>
         </button>
 
         <button
@@ -936,9 +938,9 @@ export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | '
         </div>
       )}
 
-      {/* ── TAB 2: VOICE AGENTS STUDIO ─────────────────────────────────── */}
-      {activeTab === 'agents' && (
-        <div className="space-y-4">
+      {/* ── TAB 2: UNIFIED AI VOICE AGENTS & WORKFORCE STUDIO ─────────── */}
+      {(activeTab === 'agents' || activeTab === 'catalog') && (
+        <div className="space-y-5">
           {/* Active Platform Banner */}
           <div className="p-3.5 px-4 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-2.5">
@@ -997,13 +999,65 @@ export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | '
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Active Voice Personas ({agents.length})</h2>
-              <p className="text-xs text-slate-500">
-                Only assistants from your currently active voice engine are shown. Disconnected platforms vanish automatically.
-              </p>
+          {/* Sub-view switcher for unified AI Voice Agents & Personas section */}
+          <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-200">
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setVoiceSubTab('all')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  voiceSubTab === 'all'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                <span>All-in-One View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceSubTab('live')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  voiceSubTab === 'live'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Bot className="h-3.5 w-3.5" />
+                <span>Live Assistants ({agents.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setVoiceSubTab('templates');
+                  loadCatalog(catalogProvider);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  voiceSubTab === 'templates'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 fill-current" />
+                <span>5 Workforce Personas ({catalogItems.filter((i) => i.is_enabled).length}/5)</span>
+              </button>
             </div>
+
+            <div className="text-xs text-slate-500 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Omnichannel Voice Telephony Ready</span>
+            </div>
+          </div>
+
+          {(voiceSubTab === 'all' || voiceSubTab === 'live') && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Active Voice Personas ({agents.length})</h2>
+                  <p className="text-xs text-slate-500">
+                    Only assistants from your currently active voice engine are shown. Disconnected platforms vanish automatically.
+                  </p>
+                </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
@@ -1213,9 +1267,9 @@ export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | '
         </div>
       )}
 
-      {/* ── TAB: 5 DEFAULT WORKFORCE AGENTS CATALOG ──────────────────────── */}
-      {activeTab === 'catalog' && (
-        <div className="space-y-5">
+      {/* ── 5 AUTONOMOUS WORKFORCE PERSONAS CATALOG ─────────── */}
+      {(voiceSubTab === 'all' || voiceSubTab === 'templates') && (
+        <div className={`space-y-5 ${voiceSubTab === 'all' ? 'pt-6 border-t border-slate-200' : ''}`}>
           {/* PROVIDER PICKER BAR */}
           <div className="rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-950 via-[#0d1424] to-slate-950 p-4 sm:p-5 shadow-2xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1528,6 +1582,8 @@ export const VoiceAutomation: React.FC<{ initialTab?: 'providers' | 'agents' | '
           </div>
         </div>
       )}
+    </div>
+  )}
 
       {/* ── TAB 3: DYNAMIC PROVIDERS ─────────────────────────────────────── */}
       {activeTab === 'providers' && (

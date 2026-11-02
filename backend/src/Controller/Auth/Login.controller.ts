@@ -23,6 +23,24 @@ export class LoginController extends AuthBaseController {
     return { Type: ResponseEnum.Success, Message: 'Login Successfully', result };
   }
 
+  @Post('SendSignupOtp')
+  async SendSignupOtp(@Body() body: { email: string; name?: string }) {
+    const result = await this._AuthService.sendSignupOtp(body.email, body.name);
+    return { Type: ResponseEnum.Success, Message: result.message, result };
+  }
+
+  @Post('VerifySignupOtp')
+  async VerifySignupOtp(@Body() body: any) {
+    const result = await this._AuthService.verifySignupOtp(body);
+    return { Type: ResponseEnum.Success, Message: 'Account verified and registered successfully!', result };
+  }
+
+  @Post('GoogleAuth')
+  async GoogleAuth(@Body() body: { code?: string; redirect_uri?: string; credential?: string; email?: string; name?: string; picture?: string }) {
+    const result = await this._AuthService.googleAuth(body);
+    return { Type: ResponseEnum.Success, Message: 'Google authentication successful', result };
+  }
+
   @Post('ForgotPassword')
   async ForgotPassword(@Body() ForgotPasswordData: ForgotPasswordModel) {
     const Result = await this._UserService.ForgotPassword(ForgotPasswordData.email);

@@ -33,7 +33,11 @@ let WhatsAppWebhookController = class WhatsAppWebhookController {
     }
     async handleIncomingMessage(body) {
         this.logger.log(`📥 [WEBHOOK HIT] Incoming event from Meta received!`);
-        this.webhookService.processIncomingWebhook(body);
+        setImmediate(() => {
+            this.webhookService.processIncomingWebhook(body).catch((err) => {
+                this.logger.error(`Background webhook error: ${(err === null || err === void 0 ? void 0 : err.message) || err}`);
+            });
+        });
         return "EVENT_RECEIVED";
     }
 };

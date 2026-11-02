@@ -74,6 +74,10 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
 
   useEffect(() => {
     loadData(true);
+    // Automatically sync latest recordings, transcripts & outcomes from Vapi in the background
+    VoiceService.syncCallLogsFromVapi('default')
+      .then(() => loadData(true))
+      .catch(() => {});
     const interval = setInterval(() => loadData(true), 15000);
     return () => clearInterval(interval);
   }, [selectedAgentId]);
@@ -315,9 +319,23 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           {filteredLogs.map((log) => {
             const isExpanded = expandedLogId === log.id;
             const isVapi = log.provider === 'vapi';
-            const isQuotation = (log.call_outcome || '').toLowerCase().includes('quot');
-            const isDemo = (log.call_outcome || '').toLowerCase().includes('demo');
-            const isInterview = (log.call_outcome || '').toLowerCase().includes('interview');
+            const outcomeLower = (log.call_outcome || '').toLowerCase();
+            const isQuotation =
+              outcomeLower.includes('quot') ||
+              outcomeLower.includes('pric') ||
+              outcomeLower.includes('whatsapp') ||
+              outcomeLower.includes('detail');
+            const isMeeting =
+              outcomeLower.includes('demo') ||
+              outcomeLower.includes('interview') ||
+              outcomeLower.includes('appointment') ||
+              outcomeLower.includes('schedule') ||
+              outcomeLower.includes('placement');
+            const meetUrl =
+              log.extracted_slots?.meet_url ||
+              log.extracted_slots?.whatsapp_dispatch?.meet_url ||
+              null;
+            const waDispatch = log.extracted_slots?.whatsapp_dispatch || null;
 
             return (
               <div
@@ -354,13 +372,33 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                             className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
                               isQuotation
                                 ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                : isDemo || isInterview
+                                : isMeeting
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 : 'bg-blue-50 text-blue-800 border-blue-200'
                             }`}
                           >
                             <Sparkles className="h-2.5 w-2.5" />
                             {log.call_outcome}
+                          </span>
+                        )}
+
+                        {/* Scheduled Meeting Google Meet Link Pill */}
+                        {meetUrl && (
+                          <a
+                            href={meetUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 shadow-xs"
+                          >
+                            <span>🎥 Join Google Meet</span>
+                          </a>
+                        )}
+
+                        {/* WhatsApp Template Sent Badge */}
+                        {waDispatch?.template_name && (
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-300 flex items-center gap-1">
+                            <span>📲 WA Template: {waDispatch.template_name}</span>
                           </span>
                         )}
                       </div>
@@ -382,6 +420,40 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                         <span>•</span>
                         <span>{formatCallDate(log.created_on)}</span>
                       </div>
+
+                      {/* Always-Visible Summary Preview on Every Call Row */}
+                      {log.summary && (
+                        <div className="mt-2 text-xs text-slate-700 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 max-w-2xl line-clamp-2">
+                          <span className="font-bold text-slate-900 mr-1">📝 Summary:</span>
+                          {log.summary}
+                        </div>
+                      )}
+
+                      {/* Always-Visible Inline Audio Recording Player on Every Call Row */}
+                      {log.recording_url && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-2 flex flex-wrap items-center gap-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl px-3 py-1.5 max-w-xl"
+                        >
+                          <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 shrink-0">
+                            <Volume2 className="h-3.5 w-3.5 text-emerald-600" />
+                            Recording:
+                          </span>
+                          <audio controls className="h-7 flex-1 min-w-[200px]">
+                            <source src={`/api/Voice/Calls/audio?callId=${log.id}&providerCallId=${log.provider_call_id || ""}`} type="audio/wav" />
+                            <source src={log.recording_url} type="audio/wav" />
+                            <source src={log.recording_url} type="audio/mpeg" />
+                          </audio>
+                          <a
+                            href={log.recording_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] font-bold text-emerald-700 hover:underline flex items-center gap-1 shrink-0"
+                          >
+                            <Download className="h-3 w-3" /> Audio
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -447,11 +519,62 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                       <div className="space-y-1.5">
                         <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                           <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                          AI Call Summary & Synthesized Outcome
+                          AI Call Summary & Synthesized Outcome ({log.call_outcome || 'Completed'})
                         </div>
                         <p className="text-xs text-slate-700 bg-white border border-slate-200 p-3.5 rounded-2xl leading-relaxed shadow-xs">
                           {log.summary}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Scheduled Meeting & Google Meet Link Box */}
+                    {meetUrl && (
+                      <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+                            <span>📅 Scheduled Meeting Outcome: {log.call_outcome}</span>
+                          </div>
+                          <div className="text-xs text-indigo-700 font-mono break-all">
+                            🔗 {meetUrl}
+                          </div>
+                        </div>
+                        <a
+                          href={meetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0 text-center shadow-xs"
+                        >
+                          🎥 Open Google Meet Room
+                        </a>
+                      </div>
+                    )}
+
+                    {/* WhatsApp Template & Payload Dispatched Box */}
+                    {waDispatch && (
+                      <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2.5">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
+                            <span>📲 WhatsApp Template & Payload Dispatched</span>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold font-mono">
+                            Template: {waDispatch.template_name}
+                          </span>
+                        </div>
+                        {waDispatch.message_body && (
+                          <div className="text-xs text-slate-800 bg-white border border-emerald-200 rounded-xl p-3 whitespace-pre-wrap leading-relaxed">
+                            {waDispatch.message_body}
+                          </div>
+                        )}
+                        {waDispatch.payload && (
+                          <details className="text-[11px] text-emerald-900">
+                            <summary className="cursor-pointer font-bold hover:underline">
+                              View Meta WhatsApp Cloud API Payload (JSON)
+                            </summary>
+                            <pre className="mt-2 p-3 rounded-xl bg-slate-900 text-emerald-300 font-mono text-[10px] overflow-x-auto">
+                              {JSON.stringify(waDispatch.payload, null, 2)}
+                            </pre>
+                          </details>
+                        )}
                       </div>
                     )}
 

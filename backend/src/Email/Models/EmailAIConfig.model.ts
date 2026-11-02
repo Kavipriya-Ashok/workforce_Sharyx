@@ -32,6 +32,11 @@ export class EmailAIConfigModel extends BaseModel {
   @IsOptional()
   @IsString()
   llm_model?: string;
+
+  @ApiProperty({ example: "AIzaSy..." })
+  @IsOptional()
+  @IsString()
+  api_key?: string;
 }
 
 export class GenerateEmailAIDraftModel {

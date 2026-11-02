@@ -94,6 +94,7 @@ let AiAgentService = AiAgentService_1 = class AiAgentService {
             if (vapiConfig === null || vapiConfig === void 0 ? void 0 : vapiConfig.api_key) {
                 const vapiAgent = await VoiceAgent_entity_1.VoiceAgent.findOne({
                     where: [
+                        { tenant_id: a.tenant_id, provider: "vapi", template_key: a.agent_key },
                         { tenant_id: a.tenant_id, provider: "vapi", name: a.display_name },
                     ]
                 });
@@ -116,6 +117,11 @@ let AiAgentService = AiAgentService_1 = class AiAgentService {
                         },
                         timeout: 8000
                     });
+                    vapiAgent.system_prompt = a.persona_prompt;
+                    if (a.handoff_message)
+                        vapiAgent.first_message = a.handoff_message;
+                    vapiAgent.updated_on = new Date();
+                    await vapiAgent.save();
                     this.logger.log(`🎙️ [VAPI SYNC] Synced ${a.display_name} changes to Vapi assistant (${vapiAgent.remote_agent_id})`);
                 }
             }

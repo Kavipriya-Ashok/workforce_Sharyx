@@ -125,25 +125,55 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
             <Label className="text-xs font-semibold text-slate-700">Trigger Event *</Label>
             <Select
               value={form.trigger_event}
-              onValueChange={(val) => setForm({ ...form, trigger_event: val })}
+              onValueChange={(val) => {
+                const autoOutcomeMap: Record<string, string> = {
+                  quotation_requested: "Pricing & Quotation Requested",
+                  whatsapp_details_requested: "WhatsApp Details Requested",
+                  appointment_booked: "Appointment Scheduled",
+                  demo_booked: "Demo Booked",
+                  interview_booked: "Interview Scheduled",
+                  lead_qualified: "Interested - Info Requested",
+                  callback_requested: "Callback Requested",
+                  deal_won: "Deal Won",
+                  after_call_ends: "ALL",
+                };
+                const autoTplMap: Record<string, string> = {
+                  quotation_requested: "quotation_dispatch",
+                  whatsapp_details_requested: "quotation_dispatch",
+                  appointment_booked: "demo_meeting_link_confirmation",
+                  demo_booked: "demo_meeting_link_confirmation",
+                  interview_booked: "interview_meeting_link_confirmation",
+                };
+                const matchedTpl = templates.find((t) => t.name === autoTplMap[val]);
+                setForm({
+                  ...form,
+                  trigger_event: val,
+                  outcome_filter: autoOutcomeMap[val] || form.outcome_filter,
+                  template_name: matchedTpl ? matchedTpl.name : form.template_name,
+                });
+              }}
             >
               <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="quotation_requested">Voice Call: Quotation Requested ➔ Send Quote & Proposal</SelectItem>
-                <SelectItem value="demo_booked">Meeting / Demo Booked ➔ Send Google Meet Link</SelectItem>
-                <SelectItem value="after_call_ends">Post-Call: Send Summary & Notes</SelectItem>
-                <SelectItem value="round_1_cleared">Candidate: Round 1 Cleared ➔ Send Round 2</SelectItem>
-                <SelectItem value="deal_won">Sales: Deal Won VIP Welcome</SelectItem>
-                <SelectItem value="inactive_followup">Re-engagement: 24h Inactive Followup</SelectItem>
-                <SelectItem value="manual_broadcast">Manual Broadcast</SelectItem>
+                <SelectItem value="appointment_booked">📅 Appointment / Meeting Scheduled ➔ Send Google Meet Link</SelectItem>
+                <SelectItem value="demo_booked">🎥 Live Demo Booked ➔ Send Demo Google Meet Link</SelectItem>
+                <SelectItem value="interview_booked">🎓 Placement / Candidate Interview ➔ Send Interview Meet Link</SelectItem>
+                <SelectItem value="quotation_requested">📄 Pricing & Quotation Requested ➔ Send Pricing & Quote</SelectItem>
+                <SelectItem value="whatsapp_details_requested">📲 Client Asked Details on WhatsApp ➔ Send Details Template</SelectItem>
+                <SelectItem value="lead_qualified">⭐ Interested / Info Requested ➔ Send Product Overview</SelectItem>
+                <SelectItem value="callback_requested">📞 Callback Requested ➔ Send Callback Confirmation</SelectItem>
+                <SelectItem value="after_call_ends">🔔 Any Completed Call (Post-Call Summary Dispatch)</SelectItem>
+                <SelectItem value="round_1_cleared">✅ Candidate: Round 1 Cleared ➔ Send Round 2</SelectItem>
+                <SelectItem value="deal_won">🏆 Sales: Deal Won VIP Welcome</SelectItem>
+                <SelectItem value="manual_broadcast">📢 Manual Broadcast</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Outcome Trigger Filter *</Label>
+            <Label className="text-xs font-semibold text-slate-700">Outcome Trigger Filter (When Outcome Matches) *</Label>
             <Select
               value={form.outcome_filter}
               onValueChange={(val) => setForm({ ...form, outcome_filter: val })}
@@ -153,12 +183,17 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
                 <SelectItem value="ALL">⚡ ALL - Fire for any call outcome</SelectItem>
-                <SelectItem value="Quotation Requested">📄 Quotation Requested (Price / Proposal Quote)</SelectItem>
-                <SelectItem value="Demo Booked">📅 Demo Booked (Google Meet scheduled)</SelectItem>
-                <SelectItem value="Interview Scheduled">💼 Interview Scheduled (Candidate Round)</SelectItem>
-                <SelectItem value="Interested">⭐ Interested / Hot Lead</SelectItem>
-                <SelectItem value="Price Objection">💰 Price Objection / Budget Discussion</SelectItem>
+                <SelectItem value="Appointment Scheduled">📅 Appointment Scheduled (Doctor / Service / General Meet)</SelectItem>
+                <SelectItem value="Demo Booked">🎥 Demo Booked (Product Walkthrough + Google Meet)</SelectItem>
+                <SelectItem value="Interview Scheduled">🎓 Interview Scheduled (Candidate / Placement Round + Meet)</SelectItem>
+                <SelectItem value="Placement & Interview Inquiry">💼 Placement & Interview Inquiry (Career / Job Opening)</SelectItem>
+                <SelectItem value="Pricing & Quotation Requested">💰 Pricing & Quotation Requested (Plans & Pricing)</SelectItem>
+                <SelectItem value="Quotation Requested">📄 Quotation Requested (Proposal / Estimate)</SelectItem>
+                <SelectItem value="WhatsApp Details Requested">📲 WhatsApp Details Requested (Asked to send on WhatsApp)</SelectItem>
+                <SelectItem value="Interested - Info Requested">⭐ Interested - Info Requested (General Inquiry)</SelectItem>
+                <SelectItem value="Interested">🔥 Interested / Hot Lead</SelectItem>
                 <SelectItem value="Callback Requested">📞 Callback Requested</SelectItem>
+                <SelectItem value="Price Objection">💳 Price Objection / Budget Discussion</SelectItem>
                 <SelectItem value="Not Interested">❌ Not Interested</SelectItem>
               </SelectContent>
             </Select>

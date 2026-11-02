@@ -1,4 +1,12 @@
 import "dotenv/config";
+
+// Global resilience safeguards against transient DB/socket connection drops
+process.on("uncaughtException", (err: any) => {
+  console.error("⚠️ [SERVER SAFEGUARD] Uncaught Exception handled gracefully:", err?.message || err);
+});
+process.on("unhandledRejection", (reason: any) => {
+  console.error("⚠️ [SERVER SAFEGUARD] Unhandled Rejection handled gracefully:", reason?.message || reason);
+});
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";

@@ -194,13 +194,48 @@ export const AiAgentsPage: React.FC<AiAgentsPageProps> = ({ selectedAgentKey, on
     setIsEditing(false);
     if (!agents.length) return;
     if (selectedAgentKey) {
-      const match = agents.find((a) => a.agent_key === selectedAgentKey);
+      const match =
+        agents.find(
+          (a) =>
+            a.agent_key === selectedAgentKey ||
+            a.id === selectedAgentKey ||
+            a.display_name.toLowerCase() === selectedAgentKey.toLowerCase()
+        ) ||
+        (() => {
+          const va = voiceAgents.find(
+            (v) => v.id === selectedAgentKey || v.template_key === selectedAgentKey || v.name === selectedAgentKey
+          );
+          if (va) {
+            return {
+              id: va.id,
+              tenant_id: 'default',
+              agent_key: va.template_key || va.id,
+              display_name: va.name,
+              role_title: 'Voice Telephony Specialist',
+              description: va.system_prompt?.slice(0, 100) || 'Configured Vapi Assistant',
+              persona_prompt: va.system_prompt || '',
+              knowledge: '',
+              allowed_tools: typeof va.allowed_tools === 'string' ? (va.allowed_tools as any).split(' ') : (va.allowed_tools || []),
+              handoff_targets: [],
+              handoff_message: va.first_message || '',
+              llm_provider: va.provider || 'vapi',
+              llm_model: va.llm_model || 'gpt-4o-mini',
+              temperature: va.temperature ?? 0.4,
+              is_active: va.status !== false,
+              channels: ['voice'],
+              emoji: '🤖',
+            } as unknown as AiAgent;
+          }
+          return null;
+        })();
+
       if (match) {
         setEditingAgent({ ...match });
       }
 
       const matchingVoiceAgent = voiceAgents.find(
         (va) =>
+          va.id === selectedAgentKey ||
           va.template_key === selectedAgentKey ||
           va.name.toLowerCase().includes(selectedAgentKey.toLowerCase()) ||
           (selectedAgentKey === 'sales' && /sales|alex/i.test(va.name)) ||
@@ -301,8 +336,42 @@ export const AiAgentsPage: React.FC<AiAgentsPageProps> = ({ selectedAgentKey, on
     }
   };
 
-  // Find the selected segregated agent
-  const segregatedAgent = selectedAgentKey ? agents.find((a) => a.agent_key === selectedAgentKey) : null;
+  // Find the selected segregated agent (matches by agent_key or ID or name)
+  const segregatedAgent = selectedAgentKey
+    ? agents.find(
+        (a) =>
+          a.agent_key === selectedAgentKey ||
+          a.id === selectedAgentKey ||
+          a.display_name.toLowerCase() === selectedAgentKey.toLowerCase()
+      ) ||
+      (() => {
+        // Fallback: If clicked a Vapi agent from sidebar that isn't in chat agents, wrap it as an AiAgent
+        const va = voiceAgents.find((v) => v.id === selectedAgentKey || v.template_key === selectedAgentKey || v.name === selectedAgentKey);
+        if (va) {
+          return {
+            id: va.id,
+            tenant_id: 'default',
+            agent_key: va.template_key || va.id,
+            display_name: va.name,
+            role_title: 'Voice Telephony Specialist',
+            description: va.system_prompt?.slice(0, 100) || 'Configured Vapi Assistant',
+            persona_prompt: va.system_prompt || '',
+            knowledge: '',
+            allowed_tools: typeof va.allowed_tools === 'string' ? (va.allowed_tools as any).split(' ') : (va.allowed_tools || []),
+            handoff_targets: [],
+            handoff_message: va.first_message || '',
+            llm_provider: va.provider || 'vapi',
+            llm_model: va.llm_model || 'gpt-4o-mini',
+            temperature: va.temperature ?? 0.4,
+            is_active: va.status !== false,
+            channels: ['voice'],
+            emoji: '🤖',
+          } as unknown as AiAgent;
+        }
+        return null;
+      })()
+    : null;
+
   const segregatedMeta = segregatedAgent ? getMeta(segregatedAgent.agent_key) : null;
 
   return (

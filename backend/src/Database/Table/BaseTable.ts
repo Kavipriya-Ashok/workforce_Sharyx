@@ -10,12 +10,12 @@ export class BaseTable extends BaseEntity {
   status: boolean;
 
   @AuditLogRemoveColumn()
-  @Column({ select: false })
-  created_by_id: string;
+  @Column({ nullable: true, select: false })
+  created_by_id?: string;
 
   @AuditLogRemoveColumn()
-  @Column({ type: "timestamp", select: false })
-  created_on: Date;
+  @Column({ type: "timestamp", nullable: true, select: false })
+  created_on?: Date;
 
   @AuditLogRemoveColumn()
   @Column({ nullable: true, select: false })

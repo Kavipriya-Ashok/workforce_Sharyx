@@ -25,6 +25,7 @@ export declare class VoiceCallController {
         synced: number;
         message: string;
     }>;
+    streamAudio(callId: string, providerCallId: string, tenantId?: string, res?: any): Promise<any>;
     syncFromVapi(tenantId?: string): Promise<{
         ok: boolean;
         synced: number;

@@ -80,9 +80,10 @@ export class AiAgentService {
         where: { tenant_id: a.tenant_id, provider: "vapi" as any, is_active: true }
       });
       if (vapiConfig?.api_key) {
-        // Find matching voice agent by name or key
+        // Find matching voice agent by name or key or remote assistant ID
         const vapiAgent = await VoiceAgent.findOne({
           where: [
+            { tenant_id: a.tenant_id, provider: "vapi" as any, template_key: a.agent_key },
             { tenant_id: a.tenant_id, provider: "vapi" as any, name: a.display_name },
           ]
         });
@@ -105,6 +106,11 @@ export class AiAgentService {
             },
             timeout: 8000
           });
+          // Also update local VoiceAgent system_prompt & first_message
+          vapiAgent.system_prompt = a.persona_prompt;
+          if (a.handoff_message) vapiAgent.first_message = a.handoff_message;
+          vapiAgent.updated_on = new Date();
+          await vapiAgent.save();
           this.logger.log(`🎙️ [VAPI SYNC] Synced ${a.display_name} changes to Vapi assistant (${vapiAgent.remote_agent_id})`);
         }
       }

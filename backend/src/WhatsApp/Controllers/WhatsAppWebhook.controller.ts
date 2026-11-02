@@ -42,8 +42,12 @@ export class WhatsAppWebhookController {
   @HttpCode(HttpStatus.OK)
   async handleIncomingMessage(@Body() body: any) {
     this.logger.log(`📥 [WEBHOOK HIT] Incoming event from Meta received!`);
-    // Process asynchronously and immediately return 200 OK to Meta
-    this.webhookService.processIncomingWebhook(body);
+    // Return HTTP 200 immediately and process asynchronously in background queue
+    setImmediate(() => {
+      this.webhookService.processIncomingWebhook(body).catch((err) => {
+        this.logger.error(`Background webhook error: ${err?.message || err}`);
+      });
+    });
     return "EVENT_RECEIVED";
   }
 }

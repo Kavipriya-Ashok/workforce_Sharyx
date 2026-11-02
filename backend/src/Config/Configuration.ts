@@ -7,7 +7,7 @@ export default () => ({
     Password: process.env.DB_PASS || "postgres",
     Name: process.env.DB_NAME || "postgres",
     Seed: process.env.DB_SEED,
-    Sync: process.env.DB_SYNC === "true" || true,
+    Sync: process.env.DB_SYNC === "true",
     LOG: process.env.DB_LOG === "true",
   },
   Encryption: {

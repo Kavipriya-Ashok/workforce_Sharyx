@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { emailService } from '@/service/emailService';
+import { useAuth, checkUserOnboarded } from '@/lib/auth';
 import { Loader2, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const OAuthCallback: React.FC = () => {
   const [, setLocation] = useLocation();
+  const { googleAuth } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Exchanging authorization code with Google...');
   const [userEmail, setUserEmail] = useState<string>('');
@@ -13,6 +15,7 @@ export const OAuthCallback: React.FC = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
+    const state = urlParams.get('state');
     const error = urlParams.get('error');
 
     if (error) {
@@ -29,6 +32,39 @@ export const OAuthCallback: React.FC = () => {
 
     const currentRedirectUri = `${window.location.origin}/oauth/callback`;
 
+    // 1. Check if this is User Login / Sign-up with Google
+    if (state === 'auth_google') {
+      setMessage('Authenticating your Google account with Sharyx...');
+      googleAuth({ code, redirect_uri: currentRedirectUri })
+        .then(() => {
+          setStatus('success');
+          setMessage('Google Authentication Successful! Redirecting to command center...');
+          setTimeout(() => {
+            try {
+              const saved = localStorage.getItem('sharyx_user');
+              const currentUser = saved ? JSON.parse(saved) : null;
+              if (!checkUserOnboarded(currentUser)) {
+                setLocation('/onboarding');
+              } else {
+                setLocation('/admin');
+              }
+            } catch {
+              setLocation('/admin');
+            }
+          }, 1500);
+        })
+        .catch((err: any) => {
+          setStatus('error');
+          setMessage(
+            err.response?.data?.message ||
+              err.message ||
+              'Google sign in failed. Please try again or use email login.'
+          );
+        });
+      return;
+    }
+
+    // 2. Otherwise, this is Email Account SMTP/OAuth connection
     emailService
       .connectGoogle(code, currentRedirectUri)
       .then((res: any) => {
@@ -48,7 +84,7 @@ export const OAuthCallback: React.FC = () => {
             'Failed to exchange authorization code. Please try again.'
         );
       });
-  }, [setLocation]);
+  }, [setLocation, googleAuth]);
 
   return (
     <div className="min-h-screen bg-[#0b0f19] flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-black">

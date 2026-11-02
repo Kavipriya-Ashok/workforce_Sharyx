@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { whatsappService, WhatsAppService } from '@/service/whatsappService';
-import { WhatsAppSettingsDialog } from './WhatsAppSettingsDialog';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 import {
   RefreshCw,
   Database,
@@ -184,6 +184,15 @@ export const WhatsAppSyncSection: React.FC = () => {
   useEffect(() => {
     handleSyncDatabase();
   }, []);
+
+  if (settingsOpen) {
+    return (
+      <SettingsPage
+        initialTab="whatsapp"
+        onBack={() => setSettingsOpen(false)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -464,11 +473,6 @@ export const WhatsAppSyncSection: React.FC = () => {
           </div>
         </div>
       </div>
-      <WhatsAppSettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onSaved={() => { addLog('API Credentials Updated', 'success', 'New Meta access token and Phone Number ID saved successfully.'); }}
-      />
     </div>
   );
 };

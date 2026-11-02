@@ -54,6 +54,8 @@ const EmailCampaign_entity_1 = require("../../Database/Table/Email/EmailCampaign
 const EmailLog_entity_1 = require("../../Database/Table/Email/EmailLog.entity");
 const lead_1 = require("../../Database/Table/Lead/lead");
 const lead_activity_1 = require("../../Database/Table/Lead/lead_activity");
+const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
+const ConversationAgentState_entity_1 = require("../../Database/Table/Agent/ConversationAgentState.entity");
 const Encryption_service_1 = require("../../Service/Encryption.service");
 const EmailAI_service_1 = require("./EmailAI.service");
 const Email_service_1 = require("./Email.service");
@@ -125,6 +127,111 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 }
             }
         }
+        return null;
+    }
+    extractScheduledSlot(replyHtml, bodyText, leadRecord) {
+        if ((leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.preferred_interview_slot) && leadRecord.preferred_interview_slot.trim().length > 3) {
+            return leadRecord.preferred_interview_slot.trim();
+        }
+        const cleanText = `${replyHtml} ${bodyText}`
+            .replace(/<[^>]+>/g, " ")
+            .replace(/&amp;/g, "&")
+            .replace(/&nbsp;/g, " ")
+            .replace(/\s+/g, " ");
+        const labelMatch = cleanText.match(/(?:Date\s*&?\s*Time|Scheduled\s+for|Interview\s+Slot|Slot|Timing)[\s:*_–-]+([A-Za-z0-9,:\s/–-]{4,55}?(?:IST|GMT|AM|PM|am|pm))/i);
+        if (labelMatch && labelMatch[1]) {
+            const slot = labelMatch[1].trim();
+            return /IST|GMT/i.test(slot) ? slot : `${slot} IST (GMT+5:30)`;
+        }
+        const dateMatch = cleanText.match(/(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[\s,]+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+[0-9]{1,2}(?:st|nd|rd|th)?(?:[\s,]+[0-9]{4})?(?:[\s,]+(?:at\s+)?[0-9]{1,2}(?::[0-9]{2})?\s*(?:AM|PM|am|pm))?/i);
+        if (dateMatch && dateMatch[0] && dateMatch[0].length >= 6) {
+            const slot = dateMatch[0].trim();
+            return /IST|GMT/i.test(slot) ? slot : `${slot} IST (GMT+5:30)`;
+        }
+        const relMatch = cleanText.match(/(?:tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+at\s+[0-9]{1,2}(?::[0-9]{2})?\s*(?:AM|PM|am|pm)?/i);
+        if (relMatch && relMatch[0]) {
+            const slot = relMatch[0].trim();
+            return `${slot.charAt(0).toUpperCase() + slot.slice(1)} IST (GMT+5:30)`;
+        }
+        return "Tomorrow at 11:00 AM IST (GMT+5:30)";
+    }
+    extractAppliedRole(subject, bodyText, replyHtml, leadRecord) {
+        if ((leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.job_title) && leadRecord.job_title.trim().length > 1) {
+            return leadRecord.job_title.trim();
+        }
+        const cleanText = `${subject} ${bodyText} ${replyHtml}`
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ");
+        const rolePattern = /(?:interview for|applied for|applying for|position of|role of|job profile|position|role)[\s:*_–-]+([A-Za-z0-9\s/&.-]{3,40}?)(?=[,.\n\r<]|at\s|on\s|$)/i;
+        const match = cleanText.match(rolePattern);
+        if (match && match[1]) {
+            const candidate = match[1].trim();
+            if (!/^(the|a|an|your|this|our|scheduled|interview|demo|meeting)$/i.test(candidate)) {
+                return candidate;
+            }
+        }
+        const standardRoles = [
+            "Full Stack Developer",
+            "Frontend Developer",
+            "Backend Developer",
+            "AI Solutions Engineer",
+            "Software Engineer",
+            "Business Development Executive",
+            "Sales Specialist",
+            "Product Designer",
+            "QA Automation Engineer",
+            "HR Recruiter",
+            "DevOps Engineer",
+        ];
+        for (const r of standardRoles) {
+            if (new RegExp(r, "i").test(cleanText)) {
+                return r;
+            }
+        }
+        return "Candidate Role";
+    }
+    async resolveCandidatePhone(bodyText, replyHtml, leadRecord, fromEmail, tenantId = "default") {
+        var _a, _b;
+        if ((leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) && leadRecord.phone.trim().length >= 8) {
+            return leadRecord.phone.trim();
+        }
+        const phoneFromBody = this.extractPhoneNumber(bodyText);
+        if (phoneFromBody)
+            return phoneFromBody;
+        const phoneFromReply = this.extractPhoneNumber(replyHtml);
+        if (phoneFromReply)
+            return phoneFromReply;
+        try {
+            const state = await ConversationAgentState_entity_1.ConversationAgentState.findOne({
+                where: [
+                    { conversation_ref: fromEmail.toLowerCase() },
+                    { customer_email: fromEmail.toLowerCase() },
+                ],
+                order: { updated_on: "DESC" },
+            });
+            if ((state === null || state === void 0 ? void 0 : state.customer_phone) && state.customer_phone.trim().length >= 8) {
+                return state.customer_phone.trim();
+            }
+            if ((_a = state === null || state === void 0 ? void 0 : state.collected_slots) === null || _a === void 0 ? void 0 : _a.phone) {
+                return String(state.collected_slots.phone).trim();
+            }
+            if ((_b = state === null || state === void 0 ? void 0 : state.collected_slots) === null || _b === void 0 ? void 0 : _b.mobile) {
+                return String(state.collected_slots.mobile).trim();
+            }
+        }
+        catch (_c) { }
+        try {
+            if (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) {
+                const waConv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
+                    where: { customer_name: leadRecord.name, tenant_id: tenantId },
+                    order: { updated_on: "DESC" },
+                });
+                if ((waConv === null || waConv === void 0 ? void 0 : waConv.customer_phone) && waConv.customer_phone.trim().length >= 8) {
+                    return waConv.customer_phone.trim();
+                }
+            }
+        }
+        catch (_d) { }
         return null;
     }
     async findOrCreateLeadFromEmail(fromEmail, fromName, bodyText, subject, tenantId = "default") {
@@ -240,56 +347,20 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${templated}</div>`;
             }
             else {
-                let agentReply = null;
-                try {
-                    const result = await this.orchestrator.handle({
-                        channel: "email",
-                        tenantId,
-                        conversationRef: fromEmail.toLowerCase(),
-                        message: bodyText,
-                        subject,
-                        email: fromEmail,
-                        phone: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
-                        name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || undefined,
-                        leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
-                        llm: { provider: aiConfig.llm_provider, model: aiConfig.llm_model },
-                    });
-                    if ((result === null || result === void 0 ? void 0 : result.humanTakeover) && !result.reply) {
-                        this.logger.log(`👨‍💼 [EMAIL] ${fromEmail} is with a human agent - skipping AI reply`);
-                        return;
-                    }
-                    if (result === null || result === void 0 ? void 0 : result.reply) {
-                        agentReply = result.reply;
-                        this.logger.log(`🤝 [MULTI-AGENT EMAIL] ${result.agentName} replied to ${fromEmail}`);
-                    }
-                }
-                catch (err) {
-                    this.logger.warn(`Multi-agent email failed, using legacy draft: ${err.message}`);
-                }
-                if (agentReply) {
-                    replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${agentReply
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')
-                        .replace(/\n/g, "<br/>")}</div>`;
-                }
-                else {
-                    const draft = await this.aiService.generateDraft({
-                        from_email: fromEmail,
-                        subject,
-                        incoming_body: bodyText,
-                        lead_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
-                        conversation_history: conversationHistory,
-                        has_phone: hasPhone,
-                        phone_number: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
-                        company_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.company_name) || undefined,
-                    }, tenantId);
-                    if (!(draft === null || draft === void 0 ? void 0 : draft.draft))
-                        return;
-                    replySubject = draft.subject;
-                    replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
-                }
+                const draft = await this.aiService.generateDraft({
+                    from_email: fromEmail,
+                    subject,
+                    incoming_body: bodyText,
+                    lead_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
+                    conversation_history: conversationHistory,
+                    has_phone: hasPhone,
+                    phone_number: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || undefined,
+                    company_name: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.company_name) || undefined,
+                }, tenantId);
+                if (!(draft === null || draft === void 0 ? void 0 : draft.draft))
+                    return;
+                replySubject = draft.subject;
+                replyHtml = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b;">${draft.draft.replace(/\n/g, "<br/>")}</div>`;
             }
             await this.emailService.sendEmail({
                 to: fromEmail,
@@ -299,23 +370,75 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
             }, "ai_auto_responder", true, tenantId);
             this.logger.log(`🤖 [AFTER-REPLY AUTOMATION DISPATCHED] To: ${fromEmail} | Subject: "${replySubject}"`);
             const hasGMeet = /meet\.google\.com/i.test(replyHtml);
-            const isInterview = /(?:interview|candidate|job|applicant|hiring)/i.test(`${subject} ${bodyText} ${replySubject}`);
-            const targetPhone = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone) || this.extractPhoneNumber(bodyText);
-            if (hasGMeet && targetPhone) {
-                const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
-                const meetUrl = meetMatch ? meetMatch[0] : "https://meet.google.com";
-                this.events.emit("voice.call.requested", {
-                    tenantId,
-                    phone: targetPhone,
-                    customerName: (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0],
-                    scheduledType: isInterview ? "interview" : "demo",
-                    reason: isInterview ? "Interview scheduled" : "You scheduled demo",
-                    meetingSlot: "Scheduled Session",
-                    meetUrl,
-                    leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
-                    agentKey: isInterview ? "recruitment" : "sales",
-                });
-                this.logger.log(`📞 [VOICE CALL TRIGGERED AFTER EMAIL GMEET] Dispatched call to ${targetPhone} with payload "${isInterview ? 'Interview scheduled' : 'You scheduled demo'}"`);
+            const isInterview = /(?:interview|candidate|job|applicant|hiring|application|vacancy|resume)/i.test(`${subject} ${bodyText} ${replySubject} ${replyHtml}`);
+            const isBooking = hasGMeet || /(?:interview|demo|meeting)[\s\w]*(?:confirmed|scheduled|booked|invite)/i.test(replyHtml);
+            if (isBooking) {
+                const resolvedPhone = await this.resolveCandidatePhone(bodyText, replyHtml, leadRecord, fromEmail, tenantId);
+                if (resolvedPhone) {
+                    if (leadRecord && !leadRecord.phone) {
+                        leadRecord.phone = resolvedPhone;
+                        await leadRecord.save().catch(() => { });
+                    }
+                    const meetMatch = replyHtml.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/i);
+                    const meetUrl = meetMatch ? meetMatch[0] : ((leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.interview_link) || "https://meet.google.com");
+                    const scheduledSlot = this.extractScheduledSlot(replyHtml, bodyText, leadRecord);
+                    const appliedRole = this.extractAppliedRole(subject, bodyText, replyHtml, leadRecord);
+                    const customerName = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || fromEmail.split("@")[0];
+                    if (leadRecord) {
+                        if (!leadRecord.preferred_interview_slot)
+                            leadRecord.preferred_interview_slot = scheduledSlot;
+                        if (!leadRecord.interview_link)
+                            leadRecord.interview_link = meetUrl;
+                        if (isInterview && !leadRecord.job_title && appliedRole !== "Candidate Role")
+                            leadRecord.job_title = appliedRole;
+                        await leadRecord.save().catch(() => { });
+                    }
+                    const reason = isInterview
+                        ? `Interview for ${appliedRole} scheduled for ${scheduledSlot}`
+                        : `Product demo scheduled for ${scheduledSlot}`;
+                    const emailSummary = `Email thread with ${fromEmail} | ${isInterview ? 'Interview Invitation' : 'Demo Booking'} | Role: ${appliedRole} | Scheduled Slot: ${scheduledSlot} | Meet Link: ${meetUrl}`;
+                    this.events.emit("voice.call.requested", {
+                        tenantId,
+                        phone: resolvedPhone,
+                        customerName,
+                        scheduledType: isInterview ? "interview" : "demo",
+                        reason,
+                        meetingSlot: scheduledSlot,
+                        meetUrl,
+                        leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                        agentKey: isInterview ? "recruitment" : "sales",
+                        appliedRole,
+                        customVariables: {
+                            applied_role: appliedRole,
+                            meeting_slot: scheduledSlot,
+                            meet_url: meetUrl,
+                            email_summary: emailSummary,
+                            scheduled_slot: scheduledSlot,
+                            role: appliedRole,
+                            discussion_points: isInterview
+                                ? `Confirming interview attendance for ${appliedRole} on ${scheduledSlot}. Google Meet: ${meetUrl}. Addressing candidate questions.`
+                                : `Confirming product demo on ${scheduledSlot}. Google Meet: ${meetUrl}.`,
+                        },
+                    });
+                    this.logger.log(`📞 [VOICE CALL TRIGGERED AFTER EMAIL INTERVIEW SCHEDULED] Dispatched call to ${resolvedPhone} | Role: "${appliedRole}" | Slot: "${scheduledSlot}" | Meet: ${meetUrl}`);
+                    try {
+                        const { WhatsAppService } = await Promise.resolve().then(() => __importStar(require("../../WhatsApp/Services/WhatsApp.service")));
+                        const waService = new WhatsAppService();
+                        const waText = `Hello ${customerName}! 👋\n\nYour interview for the *${appliedRole}* role has been confirmed for *${scheduledSlot}*.\n\n🎥 *Google Meet Link*: ${meetUrl}\n\nWe have also sent the confirmation details to your email (${fromEmail}). Looking forward to speaking with you! 🚀`;
+                        await waService.sendMessage({
+                            to: resolvedPhone,
+                            text: waText,
+                            message_type: "text",
+                        }, "system", true);
+                        this.logger.log(`💬 [WHATSAPP CONFIRMATION TRIGGERED FROM EMAIL] Sent meet link to WhatsApp: ${resolvedPhone}`);
+                    }
+                    catch (waErr) {
+                        this.logger.warn(`Could not dispatch WhatsApp confirmation from email flow: ${waErr.message}`);
+                    }
+                }
+                else {
+                    this.logger.warn(`📞 [VOICE CALL SKIPPED] ${fromEmail} scheduled ${isInterview ? "interview" : "demo"}, but no phone number could be resolved from email body, CRM lead, or WhatsApp threads.`);
+                }
             }
         }
         catch (err) {

@@ -54,6 +54,7 @@ export interface EmailAIConfig {
   tone: 'professional' | 'friendly' | 'persuasive';
   llm_provider?: string;
   llm_model?: string;
+  api_key?: string;
 }
 
 export interface EmailCampaign {

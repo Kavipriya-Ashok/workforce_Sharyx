@@ -13,6 +13,35 @@ export declare class LoginController extends AuthBaseController {
         Message: string;
         result: any;
     }>;
+    SendSignupOtp(body: {
+        email: string;
+        name?: string;
+    }): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        result: {
+            ok: boolean;
+            message: string;
+            debugOtp?: string;
+        };
+    }>;
+    VerifySignupOtp(body: any): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        result: any;
+    }>;
+    GoogleAuth(body: {
+        code?: string;
+        redirect_uri?: string;
+        credential?: string;
+        email?: string;
+        name?: string;
+        picture?: string;
+    }): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        result: any;
+    }>;
     ForgotPassword(ForgotPasswordData: ForgotPasswordModel): Promise<{
         Type: ResponseEnum;
         Message: string;

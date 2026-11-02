@@ -1,6 +1,7 @@
 import { AgentLlmService, LlmConfig, LlmMessage } from "./AgentLlm.service";
 import { AgentToolsService } from "./AgentTools.service";
 import { AiAgentService } from "./AiAgent.service";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 export type AgentChannel = "whatsapp" | "email";
 export interface InboundAgentMessage {
     channel: AgentChannel;
@@ -33,8 +34,9 @@ export declare class AgentOrchestratorService {
     private readonly llm;
     private readonly tools;
     private readonly agentService;
+    private readonly openingsService;
     private readonly logger;
-    constructor(llm: AgentLlmService, tools: AgentToolsService, agentService: AiAgentService);
+    constructor(llm: AgentLlmService, tools: AgentToolsService, agentService: AiAgentService, openingsService: JobOpeningsService);
     handle(input: InboundAgentMessage): Promise<OrchestratorResult | null>;
     private buildPrompt;
     private build360;

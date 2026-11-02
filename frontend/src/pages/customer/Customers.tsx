@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, CustomerMetrics, LeadConversionRule } from '@/types/customer';
 import { customerService } from '@/service/customerService';
-import { CustomerDetailDrawer } from './components/CustomerDetailDrawer';
+import { CustomerDetailPage } from './components/CustomerDetailPage';
 import { ConversionSimulatorModal } from './components/ConversionSimulatorModal';
 import {
   Users,
@@ -87,12 +87,19 @@ export const Customers: React.FC = () => {
     try {
       const full = await customerService.getCustomerById(customer.id);
       setSelectedCustomer(full);
-      setDrawerOpen(true);
     } catch {
       setSelectedCustomer(customer);
-      setDrawerOpen(true);
     }
   };
+
+  if (selectedCustomer) {
+    return (
+      <CustomerDetailPage
+        customer={selectedCustomer}
+        onBack={() => setSelectedCustomer(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -429,13 +436,6 @@ export const Customers: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* Customer 360 Drawer */}
-      <CustomerDetailDrawer
-        customer={selectedCustomer}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
 
       {/* Dry Run Simulator Modal */}
       <ConversionSimulatorModal

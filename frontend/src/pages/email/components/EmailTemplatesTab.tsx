@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { emailService } from '@/service/emailService';
 import { EmailTemplate } from '@/types/email';
-import { CreateEmailTemplateDialog } from './CreateEmailTemplateDialog';
+import { EmailTemplateEditorPage } from './EmailTemplateEditorPage';
 import {
   LayoutTemplate,
   PlusCircle,
@@ -69,6 +69,19 @@ export const EmailTemplatesTab: React.FC = () => {
       toast.error(err.message || 'Failed to delete template');
     }
   };
+
+  if (dialogOpen) {
+    return (
+      <EmailTemplateEditorPage
+        templateToEdit={editingTemplate}
+        onBack={() => {
+          setDialogOpen(false);
+          setEditingTemplate(null);
+        }}
+        onSuccess={fetchTemplates}
+      />
+    );
+  }
 
   const handleCopyHTML = (tpl: EmailTemplate) => {
     navigator.clipboard.writeText(tpl.body_html || '').then(() => {
@@ -290,14 +303,6 @@ export const EmailTemplatesTab: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Create / Edit Dialog */}
-      <CreateEmailTemplateDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSuccess={fetchTemplates}
-        templateToEdit={editingTemplate}
-      />
     </div>
   );
 };

@@ -25,12 +25,18 @@ export class LeadService {
       .where("l.status = :active", { active: true });
 
     if (tenantId && tenantId !== "default") {
-      query.andWhere("l.tenant_id = :tenantId", { tenantId });
+      query.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
     }
 
     if (filter?.is_candidate !== undefined && filter?.is_candidate !== "undefined") {
       const isCand = filter.is_candidate === "true" || filter.is_candidate === true;
-      query.andWhere("l.is_candidate = :isCand", { isCand });
+      if (isCand) {
+        query.andWhere(
+          `(l.is_candidate = true OR l.candidate_stage IN ('screening', 'scheduled', 'offered', 'joined', 'interview_scheduled') OR LOWER(COALESCE(l.notes, '')) ~ '(placement|interview|resume|candidate|fresher|vacancy|hiring|recruitment)' OR LOWER(COALESCE(l.job_title, '')) ~ '(developer|engineer|intern|fresher|candidate|placement)' OR COALESCE(l.custom_fields::text, '') ILIKE '%interview%' OR COALESCE(l.custom_fields::text, '') ILIKE '%placement%' OR COALESCE(l.custom_fields::text, '') ILIKE '%Talent Acquisition%')`
+        );
+      } else {
+        query.andWhere("l.is_candidate = :isCand", { isCand: false });
+      }
     }
 
     if (filter?.status && filter?.status !== "ALL") {
@@ -63,8 +69,18 @@ export class LeadService {
   async getStats(userContext?: any, isCandidate?: boolean) {
     const tenantId = userContext?.active_tenant_id || userContext?.tenant_id;
     const qb = this.leadRepo.createQueryBuilder("l").where("l.status = true");
-    if (tenantId && tenantId !== "default") qb.andWhere("l.tenant_id = :tenantId", { tenantId });
-    if (isCandidate !== undefined) qb.andWhere("l.is_candidate = :isCandidate", { isCandidate });
+    if (tenantId && tenantId !== "default") {
+      qb.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+    }
+    if (isCandidate !== undefined) {
+      if (isCandidate) {
+        qb.andWhere(
+          `(l.is_candidate = true OR l.candidate_stage IN ('screening', 'scheduled', 'offered', 'joined', 'interview_scheduled') OR LOWER(COALESCE(l.notes, '')) ~ '(placement|interview|resume|candidate|fresher|vacancy|hiring|recruitment)' OR LOWER(COALESCE(l.job_title, '')) ~ '(developer|engineer|intern|fresher|candidate|placement)' OR COALESCE(l.custom_fields::text, '') ILIKE '%interview%' OR COALESCE(l.custom_fields::text, '') ILIKE '%placement%' OR COALESCE(l.custom_fields::text, '') ILIKE '%Talent Acquisition%')`
+        );
+      } else {
+        qb.andWhere("l.is_candidate = :isCandidate", { isCandidate: false });
+      }
+    }
 
     const leads = await qb.select([
       "l.lead_status", "l.candidate_stage", "l.deal_value", "l.created_on", "l.source"
@@ -105,7 +121,66 @@ export class LeadService {
       order: { created_on: "DESC" }
     });
 
-    return { ...foundLead, activities };
+    const cleanPhone = (foundLead.phone || "").replace(/\D/g, "").slice(-10);
+
+    // Fetch Omnichannel WhatsApp Messages
+    let whatsappMessages: any[] = [];
+    try {
+      const { WhatsAppMessage } = await import("@Database/Table/WhatsApp/WhatsAppMessage.entity");
+      const waQb = WhatsAppMessage.createQueryBuilder("w")
+        .where("w.status = true");
+      if (cleanPhone) {
+        waQb.andWhere("(w.sender_phone LIKE :ph OR w.recipient_phone LIKE :ph)", { ph: `%${cleanPhone}` });
+      } else {
+        waQb.andWhere("1=0");
+      }
+      whatsappMessages = await waQb.orderBy("w.created_on", "ASC").take(50).getMany();
+    } catch (err: any) {
+      this.logger.debug(`Could not load whatsapp messages for lead ${id}: ${err.message}`);
+    }
+
+    // Fetch Omnichannel Email Logs
+    let emailLogs: any[] = [];
+    try {
+      const { EmailLog } = await import("@Database/Table/Email/EmailLog.entity");
+      const emQb = EmailLog.createQueryBuilder("e")
+        .where("e.status = true");
+      if (foundLead.email && foundLead.email.trim()) {
+        emQb.andWhere("(e.lead_id = :id OR LOWER(e.to_email) = :em OR LOWER(e.from_email) = :em)", {
+          id,
+          em: foundLead.email.trim().toLowerCase(),
+        });
+      } else {
+        emQb.andWhere("e.lead_id = :id", { id });
+      }
+      emailLogs = await emQb.orderBy("e.created_on", "ASC").take(50).getMany();
+    } catch (err: any) {
+      this.logger.debug(`Could not load email logs for lead ${id}: ${err.message}`);
+    }
+
+    // Fetch Omnichannel Voice Call Logs
+    let voiceCalls: any[] = [];
+    try {
+      const { VoiceCallLog } = await import("@Database/Table/Voice/VoiceCallLog.entity");
+      const vcQb = VoiceCallLog.createQueryBuilder("v")
+        .where("v.status = true");
+      if (cleanPhone) {
+        vcQb.andWhere("(v.lead_id = :id OR v.customer_phone LIKE :ph)", { id, ph: `%${cleanPhone}` });
+      } else {
+        vcQb.andWhere("v.lead_id = :id", { id });
+      }
+      voiceCalls = await vcQb.orderBy("v.created_on", "DESC").take(50).getMany();
+    } catch (err: any) {
+      this.logger.debug(`Could not load voice calls for lead ${id}: ${err.message}`);
+    }
+
+    return {
+      ...foundLead,
+      activities,
+      whatsappMessages,
+      emailLogs,
+      voiceCalls,
+    };
   }
 
   async checkDuplicatePhone(phone: string, excludeId?: string, userContext?: any) {
@@ -138,12 +213,47 @@ export class LeadService {
   }
 
   async insert(data: any, userId?: string, userContext?: any) {
-    const leadEntity = this.leadRepo.create({
+    const cleanNumber = (val: any) => {
+      if (val === "" || val === null || val === undefined) return null;
+      const parsed = Number(val);
+      return isNaN(parsed) ? null : parsed;
+    };
+
+    const sanitizedData = {
       ...data,
-      name: data.name || `${data.first_name || ""} ${data.last_name || ""}`.trim() || data.phone,
+      deal_value: cleanNumber(data.deal_value) ?? 0,
+      total_experience: cleanNumber(data.total_experience),
+      relevant_experience: cleanNumber(data.relevant_experience),
+      current_ctc: cleanNumber(data.current_ctc),
+      expected_ctc: cleanNumber(data.expected_ctc),
+      relieving_date: data.relieving_date ? new Date(data.relieving_date) : null,
+    };
+
+    const resolvedCreatedById =
+      userId ||
+      userContext?.userId ||
+      userContext?.id ||
+      data.created_by_id ||
+      "00000000-0000-0000-0000-000000000001";
+
+    const isPlacementOrCandidate =
+      Boolean(sanitizedData.is_candidate) ||
+      Boolean(sanitizedData.resume_url) ||
+      sanitizedData.total_experience !== null ||
+      sanitizedData.expected_ctc !== null ||
+      /\b(placement|candidate|interview|resume|fresher|internship|vacancy|hiring|recruitment|career|job opening)\b/i.test(
+        `${sanitizedData.notes || ""} ${sanitizedData.agentKey || ""}`
+      );
+
+    const leadEntity = this.leadRepo.create({
+      ...sanitizedData,
+      is_candidate: isPlacementOrCandidate,
+      name: sanitizedData.name || `${sanitizedData.first_name || ""} ${sanitizedData.last_name || ""}`.trim() || sanitizedData.phone,
       tenant_id: userContext?.active_tenant_id || userContext?.tenant_id || "default",
-      assigned_to_id: data.assigned_to_id || userId || undefined,
-      candidate_stage: data.is_candidate ? (data.candidate_stage || CandidateStage.NEW) : undefined
+      assigned_to_id: sanitizedData.assigned_to_id || userId || undefined,
+      created_by_id: resolvedCreatedById,
+      created_on: new Date(),
+      candidate_stage: isPlacementOrCandidate ? (sanitizedData.candidate_stage || CandidateStage.NEW) : undefined
     });
 
     const saved = (await this.leadRepo.save(leadEntity as any)) as lead;
@@ -158,6 +268,33 @@ export class LeadService {
       tenant_id: saved.tenant_id
     });
     await this.activityRepo.save(activity);
+
+    // Auto-trigger outbound voice call if phone is present and auto_trigger_call is not explicitly false
+    if (saved.phone && data.auto_trigger_call !== false && saved.source !== LeadSource.CSV_IMPORT) {
+      const requestedAgentId =
+        data.assigned_voice_agent_id ||
+        data.agentId ||
+        data.agent_id ||
+        data.custom_fields?.assigned_voice_agent_id;
+      const requestedAgentKey = data.agentKey || (saved.is_candidate ? "recruitment" : "receptionist");
+
+      if (requestedAgentId) {
+        this.triggerVoiceCall(saved.id, {
+          agentId: requestedAgentId,
+          agentKey: requestedAgentKey,
+          scheduledType: saved.is_candidate ? "interview" : "outbound",
+        }, userContext).catch((err) => this.logger.warn(`Auto voice call on insert failed: ${err.message}`));
+      } else {
+        // Wait briefly in case frontend sends a separate TriggerVoiceCall with a chosen agentId;
+        // VoiceCallService deduplicates per phone number so it will never double-call.
+        setTimeout(() => {
+          this.triggerVoiceCall(saved.id, {
+            agentKey: requestedAgentKey,
+            scheduledType: saved.is_candidate ? "interview" : "outbound",
+          }, userContext).catch((err) => this.logger.warn(`Delayed auto voice call on insert failed: ${err.message}`));
+        }, 1200);
+      }
+    }
 
     return saved;
   }
@@ -340,13 +477,13 @@ export class LeadService {
     if (!l) throw new NotFoundException("Lead not found");
     if (!l.phone) throw new BadRequestException("Lead does not have a phone number on file");
 
+    const chosenAgentId = body.agentId || body.agent_id || (l.custom_fields as any)?.assigned_voice_agent_id;
+    const chosenAgentKey = body.agentKey;
     const isInterview = body.scheduledType === "interview" || l.is_candidate;
-    const scheduledType = isInterview ? "interview" : "demo";
-    const slot = body.slot || (l.custom_fields?.interview?.interview_date ? `${l.custom_fields.interview.interview_date} at ${l.custom_fields.interview.interview_time || "10:00 AM"}` : "Scheduled Session");
-    const meetUrl = body.meetUrl || l.interview_link || l.custom_fields?.interview?.gmeet_link || "https://meet.google.com";
-    const reason = isInterview ? "Interview scheduled" : "You scheduled demo";
-    const chosenAgentId = body.agentId || body.agent_id;
-    const chosenAgentKey = body.agentKey || (isInterview ? "recruitment" : "sales");
+    const scheduledType = body.scheduledType || (isInterview ? "interview" : "outbound");
+    const slot = body.slot || (l.custom_fields?.interview?.interview_date ? `${l.custom_fields.interview.interview_date} at ${l.custom_fields.interview.interview_time || "10:00 AM"}` : "");
+    const meetUrl = body.meetUrl || l.interview_link || l.custom_fields?.interview?.gmeet_link || "";
+    const reason = body.reason || "Outbound AI Voice Call";
 
     this.events.emit("voice.call.requested", {
       tenantId: l.tenant_id || userContext?.active_tenant_id || "default",
@@ -361,7 +498,7 @@ export class LeadService {
       agentKey: chosenAgentKey,
     });
 
-    this.logger.log(`📞 [MANUAL LEAD CALL TRIGGERED] Dispatched voice call to ${l.phone} (${reason}) via connected platform`);
+    this.logger.log(`📞 [MANUAL LEAD CALL TRIGGERED] Dispatched voice call to ${l.phone} (AgentID: ${chosenAgentId || chosenAgentKey || "auto"}) via connected platform`);
     return { success: true, message: `Voice call dispatched to ${l.phone} via connected voice engine`, leadId: l.id };
   }
 

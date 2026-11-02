@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { EmailAISettingsView } from './components/EmailAISettingsView';
 import { CreateCampaignView } from './components/CreateCampaignView';
 import { EmailTemplatesTab } from './components/EmailTemplatesTab';
 import { ComposeEmailDialog } from './components/ComposeEmailDialog';
-import { EmailSettingsDialog } from './components/EmailSettingsDialog';
+import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { emailService } from '@/service/emailService';
 import { toast } from 'sonner';
 import {
@@ -25,12 +25,39 @@ import {
 
 interface Props {
   initialTab?: 'inbox' | 'templates' | 'ai_settings' | 'campaigns' | 'settings';
+  onTabChange?: (tab: 'inbox' | 'templates' | 'ai_settings' | 'campaigns' | 'settings') => void;
 }
 
-export const EmailAutomation: React.FC<Props> = ({ initialTab = 'inbox' }) => {
+export const EmailAutomation: React.FC<Props> = ({ initialTab = 'inbox', onTabChange }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(initialTab === 'settings');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+      setSettingsOpen(initialTab === 'settings');
+    }
+  }, [initialTab]);
+
+  const handleTabChange = (val: 'inbox' | 'templates' | 'ai_settings' | 'campaigns' | 'settings') => {
+    setActiveTab(val);
+    setSettingsOpen(val === 'settings');
+    onTabChange?.(val);
+  };
+
+  if (settingsOpen || activeTab === 'settings') {
+    return (
+      <SettingsPage
+        initialTab="email"
+        onBack={() => {
+          setActiveTab('inbox');
+          setSettingsOpen(false);
+          onTabChange?.('inbox');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -91,7 +118,7 @@ export const EmailAutomation: React.FC<Props> = ({ initialTab = 'inbox' }) => {
       </div>
 
       {/* Tabs Hub */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => handleTabChange(val as any)} className="w-full">
         <TabsList className="grid grid-cols-5 max-w-2xl bg-slate-100/80 p-1 rounded-2xl border border-slate-200">
           <TabsTrigger value="inbox" className="gap-2 text-xs rounded-xl data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs">
             <Inbox className="h-3.5 w-3.5" />
@@ -162,7 +189,6 @@ export const EmailAutomation: React.FC<Props> = ({ initialTab = 'inbox' }) => {
 
       {/* Dialog Modals */}
       <ComposeEmailDialog open={composeOpen} onOpenChange={setComposeOpen} />
-      <EmailSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };

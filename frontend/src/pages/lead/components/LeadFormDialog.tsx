@@ -34,7 +34,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
   // AI Voice Agent Options
   const [voiceAgents, setVoiceAgents] = useState<VoiceAgentDto[]>([]);
   const [assignedVoiceAgentId, setAssignedVoiceAgentId] = useState<string>("");
-  const [autoTriggerCall, setAutoTriggerCall] = useState<boolean>(false);
+  const [autoTriggerCall, setAutoTriggerCall] = useState<boolean>(true);
 
   useEffect(() => {
     VoiceService.listAgents()
@@ -43,7 +43,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
         if (agents.length > 0 && !assignedVoiceAgentId) {
           const def = isCandidate
             ? agents.find((a) => a.template_key === "recruitment" || /recrui|maya|sarah/i.test(a.name)) || agents[0]
-            : agents.find((a) => a.template_key === "sales" || /sales|alex/i.test(a.name)) || agents[0];
+            : agents.find((a) => a.template_key === "receptionist" || /reception/i.test(a.name)) || agents[0];
           setAssignedVoiceAgentId(def.id);
         }
       })
@@ -146,6 +146,18 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
       toast.error("Full name is required");
       return;
     }
+    if (!formData.phone.trim()) {
+      toast.error("Mobile phone number is required");
+      return;
+    }
+    if (!formData.email.trim()) {
+      toast.error("Email address is required");
+      return;
+    }
+    if (isCandidate && !formData.job_title.trim()) {
+      toast.error("Applied role is required for candidates");
+      return;
+    }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       toast.error("Please enter a valid email address");
       return;
@@ -155,6 +167,14 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
       setLoading(true);
       const payload: any = {
         ...formData,
+        deal_value: Number(formData.deal_value) || 0,
+        total_experience: formData.total_experience === "" ? null : Number(formData.total_experience),
+        relevant_experience: formData.relevant_experience === "" ? null : Number(formData.relevant_experience),
+        current_ctc: formData.current_ctc === "" ? null : Number(formData.current_ctc),
+        expected_ctc: formData.expected_ctc === "" ? null : Number(formData.expected_ctc),
+        relieving_date: formData.relieving_date || null,
+        assigned_voice_agent_id: assignedVoiceAgentId || undefined,
+        auto_trigger_call: autoTriggerCall,
         custom_fields: {
           ...((lead as any)?.custom_fields || {}),
           assigned_voice_agent_id: assignedVoiceAgentId || undefined,
@@ -197,8 +217,9 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
     opts?: { type?: string; placeholder?: string; required?: boolean }
   ) => (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs font-semibold text-slate-600">
-        {label}{opts?.required && <span className="text-red-500 ml-0.5">*</span>}
+      <Label htmlFor={id} className="text-xs font-bold text-slate-700 flex items-center">
+        <span>{label}</span>
+        {opts?.required && <span className="text-red-500 font-extrabold ml-1 text-sm">*</span>}
       </Label>
       <Input
         id={id}
@@ -250,14 +271,14 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
             {field("phone", "Mobile Number", formData.phone, (v) => {
               setFormData({ ...formData, phone: v });
               checkDuplicatePhone(v);
-            }, { placeholder: "+91 9876543210", type: "tel" })}
+            }, { required: true, placeholder: "+91 9876543210", type: "tel" })}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {field("email", "Email", formData.email, (v) => {
+            {field("email", "Email Address", formData.email, (v) => {
               setFormData({ ...formData, email: v });
               if (v.includes("@")) checkDuplicateEmail(v);
-            }, { type: "email", placeholder: "name@company.com" })}
-            {field("job_title", isCandidate ? "Applied Role *" : "Job Title", formData.job_title, (v) => setFormData({ ...formData, job_title: v }), { placeholder: isCandidate ? "e.g. Frontend Developer" : "e.g. Sales Manager" })}
+            }, { required: true, type: "email", placeholder: "name@company.com" })}
+            {field("job_title", isCandidate ? "Applied Role" : "Job Title", formData.job_title, (v) => setFormData({ ...formData, job_title: v }), { required: isCandidate, placeholder: isCandidate ? "e.g. Frontend Developer" : "e.g. Sales Manager" })}
           </div>
           <div className="grid grid-cols-2 gap-3">
             {field("company_name", isCandidate ? "Current/Last Company" : "Company Name", formData.company_name, (v) => setFormData({ ...formData, company_name: v }), { placeholder: "Company Pvt Ltd" })}

@@ -76,6 +76,11 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
   const [triggeringCall, setTriggeringCall] = useState(false);
   const [convertingCustomer, setConvertingCustomer] = useState(false);
 
+  // Candidate Summary State (Task 5 & 6)
+  const [candidateSummary, setCandidateSummary] = useState<string>("");
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [savingSummary, setSavingSummary] = useState(false);
+
   // Voice AI Agents & Call Logs
   const [voiceAgents, setVoiceAgents] = useState<VoiceAgentDto[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -88,6 +93,8 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
     try {
       const data = await LeadService.getLeadById(leadId);
       setLead(data);
+      const summ = data?.custom_fields?.candidate_summary || data?.notes || "";
+      setCandidateSummary(summ);
       if (data?.phone) {
         fetchLeadCallLogs(data.phone);
       }
@@ -112,12 +119,12 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
     }
   };
 
-  const fetchLeadCallLogs = async (phoneNumber?: string) => {
+  const fetchLeadCallLogs = async (phoneNumber?: string, skipSync: boolean = true) => {
     const phoneToMatch = phoneNumber || lead?.phone;
     if (!phoneToMatch && !leadId) return;
     try {
       setLoadingCallLogs(true);
-      const logs = await VoiceService.getCallLogs(undefined, 50, undefined, true);
+      const logs = await VoiceService.getCallLogs(undefined, 50, undefined, skipSync);
       const cleanTarget = (phoneToMatch || "").replace(/\D/g, "").slice(-10);
       const list = Array.isArray(logs) ? logs : [];
       const filtered = list.filter((item: VoiceCallLogItem) => {
@@ -207,6 +214,28 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
       toast.error(err.response?.data?.message || err.message || "Failed to trigger voice call");
     } finally {
       setTriggeringCall(false);
+    }
+  };
+
+  const handleSaveSummary = async () => {
+    if (!leadId) return;
+    try {
+      setSavingSummary(true);
+      await LeadService.updateLead({
+        id: leadId,
+        custom_fields: {
+          ...(lead?.custom_fields || {}),
+          candidate_summary: candidateSummary,
+        },
+      } as any);
+      toast.success("Candidate summary updated!");
+      setIsEditingSummary(false);
+      fetchDetails();
+      onUpdate();
+    } catch {
+      toast.error("Failed to update candidate summary");
+    } finally {
+      setSavingSummary(false);
     }
   };
 
@@ -633,6 +662,78 @@ export function LeadDetailDrawer({ leadId, open, onClose, onUpdate }: Props) {
                   <Calendar className="h-4 w-4" /> Interview Meet Link <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               )}
+            </div>
+          )}
+
+          {/* ── Candidate Summary Card (Editable & fed to Vapi AI Maya) ── */}
+          {lead.is_candidate && (
+            <div className="bg-gradient-to-r from-purple-50/60 to-indigo-50/60 border border-purple-200/80 rounded-2xl p-4 space-y-2.5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <h4 className="text-xs font-bold text-purple-950 uppercase tracking-wider">
+                    Candidate AI Context & Summary
+                  </h4>
+                </div>
+                {!isEditingSummary ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingSummary(true)}
+                    className="h-7 text-xs text-purple-700 hover:text-purple-900 hover:bg-purple-100/60 px-2.5"
+                  >
+                    Edit Summary
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCandidateSummary(lead?.custom_fields?.candidate_summary || lead?.notes || "");
+                        setIsEditingSummary(false);
+                      }}
+                      className="h-7 text-xs text-slate-500 px-2"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSaveSummary}
+                      disabled={savingSummary}
+                      className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white px-2.5"
+                    >
+                      {savingSummary ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {isEditingSummary ? (
+                <Textarea
+                  rows={3}
+                  value={candidateSummary}
+                  onChange={(e) => setCandidateSummary(e.target.value)}
+                  placeholder="Summarize candidate qualifications, strengths, salary expectations, or interview instructions. This context is automatically supplied to Voice AI Maya when placing reminder calls."
+                  className="text-xs bg-white border-purple-200 text-slate-800"
+                />
+              ) : (
+                <div className="p-3 bg-white/80 rounded-xl border border-purple-100 text-xs text-slate-700 leading-relaxed min-h-[50px]">
+                  {candidateSummary ? (
+                    <p>{candidateSummary}</p>
+                  ) : (
+                    <p className="text-slate-400 italic">
+                      No summary yet. WhatsApp chat and Voice calls will automatically update this summary, or click "Edit Summary" to provide notes for Maya.
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-[10px] text-purple-700/80">
+                💡 Maya reads this summary before placing reminder or follow-up calls to ensure personalized dialogue.
+              </p>
             </div>
           )}
 

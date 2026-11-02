@@ -1,4 +1,5 @@
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
 export interface ConversationContext {
     tenantId: string;
     senderPhone: string;
@@ -10,9 +11,12 @@ export interface ConversationContext {
     }>;
     leadInfo?: {
         name?: string;
+        email?: string;
         lead_status?: string;
         deal_value?: number | string;
         interested_service?: string;
+        is_candidate?: boolean;
+        candidate_stage?: string;
     };
     tenantBusinessContext?: {
         companyName: string;
@@ -31,6 +35,7 @@ export interface ConversationContext {
         dateTime?: string;
         meetingUrl?: string;
     };
+    openRolesContext?: string;
     kbContext?: string;
     tools?: Array<{
         name: string;
@@ -46,8 +51,9 @@ export interface ToolCallExecution {
 }
 export declare class PromptEngineService {
     private readonly events;
+    private readonly openingsService;
     private readonly logger;
-    constructor(events: EventEmitter2);
+    constructor(events: EventEmitter2, openingsService: JobOpeningsService);
     private readonly defaultTools;
     buildSystemPrompt(ctx: ConversationContext, customPersona?: string): string;
     buildAutoContext(tenantId: string, senderPhone: string, senderName: string, messageText: string, conversationId?: string): Promise<ConversationContext>;

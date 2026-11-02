@@ -63,8 +63,27 @@ export class LeadService {
     return res.data?.AddtionalData || res.data;
   }
 
-  public static async updateLead(id: string, data: Partial<Lead>): Promise<any> {
-    const res = await axios.put(`${API_BASE}/Update/${id}`, data);
+  public static async updateLead(idOrData: string | Partial<Lead>, data?: Partial<Lead>): Promise<any> {
+    const id = typeof idOrData === "string" ? idOrData : idOrData.id;
+    const payload = typeof idOrData === "string" ? data : idOrData;
+    const res = await axios.put(`${API_BASE}/Update/${id}`, payload);
+    return res.data?.AddtionalData || res.data;
+  }
+
+  public static async approveInterview(
+    id: string,
+    data: {
+      interviewDate?: string;
+      interviewLink?: string;
+      mode?: "ONLINE" | "OFFICE";
+      [key: string]: any;
+    }
+  ): Promise<any> {
+    const res = await axios.post(`${API_BASE}/ApproveInterview/${id}`, {
+      interview_date: data.interviewDate,
+      gmeet_link: data.interviewLink,
+      mode: data.mode || "ONLINE",
+    });
     return res.data?.AddtionalData || res.data;
   }
 

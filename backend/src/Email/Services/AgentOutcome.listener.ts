@@ -20,8 +20,13 @@ export class AgentOutcomeListener {
   @OnEvent(AGENT_OUTCOME_EVENT, { async: true })
   async handle(evt: AgentOutcomeEvent) {
     try {
-      // 1. Deliver WhatsApp + Email confirmation messages first
-      const res = await this.outcomeTrigger.executeTrigger("both", evt.event, {
+      // When the booking/outcome originated on WhatsApp or from a Voice Call, the customer
+      // already received confirmation in chat or on the phone. Only dispatch the Email confirmation
+      // so we never send redundant/confusing duplicate WhatsApp messages!
+      const targetChannel: "whatsapp" | "email" | "both" =
+        evt.channel === "whatsapp" || evt.channel === "voice" ? "email" : "both";
+
+      const res = await this.outcomeTrigger.executeTrigger(targetChannel, evt.event, {
         tenantId: evt.tenantId || "default",
         phone: evt.phone,
         email: evt.email,
@@ -31,37 +36,7 @@ export class AgentOutcomeListener {
         agentName: evt.agentName,
         meetUrl: evt.meetUrl,
       });
-      this.logger.log(`⚡ [AGENT OUTCOME] ${evt.outcome} (${evt.event}) -> sent ${res.sent}, failed ${res.failed}`);
-
-      // 2. Automatically trigger voice confirmation call strictly when interview or demo Google Meet is scheduled
-      // (Only trigger if the incoming channel wasn't already voice to prevent loops, and strictly requires a confirmed meet link)
-      const hasMeetUrl = Boolean(evt.meetUrl && evt.meetUrl.includes("meet.google.com"));
-      const isBooking =
-        (evt.event === "appointment_booked" || evt.event === "interview_booked" || /booked/i.test(evt.outcome || "")) &&
-        hasMeetUrl;
-
-      if (isBooking && evt.phone && evt.channel !== "voice") {
-        const isInterview = /interview/i.test(`${evt.event} ${evt.outcome} ${evt.summary}`);
-        this.logger.log(
-          `📞 [AUTO VOICE TRIGGER] Dispatched confirmation voice call to ${evt.phone} for ${
-            isInterview ? "Interview" : "Demo"
-          } after WhatsApp delivery`
-        );
-
-        // 3-second buffer to ensure the customer receives the WhatsApp message before phone rings
-        setTimeout(() => {
-          this.events.emit("voice.call.requested", {
-            tenantId: evt.tenantId || "default",
-            phone: evt.phone,
-            customerName: evt.leadName,
-            scheduledType: isInterview ? "interview" : "demo",
-            reason: isInterview ? "Interview scheduled" : "Demo scheduled",
-            meetingSlot: evt.summary || "your upcoming session",
-            meetUrl: evt.meetUrl,
-            agentKey: isInterview ? "recruitment" : "sales",
-          });
-        }, 3000);
-      }
+      this.logger.log(`⚡ [AGENT OUTCOME] ${evt.outcome} (${evt.event}) [${targetChannel}] -> sent ${res.sent}, failed ${res.failed}`);
     } catch (err: any) {
       this.logger.warn(`Agent outcome trigger failed: ${err.message}`);
     }

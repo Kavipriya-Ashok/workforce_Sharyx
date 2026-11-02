@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Sparkles,
   Zap,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +25,13 @@ import { VoiceService, MaskedVoiceConfig, VoiceProviderType } from '@/service/vo
 import { whatsappService } from '@/service/whatsappService';
 import { WhatsAppConfig } from '@/types/whatsapp';
 
-export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'voice' | 'whatsapp' | 'ai' | 'email'>('voice');
+interface SettingsPageProps {
+  initialTab?: 'voice' | 'whatsapp' | 'ai' | 'email';
+  onBack?: () => void;
+}
+
+export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice', onBack }) => {
+  const [activeTab, setActiveTab] = useState<'voice' | 'whatsapp' | 'ai' | 'email'>(initialTab);
 
   // ─── Voice States ──────────────────────────────────────────────────────────
   const [voiceConfigs, setVoiceConfigs] = useState<Record<string, MaskedVoiceConfig>>({});
@@ -233,6 +239,18 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {onBack && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBack}
+            className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Dashboard
+          </Button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>

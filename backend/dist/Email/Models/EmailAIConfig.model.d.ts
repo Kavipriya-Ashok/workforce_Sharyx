@@ -6,6 +6,7 @@ export declare class EmailAIConfigModel extends BaseModel {
     tone: string;
     llm_provider?: string;
     llm_model?: string;
+    api_key?: string;
 }
 export declare class GenerateEmailAIDraftModel {
     from_email?: string;

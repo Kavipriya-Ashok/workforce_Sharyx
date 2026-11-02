@@ -58,12 +58,18 @@ export interface Lead {
   preferred_interview_slot?: string;
   resume_url?: string;
   total_experience?: number;
+  relevant_experience?: number;
   employment_status?: string;
+  current_ctc?: number;
   expected_ctc?: number;
+  relocation?: string;
   status: boolean;
   created_on: string;
   updated_on?: string;
   activities?: LeadActivity[];
+  whatsappMessages?: any[];
+  emailLogs?: any[];
+  voiceCalls?: any[];
 }
 
 export interface LeadFilter {
