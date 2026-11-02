@@ -19,17 +19,19 @@ import {
   KeyRound,
   RefreshCw,
   ShieldCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const SignupPage: React.FC = () => {
   const [, setLocation] = useLocation();
-  const { sendSignupOtp, verifySignupOtp } = useAuth();
+  const { sendSignupOtp, resendSignupOtp, verifySignupOtp } = useAuth();
 
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(60);
   const [isResending, setIsResending] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -72,15 +74,17 @@ export const SignupPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await sendSignupOtp(formData.email, formData.first_name);
-      toast.success(`Verification code sent to ${formData.email}!`);
-      if (res.debugOtp) {
-        toast.info(`Development OTP: ${res.debugOtp}`);
+      toast.success(res.message || `Verification code sent to ${formData.email}!`);
+      if (res.previewUrl) {
+        setPreviewUrl(res.previewUrl);
+        toast.info('Test Mailbox Ready! Click link below to view delivered email.');
       }
       setResendCooldown(60);
       setStep('otp');
     } catch (err: any) {
       toast.error(
         err.response?.data?.message ||
+          err.response?.data?.Message ||
           err.message ||
           'Failed to send verification code. Please check your email.'
       );
@@ -94,14 +98,19 @@ export const SignupPage: React.FC = () => {
     if (resendCooldown > 0 || isResending) return;
     setIsResending(true);
     try {
-      const res = await sendSignupOtp(formData.email, formData.first_name);
-      toast.success(`New verification code sent to ${formData.email}`);
-      if (res.debugOtp) {
-        toast.info(`Development OTP: ${res.debugOtp}`);
+      const res = await resendSignupOtp(formData.email);
+      toast.success(res.message || `New verification code dispatched to ${formData.email}`);
+      if (res.previewUrl) {
+        setPreviewUrl(res.previewUrl);
       }
       setResendCooldown(60);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not resend code. Please try again.');
+      toast.error(
+        err.response?.data?.message ||
+          err.response?.data?.Message ||
+          err.message ||
+          'Could not resend code. Please try again.'
+      );
     } finally {
       setIsResending(false);
     }
@@ -435,6 +444,20 @@ export const SignupPage: React.FC = () => {
                   )}
                 </Button>
               </form>
+
+              {previewUrl && (
+                <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-center">
+                  <p className="text-[11px] text-emerald-300 mb-1">Delivered via Test Mailbox (Sandbox)</p>
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    <ExternalLink className="h-3 w-3" /> Click here to open received verification email
+                  </a>
+                </div>
+              )}
 
               {/* Resend OTP Section */}
               <div className="pt-2 border-t border-slate-800/80 flex flex-col items-center justify-center gap-2">

@@ -11,8 +11,11 @@ export const OAuthCallback: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Exchanging authorization code with Google...');
   const [userEmail, setUserEmail] = useState<string>('');
+  const hasExecuted = React.useRef(false);
 
   useEffect(() => {
+    if (hasExecuted.current) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
@@ -30,6 +33,7 @@ export const OAuthCallback: React.FC = () => {
       return;
     }
 
+    hasExecuted.current = true;
     const currentRedirectUri = `${window.location.origin}/oauth/callback`;
 
     // 1. Check if this is User Login / Sign-up with Google

@@ -623,14 +623,22 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-        // Search for recent incoming messages in INBOX
-        const listRes = await gmail.users.messages.list({
-          userId: "me",
-          q: "label:INBOX",
-          maxResults: 20,
-        });
-
-        const messages = listRes.data.messages || [];
+        let messages: any[] = [];
+        try {
+          // Search for recent incoming messages in INBOX
+          const listRes = await gmail.users.messages.list({
+            userId: "me",
+            q: "label:INBOX",
+            maxResults: 20,
+          });
+          messages = listRes.data.messages || [];
+        } catch (apiErr: any) {
+          if (apiErr.message?.includes('insufficient authentication scopes') || apiErr.code === 403) {
+            // User account only has login/identity scopes, not full Gmail reading scopes
+            return { synced: 0, status: "insufficient_scopes" };
+          }
+          throw apiErr;
+        }
 
         for (const item of messages) {
           if (!item.id) continue;

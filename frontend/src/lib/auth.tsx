@@ -23,7 +23,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (userData: any) => Promise<boolean>;
   signup: (userData: any) => Promise<boolean>;
-  sendSignupOtp: (email: string, name?: string) => Promise<{ success: boolean; message: string; debugOtp?: string }>;
+  sendSignupOtp: (email: string, name?: string) => Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }>;
+  resendSignupOtp: (email: string) => Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }>;
   verifySignupOtp: (payload: any) => Promise<boolean>;
   googleAuth: (payload: { code?: string; redirect_uri?: string; credential?: string }) => Promise<boolean>;
   completeOnboarding: (data: any) => Promise<boolean>;
@@ -32,19 +33,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function checkUserOnboarded(user: any): boolean {
-  if (!user) return false;
-  const role = (user.role || '').toLowerCase();
-  if (role === 'super_admin' || role === 'whitelabel_admin') return true;
+export function checkUserOnboarded(rawUser: any): boolean {
+  if (!rawUser) return false;
+  const u = rawUser.user || rawUser;
+  const role = (u.role || '').toLowerCase();
+  if (role.includes('super') || role.includes('whitelabel')) return true;
 
   const isCompleted =
-    user.onboardingCompleted === true ||
-    user.onboardingCompleted === 'true' ||
-    user.onboarding_completed === true ||
-    user.onboarding_completed === 'true';
+    u.onboardingCompleted === true ||
+    u.onboardingCompleted === 'true' ||
+    u.onboarding_completed === true ||
+    u.onboarding_completed === 'true';
 
   if (!isCompleted) return false;
-  const hasTenant = Boolean(user.tenantId || user.tenant_id);
+  const hasTenant = Boolean(u.tenantId || u.tenant_id);
   return hasTenant;
 }
 
@@ -151,13 +153,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const sendSignupOtp = async (email: string, name?: string): Promise<{ success: boolean; message: string; debugOtp?: string }> => {
+  const sendSignupOtp = async (email: string, name?: string): Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }> => {
     const res = await axios.post('/api/v1/Auth/SendSignupOtp', { email, name });
     const data = res.data?.result || res.data;
     return {
       success: true,
-      message: data?.message || 'OTP sent to your email address',
-      debugOtp: data?.otp,
+      message: res.data?.Message || data?.message || `Verification code sent to ${email}`,
+      debugOtp: data?.debugOtp || data?.otp,
+      previewUrl: data?.previewUrl,
+    };
+  };
+
+  const resendSignupOtp = async (email: string): Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }> => {
+    const res = await axios.post('/api/v1/Auth/ResendSignupOtp', { email });
+    const data = res.data?.result || res.data;
+    return {
+      success: true,
+      message: res.data?.Message || data?.message || `A new verification code has been dispatched to ${email}`,
+      debugOtp: data?.debugOtp || data?.otp,
+      previewUrl: data?.previewUrl,
     };
   };
 
@@ -165,7 +179,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res = await axios.post('/api/v1/Auth/VerifySignupOtp', payload);
-      const loggedUser = res.data?.result || res.data;
+      const data = res.data?.result || res.data;
+      const userData = data?.user || data;
+      const token = data?.api_token || data?.token || userData?.api_token;
+      const loggedUser: User = {
+        ...userData,
+        api_token: token,
+        tenant_id: userData?.tenant_id || userData?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
+        tenantId: userData?.tenantId || userData?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
+      };
       setUser(loggedUser);
       localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
       return true;
@@ -178,7 +200,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res = await axios.post('/api/v1/Auth/GoogleAuth', payload);
-      const loggedUser = res.data?.result || res.data;
+      const data = res.data?.result || res.data;
+      const userData = data?.user || data;
+      const token = data?.api_token || data?.token || userData?.api_token;
+      const loggedUser: User = {
+        ...userData,
+        api_token: token,
+        tenant_id: userData?.tenant_id || userData?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
+        tenantId: userData?.tenantId || userData?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
+      };
       setUser(loggedUser);
       localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
       return true;
@@ -192,7 +222,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const updatedUser: User = {
         ...user!,
-        tenant_id: `tenant-${Date.now()}`,
+        tenant_id: user?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
+        tenantId: user?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
         onboarding_completed: true,
         onboarding_data: data,
         company_name: data.company_name || user?.company_name || 'My Company',
@@ -212,7 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, sendSignupOtp, verifySignupOtp, googleAuth, completeOnboarding, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, sendSignupOtp, resendSignupOtp, verifySignupOtp, googleAuth, completeOnboarding, logout }}>
       {children}
     </AuthContext.Provider>
   );

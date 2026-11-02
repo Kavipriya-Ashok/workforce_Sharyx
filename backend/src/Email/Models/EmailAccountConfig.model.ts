@@ -33,6 +33,16 @@ export class EmailAccountConfigModel extends BaseModel {
   @IsString()
   client_secret?: string;
 
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  refresh_token?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  access_token?: string;
+
   @ApiProperty({ example: "smtp.gmail.com", required: false })
   @IsOptional()
   @IsString()

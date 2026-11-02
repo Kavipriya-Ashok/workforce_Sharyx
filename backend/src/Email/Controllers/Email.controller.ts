@@ -39,6 +39,12 @@ export class EmailController extends AuthBaseController {
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Saved, result);
   }
 
+  @Post("Test-Connection")
+  async testConnection(@Body() body: EmailAccountConfigModel) {
+    const result = await this.emailService.testConnection(body);
+    return this.SendResponse(ResponseEnum.Success, "Email connection verified successfully", result);
+  }
+
   // --- Google OAuth 2.0 Integration Endpoints ---
 
   @Get("OAuth/AuthUrl")

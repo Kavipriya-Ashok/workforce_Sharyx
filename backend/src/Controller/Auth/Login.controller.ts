@@ -29,6 +29,12 @@ export class LoginController extends AuthBaseController {
     return { Type: ResponseEnum.Success, Message: result.message, result };
   }
 
+  @Post('ResendSignupOtp')
+  async ResendSignupOtp(@Body() body: { email: string }) {
+    const result = await this._AuthService.resendSignupOtp(body.email);
+    return { Type: ResponseEnum.Success, Message: result.message, result };
+  }
+
   @Post('VerifySignupOtp')
   async VerifySignupOtp(@Body() body: any) {
     const result = await this._AuthService.verifySignupOtp(body);

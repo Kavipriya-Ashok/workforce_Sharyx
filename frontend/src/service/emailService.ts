@@ -44,6 +44,11 @@ export const emailService = {
     return res.data;
   },
 
+  testConnection: async (config: EmailAccountConfig) => {
+    const res = await axios.post(`${API_BASE}/Test-Connection`, config);
+    return res.data?.AddtionalData || res.data;
+  },
+
   // Google OAuth 2.0
   getGoogleAuthUrl: async (redirectUri?: string): Promise<string> => {
     const res = await axios.get(`${API_BASE}/OAuth/AuthUrl`, {

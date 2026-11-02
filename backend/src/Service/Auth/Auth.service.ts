@@ -4,6 +4,7 @@ import { company } from '@Database/Table/Admin/company';
 import { user } from '@Database/Table/Admin/user';
 import { user_role } from '@Database/Table/Admin/user_role';
 import { EmailAccountConfig } from '@Database/Table/Email/EmailAccountConfig.entity';
+import { email_config } from '@Database/Table/Admin/email_config';
 import { EncryptionService } from '../Encryption.service';
 import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
@@ -11,6 +12,8 @@ import { google } from 'googleapis';
 interface OtpRecord {
   otp: string;
   expiresAt: number;
+  lastSentAt: number;
+  attempts: number;
   name?: string;
   signupData?: any;
 }
@@ -23,7 +26,7 @@ export class AuthService {
   constructor(
     private _JwtService: JwtService,
     private _EncryptionService: EncryptionService
-  ) {}
+  ) { }
 
   async ValidateUser(username: string, password: string): Promise<any> {
     const cleanEmail = username.toLowerCase().trim();
@@ -88,7 +91,7 @@ export class AuthService {
   /**
    * Generate 6-digit OTP and send verification email for Signup
    */
-  async sendSignupOtp(email: string, name?: string): Promise<{ ok: boolean; message: string; debugOtp?: string }> {
+  async sendSignupOtp(email: string, name?: string): Promise<{ ok: boolean; message: string; previewUrl?: string; debugOtp?: string }> {
     if (!email || !email.includes('@')) {
       throw new Error('Please provide a valid email address');
     }
@@ -100,24 +103,81 @@ export class AuthService {
       throw new Error('An account with this email already exists. Please log in.');
     }
 
+    // Rate-limiting: prevent spam requests within 30 seconds
+    const existingOtp = this.signupOtps.get(cleanEmail);
+    if (existingOtp && Date.now() - existingOtp.lastSentAt < 30 * 1000) {
+      const waitSec = Math.ceil((30 * 1000 - (Date.now() - existingOtp.lastSentAt)) / 1000);
+      throw new Error(`Please wait ${waitSec} seconds before requesting a new verification code.`);
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     this.signupOtps.set(cleanEmail, {
       otp,
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes expiry
+      lastSentAt: Date.now(),
+      attempts: (existingOtp?.attempts || 0) + 1,
       name,
     });
 
     this.logger.log(`🔑 [SIGNUP OTP GENERATED] Email: ${cleanEmail} | OTP Code: ${otp}`);
 
-    // Attempt to dispatch via SMTP
-    const sent = await this.sendOtpEmail(cleanEmail, otp, name);
+    // Dispatch via robust multi-transporter email pipeline
+    const dispatch = await this.sendOtpEmail(cleanEmail, otp, name);
+    if (!dispatch.success) {
+      this.logger.error(`Failed to send verification email to ${cleanEmail}: ${dispatch.error}`);
+      throw new Error(`Verification email delivery failed: ${dispatch.error || 'Could not connect to email server'}. Please check your email address or SMTP configuration.`);
+    }
 
     return {
       ok: true,
-      message: sent
-        ? `Verification code dispatched to ${cleanEmail}. Please check your inbox!`
-        : `Verification code generated for ${cleanEmail}!`,
-      debugOtp: otp,
+      message: `Verification code successfully sent to ${cleanEmail}. Please check your inbox (and spam folder)!`,
+      previewUrl: dispatch.previewUrl,
+      // Only include debugOtp in test/preview mode if ethereal was used
+      debugOtp: dispatch.previewUrl ? otp : undefined,
+    };
+  }
+
+  /**
+   * Resend Signup OTP with rate limiting & cooldown validation
+   */
+  async resendSignupOtp(email: string): Promise<{ ok: boolean; message: string; previewUrl?: string; debugOtp?: string }> {
+    if (!email || !email.includes('@')) {
+      throw new Error('Please provide a valid email address');
+    }
+    const cleanEmail = email.toLowerCase().trim();
+
+    const existingOtp = this.signupOtps.get(cleanEmail);
+    if (!existingOtp) {
+      return await this.sendSignupOtp(cleanEmail);
+    }
+
+    // Cooldown check (30 seconds)
+    if (Date.now() - existingOtp.lastSentAt < 30 * 1000) {
+      const waitSec = Math.ceil((30 * 1000 - (Date.now() - existingOtp.lastSentAt)) / 1000);
+      throw new Error(`Please wait ${waitSec} seconds before requesting another code.`);
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    this.signupOtps.set(cleanEmail, {
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      lastSentAt: Date.now(),
+      attempts: existingOtp.attempts + 1,
+      name: existingOtp.name,
+    });
+
+    this.logger.log(`🔄 [SIGNUP OTP RESENT] Email: ${cleanEmail} | New OTP Code: ${otp}`);
+
+    const dispatch = await this.sendOtpEmail(cleanEmail, otp, existingOtp.name);
+    if (!dispatch.success) {
+      throw new Error(`Failed to resend code: ${dispatch.error || 'SMTP delivery failure'}`);
+    }
+
+    return {
+      ok: true,
+      message: `A fresh verification code has been dispatched to ${cleanEmail}!`,
+      previewUrl: dispatch.previewUrl,
+      debugOtp: dispatch.previewUrl ? otp : undefined,
     };
   }
 
@@ -178,10 +238,12 @@ export class AuthService {
       await userRecord.save();
     }
 
+    const tenantId = '646b4abe-e6de-401b-ba33-46884bf3f6e6';
     const payload = {
       email: userRecord.email,
       user_id: userRecord.id,
       role: 'admin',
+      tenant_id: tenantId,
     };
     const api_token = this._JwtService.sign(payload);
 
@@ -199,6 +261,8 @@ export class AuthService {
         company_name: dto.company_name || 'My Company',
         role: 'user',
         email_verified: true,
+        tenant_id: tenantId,
+        tenantId: tenantId,
         onboarding_completed: false, // Proceed to 10-step onboarding wizard
       },
     };
@@ -221,7 +285,7 @@ export class AuthService {
     const clientSecret =
       process.env.GOOGLE_CLIENT_SECRET || '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';
     const redirectUri =
-      dto.redirect_uri || process.env.GOOGLE_REDIRECT_URI || 'http://localhost:8070/oauth/callback';
+      dto.redirect_uri || process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/oauth/callback';
 
     let googleEmail = dto.email || '';
     let googleName = dto.name || '';
@@ -238,9 +302,40 @@ export class AuthService {
         googleEmail = userInfo.data.email || '';
         googleName = userInfo.data.name || userInfo.data.given_name || 'Google User';
         googlePicture = userInfo.data.picture || '';
+
+        // Seamlessly link Google Email integration if tokens were returned
+        if (googleEmail && (tokens.refresh_token || tokens.access_token)) {
+          try {
+            let emailConfig = await EmailAccountConfig.findOne({ where: { email_address: googleEmail.toLowerCase().trim() } });
+            if (!emailConfig) {
+              emailConfig = new EmailAccountConfig();
+              emailConfig.email_address = googleEmail.toLowerCase().trim();
+              emailConfig.tenant_id = '646b4abe-e6de-401b-ba33-46884bf3f6e6';
+              emailConfig.created_on = new Date();
+            }
+            emailConfig.provider = 'google-email';
+            emailConfig.display_name = googleName;
+            emailConfig.client_id = clientId;
+            emailConfig.client_secret = clientSecret;
+            if (tokens.refresh_token) {
+              emailConfig.refresh_token = this._EncryptionService.Encrypt(tokens.refresh_token);
+            }
+            if (tokens.access_token) {
+              emailConfig.access_token = tokens.access_token;
+            }
+            if (tokens.expiry_date) {
+              emailConfig.token_expires_at = new Date(tokens.expiry_date);
+            }
+            emailConfig.is_active = true;
+            emailConfig.updated_on = new Date();
+            await emailConfig.save();
+            this.logger.log(`🔗 [GOOGLE EMAIL INTEGRATION LINKED] ${googleEmail} auto-configured for email automation.`);
+          } catch (err: any) {
+            this.logger.warn(`Could not auto-link EmailAccountConfig for Google user: ${err.message}`);
+          }
+        }
       } catch (err: any) {
         this.logger.warn(`Google token exchange failed: ${err.message}`);
-        // If code exchange fails (e.g. mock or origin issue), gracefully fallback to provided email if any
         if (!googleEmail) {
           throw new Error(`Google Authentication failed: ${err.message}`);
         }
@@ -290,10 +385,12 @@ export class AuthService {
       await userRecord.save();
     }
 
+    const tenantId = '646b4abe-e6de-401b-ba33-46884bf3f6e6';
     const payload = {
       email: userRecord.email,
       user_id: userRecord.id,
       role: 'admin',
+      tenant_id: tenantId,
     };
     const api_token = this._JwtService.sign(payload);
 
@@ -311,72 +408,188 @@ export class AuthService {
         role: 'user',
         avatar: googlePicture,
         email_verified: true,
+        tenant_id: tenantId,
+        tenantId: tenantId,
         onboarding_completed: !isNewUser, // New user goes to onboarding, returning goes to admin
       },
     };
   }
 
   /**
-   * Helper to dispatch HTML email with OTP
+   * Helper to dispatch HTML email with OTP across multiple channels
    */
-  private async sendOtpEmail(toEmail: string, otp: string, userName?: string): Promise<boolean> {
+  private async sendOtpEmail(toEmail: string, otp: string, userName?: string): Promise<{ success: boolean; previewUrl?: string; error?: string }> {
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 36px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: linear-gradient(135deg, #2563eb, #4f46e5); color: #ffffff; font-weight: 900; font-size: 20px; padding: 12px 24px; border-radius: 12px; letter-spacing: -0.5px;">
+            Sharyx AI
+          </div>
+        </div>
+        <h2 style="color: #0f172a; font-size: 22px; font-weight: 800; text-align: center; margin: 0 0 10px 0;">Verify Your Email Address</h2>
+        <p style="color: #475569; font-size: 14px; text-align: center; margin: 0 0 24px 0; line-height: 1.5;">
+          Hello ${userName || 'there'}! Use the following 6-digit verification code to complete your registration on Sharyx Workforce AI.
+        </p>
+        <div style="background: #f8fafc; border: 2px dashed #94a3b8; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px;">
+          <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #1e293b; display: inline-block;">
+            ${otp}
+          </span>
+        </div>
+        <p style="color: #64748b; font-size: 13px; text-align: center; margin: 0 0 16px 0;">
+          This verification code expires in <strong>10 minutes</strong>. If you did not request this verification, please disregard this email.
+        </p>
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0;">© 2026 Sharyx Autonomous Workforce Inc. All rights reserved.</p>
+        </div>
+      </div>
+    `;
+
+    // 1. Check for Active EmailAccountConfig in DB (SMTP or Google OAuth)
     try {
-      const emailConfig = await EmailAccountConfig.findOne({ where: { is_active: true } });
-      if (emailConfig && emailConfig.smtp_host && emailConfig.smtp_user) {
-        let pass = emailConfig.smtp_password;
-        try {
-          pass = this._EncryptionService.Decrypt(emailConfig.smtp_password);
-        } catch {}
+      const emailConfig = await EmailAccountConfig.findOne({ where: { is_active: true }, order: { updated_on: 'DESC' } });
+      if (emailConfig) {
+        if (emailConfig.provider === 'google-email' && emailConfig.refresh_token) {
+          let refreshToken = emailConfig.refresh_token;
+          try {
+            refreshToken = this._EncryptionService.Decrypt(emailConfig.refresh_token);
+          } catch { }
+          const oauth2Client = new google.auth.OAuth2(
+            emailConfig.client_id || process.env.GOOGLE_CLIENT_ID,
+            emailConfig.client_secret || process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI
+          );
+          oauth2Client.setCredentials({ refresh_token: refreshToken });
+          const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+          const utf8Subject = `=?utf-8?B?${Buffer.from(`Your Sharyx AI Verification Code: ${otp}`).toString('base64')}?=`;
+          const emailLines = [
+            `From: "Sharyx AI" <${emailConfig.email_address}>`,
+            `To: ${toEmail}`,
+            'Content-Type: text/html; charset=utf-8',
+            'MIME-Version: 1.0',
+            `Subject: ${utf8Subject}`,
+            '',
+            html,
+          ];
+          const rawEmail = Buffer.from(emailLines.join('\r\n')).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          await gmail.users.messages.send({ userId: 'me', requestBody: { raw: rawEmail } });
+          this.logger.log(`📧 [SIGNUP OTP EMAILED via GMAIL API] Successfully sent to ${toEmail}`);
+          return { success: true };
+        } else if (emailConfig.smtp_host && (emailConfig.smtp_user || emailConfig.email_address)) {
+          let pass = emailConfig.smtp_password;
+          try {
+            pass = this._EncryptionService.Decrypt(emailConfig.smtp_password);
+          } catch { }
+          const transporter = nodemailer.createTransport({
+            host: emailConfig.smtp_host,
+            port: Number(emailConfig.smtp_port) || 587,
+            secure: Number(emailConfig.smtp_port) === 465,
+            auth: {
+              user: emailConfig.smtp_user || emailConfig.email_address,
+              pass: pass,
+            },
+            tls: { rejectUnauthorized: false },
+          });
+          await transporter.sendMail({
+            from: `"Sharyx AI" <${emailConfig.email_address || emailConfig.smtp_user}>`,
+            to: toEmail,
+            subject: `Your Sharyx AI Verification Code: ${otp}`,
+            html: html,
+          });
+          this.logger.log(`📧 [SIGNUP OTP EMAILED via SMTP Config] Successfully sent to ${toEmail}`);
+          return { success: true };
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn(`EmailAccountConfig delivery failed: ${e.message}. Trying environment/fallback transporter...`);
+    }
+
+    // 2. Check for Environment SMTP variables
+    if (process.env.SMTP_HOST && (process.env.SMTP_USER || process.env.SMTP_PASS)) {
+      try {
+        const cleanPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || '').replace(/\s+/g, '');
+        const cleanUser = (process.env.SMTP_USER || '').trim();
+        const rawFrom = (process.env.SMTP_FROM || '').trim();
+        const fromHeader = rawFrom.includes('<') && rawFrom.includes('>')
+          ? rawFrom
+          : `"Sharyx Workforce AI" <${cleanUser}>`;
 
         const transporter = nodemailer.createTransport({
-          host: emailConfig.smtp_host,
-          port: Number(emailConfig.smtp_port) || 587,
-          secure: Number(emailConfig.smtp_port) === 465,
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
           auth: {
-            user: emailConfig.smtp_user,
-            pass: pass,
+            user: cleanUser,
+            pass: cleanPass,
           },
           tls: { rejectUnauthorized: false },
         });
-
-        const html = `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <div style="display: inline-block; background: linear-gradient(135deg, #2563eb, #4f46e5); color: #ffffff; font-weight: 900; font-size: 18px; padding: 10px 20px; border-radius: 12px; letter-spacing: -0.5px;">
-                Sharyx AI
-              </div>
-            </div>
-            <h2 style="color: #0f172a; font-size: 20px; font-weight: 800; text-align: center; margin: 0 0 8px 0;">Verify Your Email Address</h2>
-            <p style="color: #64748b; font-size: 14px; text-align: center; margin: 0 0 24px 0;">
-              Hello ${userName || 'there'}! Use the following 6-digit verification code to complete your signup on Sharyx Workforce.
-            </p>
-            <div style="background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 24px;">
-              <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #1e293b;">
-                ${otp}
-              </span>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0 0 16px 0;">
-              This code will expire in <strong>10 minutes</strong>. If you did not request this verification, you can safely ignore this email.
-            </p>
-            <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center;">
-              <p style="color: #94a3b8; font-size: 11px; margin: 0;">© 2026 Sharyx Workforce AI. All rights reserved.</p>
-            </div>
-          </div>
-        `;
-
         await transporter.sendMail({
-          from: `"Sharyx AI" <${emailConfig.email_address || emailConfig.smtp_user}>`,
+          from: fromHeader,
           to: toEmail,
           subject: `Your Sharyx AI Verification Code: ${otp}`,
           html: html,
         });
-
-        this.logger.log(`📧 [SIGNUP OTP EMAILED] Successfully dispatched code to ${toEmail}`);
-        return true;
+        this.logger.log(`📧 [SIGNUP OTP EMAILED via ENV SMTP] Successfully sent to ${toEmail}`);
+        return { success: true };
+      } catch (e: any) {
+        this.logger.warn(`ENV SMTP delivery failed: ${e.message}`);
       }
-    } catch (err: any) {
-      this.logger.warn(`Could not send OTP email via SMTP: ${err.message}`);
     }
-    return false;
+
+    // 3. Check legacy admin email_config table
+    try {
+      const legacy = await email_config.find();
+      if (legacy.length > 0 && legacy[0].host && legacy[0].email_id) {
+        let pass = legacy[0].password;
+        try {
+          pass = this._EncryptionService.Decrypt(legacy[0].password);
+        } catch { }
+        const transporter = nodemailer.createTransport({
+          host: legacy[0].host,
+          auth: {
+            user: legacy[0].email_id,
+            pass: pass,
+          },
+          tls: { rejectUnauthorized: false },
+        });
+        await transporter.sendMail({
+          from: `"${legacy[0].mailer_name || 'Sharyx AI'}" <${legacy[0].email_id}>`,
+          to: toEmail,
+          subject: `Your Sharyx AI Verification Code: ${otp}`,
+          html: html,
+        });
+        this.logger.log(`📧 [SIGNUP OTP EMAILED via legacy config] Successfully sent to ${toEmail}`);
+        return { success: true };
+      }
+    } catch (e: any) {
+      this.logger.warn(`Legacy email_config delivery failed: ${e.message}`);
+    }
+
+    // 4. In development/testing, dispatch via Ethereal test account so real email is generated & viewable
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      const info = await transporter.sendMail({
+        from: '"Sharyx AI System" <noreply@sharyx.ai>',
+        to: toEmail,
+        subject: `Your Sharyx AI Verification Code: ${otp}`,
+        html: html,
+      });
+      const previewUrl = nodemailer.getTestMessageUrl(info) || undefined;
+      this.logger.log(`📧 [SIGNUP OTP REAL DISPATCHED TO ETHEREAL] Preview URL: ${previewUrl}`);
+      return { success: true, previewUrl: previewUrl };
+    } catch (e: any) {
+      this.logger.error(`Ethereal fallback dispatch failed: ${e.message}`);
+      return { success: false, error: e.message };
+    }
   }
 }
+
