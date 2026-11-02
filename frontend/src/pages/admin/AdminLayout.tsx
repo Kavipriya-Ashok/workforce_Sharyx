@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
+import { useTenant } from '@/context/TenantContext';
 import { AdminDashboard } from './AdminDashboard';
 import { WhatsAppAutomation } from '@/pages/whatsapp/WhatsAppAutomation';
 import { EmailAutomation } from '@/pages/email/EmailAutomation';
@@ -30,6 +31,8 @@ import {
   Building2,
   Check,
   PhoneCall,
+  ShieldAlert,
+  Globe,
   RefreshCw,
   LayoutTemplate,
   Megaphone,
@@ -149,7 +152,21 @@ export const AdminLayout: React.FC = () => {
   const [selectedAgentKey, setSelectedAgentKey] = useState<string | null>(null);
   const [agentsSubmenuOpen, setAgentsSubmenuOpen] = useState(true);
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
-  const [activeTenant, setActiveTenant] = useState(user?.company_name || 'Sharyx Enterprise Inc');
+  const [tenantSearch, setTenantSearch] = useState('');
+  const {
+    tenants,
+    selectedTenant,
+    isSuperAdmin,
+    isImpersonating,
+    switchTenant,
+    resetToAllTenants,
+  } = useTenant();
+
+  const filteredTenants = tenants.filter(
+    (t) =>
+      (t.name || '').toLowerCase().includes(tenantSearch.toLowerCase()) ||
+      (t.email || '').toLowerCase().includes(tenantSearch.toLowerCase())
+  );
   const [dynamicVoiceAgents, setDynamicVoiceAgents] = useState<VoiceAgentDto[]>([]);
 
   useEffect(() => {
@@ -168,12 +185,6 @@ export const AdminLayout: React.FC = () => {
     { key: 'recruitment', name: 'Recruitment', emoji: '🎓', role: 'Hiring & Screening', color: 'text-rose-600' },
     { key: 'support', name: 'Support & 360°', emoji: '🛟', role: 'Issues & History', color: 'text-violet-600' },
     { key: 'appointment', name: 'Appointment', emoji: '📅', role: 'Meet Booking', color: 'text-cyan-600' },
-  ];
-
-  const tenants = [
-    activeTenant,
-    'Acme Innovations Ltd',
-    'Morgan Global Logistics',
   ];
 
   const handleLogout = () => {
@@ -541,34 +552,112 @@ export const AdminLayout: React.FC = () => {
           {/* Tenant Switcher & Breadcrumb */}
           <div className="flex items-center gap-4">
             <div className="relative">
-              <button
-                onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/80 hover:bg-blue-100/80 text-xs font-medium text-blue-950 transition-all shadow-xs"
-              >
-                <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                <span>{activeTenant}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-blue-600/70 ml-1" />
-              </button>
+              {isSuperAdmin ? (
+                <>
+                  <button
+                    onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${
+                      isImpersonating
+                        ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+                        : 'bg-blue-50/80 border-blue-200/80 hover:bg-blue-100/80 text-blue-950'
+                    }`}
+                  >
+                    {isImpersonating ? (
+                      <Building2 className="h-3.5 w-3.5 text-amber-600" />
+                    ) : (
+                      <Globe className="h-3.5 w-3.5 text-blue-600" />
+                    )}
+                    <span className="max-w-[160px] truncate">
+                      {selectedTenant ? selectedTenant.name : '🌐 All Tenants (Global)'}
+                    </span>
+                    {isImpersonating && (
+                      <span className="text-[9px] uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-extrabold">
+                        Impersonating
+                      </span>
+                    )}
+                    <ChevronDown className="h-3.5 w-3.5 opacity-70 ml-1" />
+                  </button>
 
-              {tenantDropdownOpen && (
-                <div className="absolute top-11 left-0 z-50 w-56 rounded-xl border border-blue-100 bg-white shadow-2xl p-1.5 space-y-1">
-                  {tenants.map((t) => (
-                    <div
-                      key={t}
-                      onClick={() => {
-                        setActiveTenant(t);
-                        setTenantDropdownOpen(false);
-                      }}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer ${
-                        activeTenant === t
-                          ? 'bg-blue-50 text-blue-700 font-semibold'
-                          : 'text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>{t}</span>
-                      {activeTenant === t && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                  {tenantDropdownOpen && (
+                    <div className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-blue-100 bg-white shadow-2xl p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                      {/* Search box within dropdown */}
+                      <div className="relative pb-1 border-b border-slate-100">
+                        <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={tenantSearch}
+                          onChange={(e) => setTenantSearch(e.target.value)}
+                          placeholder="Filter tenants..."
+                          className="w-full h-7 pl-8 pr-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+
+                      {/* Option: All Tenants (Global View) */}
+                      <div
+                        onClick={() => {
+                          resetToAllTenants();
+                          setTenantDropdownOpen(false);
+                          setTenantSearch('');
+                        }}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                          selectedTenant === null
+                            ? 'bg-blue-50 text-blue-700 font-bold'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Globe className="h-3.5 w-3.5 text-blue-600" />
+                          <span>🌐 All Tenants (Global View)</span>
+                        </div>
+                        {selectedTenant === null && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                      </div>
+
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 pt-1">
+                        Registered Tenants ({filteredTenants.length})
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                        {filteredTenants.length === 0 ? (
+                          <div className="text-[11px] text-slate-400 px-3 py-2 text-center">
+                            No tenants match "{tenantSearch}"
+                          </div>
+                        ) : (
+                          filteredTenants.map((t) => {
+                            const isSelected = selectedTenant?.id === t.id;
+                            return (
+                              <div
+                                key={t.id}
+                                onClick={() => {
+                                  switchTenant(t);
+                                  setTenantDropdownOpen(false);
+                                  setTenantSearch('');
+                                }}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/60'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                <div className="truncate">
+                                  <div className="font-medium truncate">{t.name}</div>
+                                  {t.email && (
+                                    <div className="text-[10px] text-slate-400 truncate">{t.email}</div>
+                                  )}
+                                </div>
+                                {isSelected && <Check className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  )}
+                </>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/80 text-xs font-semibold text-blue-950 shadow-xs">
+                  <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                  <span>{user?.company_name || 'Sharyx Enterprise Inc'}</span>
                 </div>
               )}
             </div>
@@ -621,6 +710,35 @@ export const AdminLayout: React.FC = () => {
             </button>
           </div>
         </header>
+
+        {/* SUPER ADMIN IMPERSONATION ALERT BANNER */}
+        {isImpersonating && (
+          <div className="sticky top-16 z-20 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-b border-amber-300/40 dark:border-amber-500/20 px-6 py-2.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 backdrop-blur-md shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <span className="font-bold">Super Admin Impersonation:</span> Currently filtering data for{' '}
+                <span className="font-extrabold underline decoration-amber-500 underline-offset-2">
+                  {selectedTenant?.name}
+                </span>
+                <span className="hidden sm:inline text-slate-500 dark:text-slate-400 ml-2">
+                  (All mutations and queries are scoped to this company)
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => resetToAllTenants()}
+                className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <Globe className="h-3 w-3" />
+                <span>Exit to Global View</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* CONTENT BODY */}
         <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">

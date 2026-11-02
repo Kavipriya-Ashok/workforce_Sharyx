@@ -17,6 +17,9 @@ import {
   Sparkles,
   Zap,
   ArrowLeft,
+  Loader2,
+  LogOut,
+  Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +27,8 @@ import { toast } from 'sonner';
 import { VoiceService, MaskedVoiceConfig, VoiceProviderType } from '@/service/voiceService';
 import { whatsappService } from '@/service/whatsappService';
 import { WhatsAppConfig } from '@/types/whatsapp';
+import { emailService } from '@/service/emailService';
+import { EmailAccountConfig, OAuthStatus } from '@/types/email';
 
 interface SettingsPageProps {
   initialTab?: 'voice' | 'whatsapp' | 'ai' | 'email';
@@ -69,6 +74,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
 
+  // ─── Email & Google OAuth States ───────────────────────────────────────────
+  const [oauthStatus, setOauthStatus] = useState<OAuthStatus | null>(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const [emailConfig, setEmailConfig] = useState<EmailAccountConfig | null>(null);
+  const [smtpForm, setSmtpForm] = useState({
+    smtp_host: 'smtp.gmail.com',
+    smtp_port: 587,
+    smtp_user: '',
+    smtp_password: '',
+    imap_host: 'imap.gmail.com',
+    imap_port: 993,
+    use_ssl: true,
+  });
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [savingSmtp, setSavingSmtp] = useState(false);
+
   // ─── Fetch All Configs ─────────────────────────────────────────────────────
   const loadConfigs = async () => {
     try {
@@ -106,6 +127,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
         if (aiData.llm_provider === 'gemini' && aiData.api_key) setGeminiKey(aiData.api_key);
         if (aiData.llm_provider === 'openai' && aiData.api_key) setOpenaiKey(aiData.api_key);
       }
+
+      // 4. Email & OAuth Config
+      try {
+        const [oStatus, eCfg] = await Promise.all([
+          emailService.getOAuthStatus(),
+          emailService.getConfig(),
+        ]);
+        setOauthStatus(oStatus);
+        setEmailConfig(eCfg);
+        if (eCfg) {
+          setSmtpForm({
+            smtp_host: eCfg.smtp_host || 'smtp.gmail.com',
+            smtp_port: eCfg.smtp_port || 587,
+            smtp_user: eCfg.smtp_user || '',
+            smtp_password: eCfg.smtp_password || '',
+            imap_host: eCfg.imap_host || 'imap.gmail.com',
+            imap_port: eCfg.imap_port || 993,
+            use_ssl: eCfg.use_ssl ?? true,
+          });
+        }
+      } catch (e: any) {
+        console.warn('Could not load email OAuth status:', e.message);
+      }
     } catch (err: any) {
       console.warn('Could not load some settings:', err.message);
     }
@@ -114,6 +158,63 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
   useEffect(() => {
     loadConfigs();
   }, []);
+
+  const handleConnectGoogle = async () => {
+    try {
+      setOauthLoading(true);
+      const redirectUri = `${window.location.origin}/oauth/callback`;
+      const authUrl = await emailService.getGoogleAuthUrl(redirectUri);
+      if (authUrl) {
+        window.location.href = authUrl;
+      } else {
+        toast.error('Could not generate Google authorization URL.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to start Google OAuth.');
+    } finally {
+      setOauthLoading(false);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      setOauthLoading(true);
+      await emailService.disconnectGoogle();
+      toast.success('Google account disconnected successfully.');
+      const status = await emailService.getOAuthStatus();
+      setOauthStatus(status);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to disconnect.');
+    } finally {
+      setOauthLoading(false);
+    }
+  };
+
+  const handleSaveSmtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSmtp(true);
+    try {
+      await emailService.saveConfig({
+        provider: 'smtp',
+        email_address: smtpForm.smtp_user,
+        smtp_host: smtpForm.smtp_host,
+        smtp_port: Number(smtpForm.smtp_port),
+        smtp_user: smtpForm.smtp_user,
+        smtp_password: smtpForm.smtp_password,
+        imap_host: smtpForm.imap_host,
+        imap_port: Number(smtpForm.imap_port),
+        use_ssl: smtpForm.use_ssl,
+        is_active: true,
+      });
+      toast.success('SMTP configuration saved successfully.');
+      const status = await emailService.getOAuthStatus();
+      setOauthStatus(status);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to save SMTP config.');
+    } finally {
+      setSavingSmtp(false);
+    }
+  };
 
   // ─── Save Vapi Configuration ───────────────────────────────────────────────
   const handleSaveVapi = async () => {
@@ -822,49 +923,235 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
 
       {/* ─── TAB 4: EMAIL & OAUTH ────────────────────────────────────────────── */}
       {activeTab === 'email' && (
-        <div className="max-w-2xl bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-sm">
-              <Mail className="h-5 w-5" />
+        <div className="max-w-2xl space-y-6">
+          {/* Main Google OAuth 2.0 Card */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-sm">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">
+                    Google OAuth 2.0 (Gmail API)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Connect your Google Workspace or Gmail account for automated outbound follow-ups.
+                  </p>
+                </div>
+              </div>
+
+              {oauthStatus?.isConnected && oauthStatus?.provider === 'google-email' ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  Not Connected
+                </span>
+              )}
             </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-slate-900">
-                Email & Google OAuth Integration
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Gmail API OAuth 2.0 credentials for automated email replies and calendar sync.
-              </p>
+
+            {/* Google OAuth Details / Actions */}
+            {oauthStatus?.isConnected && oauthStatus?.provider === 'google-email' ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Authenticated Google Account:</span>
+                    <span className="font-bold text-slate-900 font-mono text-sm">{oauthStatus.email_address}</span>
+                  </div>
+                  {oauthStatus.display_name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Sender Name:</span>
+                      <span className="font-medium text-slate-800">{oauthStatus.display_name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Security Mode:</span>
+                    <span className="text-emerald-700 font-medium flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> OAuth 2.0 (Live Refresh Token)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    onClick={handleConnectGoogle}
+                    disabled={oauthLoading}
+                    variant="outline"
+                    className="flex-1 gap-2 text-xs font-semibold h-10 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl"
+                  >
+                    {oauthLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 text-blue-600" />
+                    )}
+                    Reconnect Account
+                  </Button>
+                  <Button
+                    onClick={handleDisconnectGoogle}
+                    disabled={oauthLoading}
+                    variant="outline"
+                    className="gap-2 text-xs font-semibold h-10 border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-xs text-indigo-900">
+                  <p className="font-bold flex items-center gap-1.5 text-indigo-950">
+                    <Sparkles className="h-4 w-4 text-indigo-600" /> Seamless One-Click Authorization
+                  </p>
+                  <p className="text-[11px] text-indigo-800/80 mt-1">
+                    Connecting your Google account grants secure dispatch access without sharing your Gmail password.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleConnectGoogle}
+                  disabled={oauthLoading}
+                  className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2.5 transition-all"
+                >
+                  {oauthLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#FFFFFF"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#FFFFFF"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                  )}
+                  <span>Sign in with Google to Connect Gmail</span>
+                </Button>
+              </div>
+            )}
+
+            {/* Google OAuth Technical Specs */}
+            <div className="pt-3 border-t border-slate-100 space-y-3 text-xs">
+              <div>
+                <span className="text-slate-400 text-[10px] uppercase font-semibold block">Authorized Redirect URI</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <code className="font-mono bg-slate-50 px-2 py-1.5 rounded border text-[11px] text-slate-800 flex-1 truncate">
+                    {window.location.origin}/oauth/callback
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      copyToClipboard(`${window.location.origin}/oauth/callback`, 'OAuth Redirect URI')
+                    }
+                    className="h-8 w-8 p-0"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-slate-500" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 text-blue-900 text-xs">
+                <p className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-blue-600" /> Google Cloud Console Setup
+                </p>
+                <p className="text-[11px] text-blue-800/80 mt-1">
+                  Ensure <code>{window.location.origin}/oauth/callback</code> is added under <strong>Authorized redirect URIs</strong> in your Google Cloud Console OAuth 2.0 Client credentials.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4 text-xs">
-            <div>
-              <span className="text-slate-400 text-[10px] uppercase font-semibold block">Google Redirect URI</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <code className="font-mono bg-slate-50 px-2 py-1.5 rounded border text-[11px] text-slate-800 flex-1 truncate">
-                  {window.location.origin}/oauth/callback
-                </code>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    copyToClipboard(`${window.location.origin}/oauth/callback`, 'OAuth Redirect URI')
-                  }
-                  className="h-8 w-8 p-0"
-                >
-                  <Copy className="h-3.5 w-3.5 text-slate-500" />
-                </Button>
+          {/* Manual SMTP / IMAP Fallback Section */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
+                <Server className="h-4 w-4 text-cyan-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-slate-900">Standard SMTP / IMAP (Optional)</h3>
+                <p className="text-[11px] text-slate-500">
+                  Custom email dispatch via SendGrid, Mailgun, Amazon SES, or custom SMTP server.
+                </p>
               </div>
             </div>
 
-            <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200 text-blue-900 text-xs">
-              <p className="font-bold flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-blue-600" /> Google Cloud Console Setup
-              </p>
-              <p className="text-[11px] text-blue-800/80 mt-1">
-                Configure your Authorized redirect URI in Google Cloud Console under APIs & Services ➔ Credentials.
-              </p>
-            </div>
+            <form onSubmit={handleSaveSmtp} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">SMTP Host</label>
+                  <Input
+                    value={smtpForm.smtp_host}
+                    onChange={(e) => setSmtpForm({ ...smtpForm, smtp_host: e.target.value })}
+                    placeholder="smtp.gmail.com"
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">SMTP Port</label>
+                  <Input
+                    type="number"
+                    value={smtpForm.smtp_port}
+                    onChange={(e) => setSmtpForm({ ...smtpForm, smtp_port: Number(e.target.value) })}
+                    placeholder="587"
+                    className="h-9 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">SMTP Username / Email</label>
+                  <Input
+                    value={smtpForm.smtp_user}
+                    onChange={(e) => setSmtpForm({ ...smtpForm, smtp_user: e.target.value })}
+                    placeholder="you@company.com"
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">SMTP Password / App Password</label>
+                  <div className="relative">
+                    <Input
+                      type={showSmtpPass ? 'text' : 'password'}
+                      value={smtpForm.smtp_password}
+                      onChange={(e) => setSmtpForm({ ...smtpForm, smtp_password: e.target.value })}
+                      placeholder="••••••••••••"
+                      className="h-9 text-xs pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPass(!showSmtpPass)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showSmtpPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={savingSmtp}
+                className="w-full bg-slate-900 hover:bg-black text-white font-semibold text-xs h-9 gap-1.5 rounded-xl mt-2"
+              >
+                <Save className="h-3.5 w-3.5" />
+                {savingSmtp ? 'Saving SMTP...' : 'Save SMTP Configuration'}
+              </Button>
+            </form>
           </div>
         </div>
       )}

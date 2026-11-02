@@ -11,6 +11,24 @@ export const CurrentUser = createParamDecorator((data, req) => {
   }
 });
 
+export const CurrentTenant = createParamDecorator((data, req) => {
+  const request = req.getArgs()[0];
+  const user = request?.user;
+  const isSuperAdmin =
+    user?.user_role_name?.toLowerCase().includes('super') ||
+    user?.role?.toLowerCase().includes('super');
+
+  if (isSuperAdmin) {
+    const requestedTenantId = request?.headers?.['x-tenant-id'];
+    if (requestedTenantId && requestedTenantId !== 'all') {
+      return requestedTenantId;
+    }
+    return requestedTenantId === 'all' ? null : (user?.company?.id || null);
+  }
+
+  return user?.company?.id || user?.company_id || null;
+});
+
 export const RandomValue = (min: any, max: any) => {
   return Math.floor(Math.random() * (max - min) + min);
 };

@@ -23,6 +23,12 @@ let CompanyService = class CompanyService {
         this._DataSource = _DataSource;
         this._CacheService = _CacheService;
     }
+    async GetAll() {
+        return await company_1.company.find({
+            relations: ['currency', 'country'],
+            order: { name: 'ASC' },
+        });
+    }
     async Get() {
         const ResultData = await this._CacheService.Get(`${CacheEnum_1.CacheEnum.Company}:*`);
         if (ResultData.length > 0) {

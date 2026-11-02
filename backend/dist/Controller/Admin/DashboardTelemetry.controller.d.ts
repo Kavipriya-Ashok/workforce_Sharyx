@@ -2,13 +2,13 @@ import { DashboardTelemetryService } from "@Service/Admin/DashboardTelemetry.ser
 export declare class DashboardTelemetryController {
     private readonly telemetryService;
     constructor(telemetryService: DashboardTelemetryService);
-    getTelemetry(range?: string, tenantId?: string): Promise<{
+    getTelemetry(range?: string, tenantId?: string, headerTenantId?: string): Promise<{
         Type: string;
         Message: string;
         AddtionalData: import("@Service/Admin/DashboardTelemetry.service").DashboardTelemetryDto;
         data: import("@Service/Admin/DashboardTelemetry.service").DashboardTelemetryDto;
     }>;
-    syncNow(tenantId?: string): Promise<{
+    syncNow(tenantId?: string, headerTenantId?: string): Promise<{
         Type: string;
         Message: string;
         AddtionalData: import("@Service/Admin/DashboardTelemetry.service").DashboardTelemetryDto;

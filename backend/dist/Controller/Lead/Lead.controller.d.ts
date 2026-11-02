@@ -3,9 +3,9 @@ import { LeadService } from "@Service/Lead/Lead.service";
 export declare class LeadController extends AuthBaseController {
     private readonly leadService;
     constructor(leadService: LeadService);
-    list(filter: any, userId: string): Promise<any>;
-    stats(isCandidate: any, userId: string): Promise<any>;
-    getById(id: string, userId: string): Promise<any>;
+    list(filter: any, userId: string, tenantId: string): Promise<any>;
+    stats(isCandidate: any, userId: string, tenantId: string): Promise<any>;
+    getById(id: string, userId: string, tenantId: string): Promise<any>;
     checkDuplicate(phone: string, excludeId: string, userId: string): Promise<any>;
     checkDuplicateEmail(email: string, excludeId: string): Promise<any>;
     insert(data: any, userId: string): Promise<any>;

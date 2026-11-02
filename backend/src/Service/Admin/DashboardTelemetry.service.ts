@@ -46,11 +46,13 @@ export class DashboardTelemetryService {
     try {
       // Resolve tenant IDs: query active tenant records, fallback to 'default' if tenant has no telemetry yet
       const activeTenant = tenantId || "default";
-      const tenantFilter = activeTenant === "default" ? "default" : In([activeTenant, "default"]);
+      const tenantWhere = (activeTenant === "all" || !activeTenant) 
+        ? {} 
+        : { tenant_id: In([activeTenant, "default"]) };
 
       // 1. Voice Calls Telemetry
       const callLogs = await VoiceCallLog.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
         order: { created_on: "DESC" },
         take: 100,
         select: {
@@ -82,7 +84,7 @@ export class DashboardTelemetryService {
 
       // 2. Leads Telemetry
       const leads = await lead.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
         order: { created_on: "DESC" },
         select: {
           id: true,
@@ -112,7 +114,7 @@ export class DashboardTelemetryService {
 
       // 3. Email Campaigns Telemetry
       const emailCampaigns = await EmailCampaign.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
         select: {
           id: true,
           tenant_id: true,
@@ -127,7 +129,7 @@ export class DashboardTelemetryService {
 
       // 4. WhatsApp Campaigns Telemetry
       const waCampaigns = await WhatsAppCampaign.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
         select: {
           id: true,
           tenant_id: true,
@@ -142,7 +144,7 @@ export class DashboardTelemetryService {
 
       // 5. Agent Handoffs & Autonomous Actions
       const handoffs = await AgentHandoffLog.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
         order: { created_on: "DESC" },
         take: 30,
         select: {
@@ -158,7 +160,7 @@ export class DashboardTelemetryService {
       }).catch(() => []);
 
       const states = await ConversationAgentState.find({
-        where: { tenant_id: tenantFilter },
+        where: tenantWhere,
       }).catch(() => []);
 
       // 100% Real, Dynamic Telemetry from Database

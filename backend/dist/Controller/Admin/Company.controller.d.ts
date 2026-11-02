@@ -6,6 +6,7 @@ export declare class CompanyController extends JWTAuthController {
     private _CompanyService;
     constructor(_CompanyService: CompanyService);
     Get(): Promise<any>;
+    List(): Promise<any>;
     Update(CompanyData: CompanyModel, UserId: string): Promise<{
         Type: ResponseEnum;
         Message: string;

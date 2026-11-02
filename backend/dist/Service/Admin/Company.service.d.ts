@@ -8,6 +8,7 @@ export declare class CompanyService {
     private _DataSource;
     private _CacheService;
     constructor(_AuditLogService: AuditLogService, _DataSource: DataSource, _CacheService: CacheService);
+    GetAll(): Promise<company[]>;
     Get(): Promise<any>;
     Update(Id: string, CompanyData: CompanyModel, UserId: string): Promise<company>;
     Insert(CompanyData: CompanyModel, UserId: string): Promise<company>;

@@ -74,7 +74,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
     onModuleInit() {
         this.timer = setInterval(() => {
             this.pollInbox().catch((err) => this.logger.debug(`Email sync pass: ${err.message}`));
-        }, 60000);
+        }, 15000);
     }
     onModuleDestroy() {
         if (this.timer) {
@@ -304,7 +304,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
         }
         return { leadRecord: existingLead, extractedPhone, extractedCompany };
     }
-    async triggerAutoReply(fromEmail, subject, bodyText, leadRecord, hasPhone, tenantId) {
+    async triggerAutoReply(fromEmail, subject, bodyText, leadRecord, hasPhone, tenantId, threadId, inReplyTo) {
         const aiConfig = await this.aiService.getConfig(tenantId);
         if (!aiConfig || !aiConfig.auto_reply_enabled)
             return;
@@ -367,6 +367,9 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 subject: replySubject,
                 html: replyHtml,
                 lead_id: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                bypassValidation: true,
+                threadId,
+                inReplyTo,
             }, "ai_auto_responder", true, tenantId);
             this.logger.log(`🤖 [AFTER-REPLY AUTOMATION DISPATCHED] To: ${fromEmail} | Subject: "${replySubject}"`);
             const hasGMeet = /meet\.google\.com/i.test(replyHtml);
@@ -449,7 +452,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
         return await this.pollInbox();
     }
     isSystemOrAutomatedEmail(fromEmail, subject, headers = []) {
-        var _a, _b, _c, _d, _e, _f;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         const emailLower = (fromEmail || "").toLowerCase();
         const subjectLower = (subject || "").toLowerCase();
         const systemSenders = [
@@ -496,6 +499,10 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
         if (xAutoReply === "yes") {
             return true;
         }
+        const xSharyx = (_h = (_g = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "x-sharyx-auto-reply"; })) === null || _g === void 0 ? void 0 : _g.value) === null || _h === void 0 ? void 0 : _h.toLowerCase();
+        if (xSharyx === "true") {
+            return true;
+        }
         return false;
     }
     async pollInbox() {
@@ -522,8 +529,8 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 const gmail = googleapis_1.google.gmail({ version: "v1", auth: oauth2Client });
                 const listRes = await gmail.users.messages.list({
                     userId: "me",
-                    q: "is:unread label:INBOX",
-                    maxResults: 15,
+                    q: "label:INBOX",
+                    maxResults: 20,
                 });
                 const messages = listRes.data.messages || [];
                 for (const item of messages) {
@@ -546,9 +553,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                             fromName = match[1].replace(/["']/g, "").trim();
                             fromEmail = match[2].trim();
                         }
-                        if (fromEmail.toLowerCase() === config.email_address.toLowerCase()) {
-                            continue;
-                        }
+                        const isSelfSent = fromEmail.toLowerCase() === (config.email_address || "").toLowerCase();
                         if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
                             this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subjectHeader}"`);
                             try {
@@ -579,9 +584,10 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                         }
                         const exists = await EmailLog_entity_1.EmailLog.findOne({ where: { message_id: messageIdHeader } });
                         if (!exists) {
-                            const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(fromEmail, fromName, bodyText, subjectHeader, config.tenant_id);
+                            const targetTenant = config.tenant_id || "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+                            const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(fromEmail, fromName, bodyText, subjectHeader, targetTenant);
                             const log = new EmailLog_entity_1.EmailLog();
-                            log.tenant_id = config.tenant_id;
+                            log.tenant_id = targetTenant;
                             log.lead_id = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id) || null;
                             log.from_email = fromEmail;
                             log.to_email = config.email_address;
@@ -605,7 +611,16 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                             catch (modifyErr) {
                                 this.logger.debug(`Could not update unread label: ${modifyErr.message}`);
                             }
-                            await this.triggerAutoReply(fromEmail, subjectHeader, bodyText, leadRecord, !!(extractedPhone || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone)), config.tenant_id);
+                            const isAiAutoReplyLoop = subjectHeader.toLowerCase().includes("[ai auto-reply]") ||
+                                headers.some((h) => { var _a, _b; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "x-sharyx-auto-reply" && ((_b = h.value) === null || _b === void 0 ? void 0 : _b.toLowerCase()) === "true"; });
+                            const isBotReplyLoop = isSelfSent && subjectHeader.toLowerCase().startsWith("re:");
+                            if (!isAiAutoReplyLoop && !isBotReplyLoop) {
+                                this.logger.log(`🤖 Triggering AI Auto-Reply for inbound email from: ${fromEmail} | Subject: "${subjectHeader}"`);
+                                await this.triggerAutoReply(fromEmail, subjectHeader, bodyText, leadRecord, !!(extractedPhone || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.phone)), targetTenant, msg.data.threadId || undefined, messageIdHeader || undefined);
+                            }
+                            else {
+                                this.logger.log(`🛡️ Skipping auto-reply for automated or thread reply from: ${fromEmail}`);
+                            }
                         }
                     }
                     catch (msgErr) {

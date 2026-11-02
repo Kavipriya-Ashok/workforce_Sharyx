@@ -54,6 +54,6 @@ __decorate([
     __metadata("design:type", Number)
 ], user.prototype, "reset_otp", void 0);
 exports.user = user = __decorate([
-    (0, typeorm_1.Entity)()
+    (0, typeorm_1.Entity)({ name: "user" })
 ], user);
 //# sourceMappingURL=user.js.map

@@ -23,9 +23,11 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
     async getTelemetry(range = "7d", tenantId = "default") {
         try {
             const activeTenant = tenantId || "default";
-            const tenantFilter = activeTenant === "default" ? "default" : (0, typeorm_1.In)([activeTenant, "default"]);
+            const tenantWhere = (activeTenant === "all" || !activeTenant)
+                ? {}
+                : { tenant_id: (0, typeorm_1.In)([activeTenant, "default"]) };
             const callLogs = await VoiceCallLog_entity_1.VoiceCallLog.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
                 order: { created_on: "DESC" },
                 take: 100,
                 select: {
@@ -51,7 +53,7 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
             const avgRemSeconds = avgDurationSecs % 60;
             const formattedAvgDuration = `${avgMinutes}m ${avgRemSeconds}s`;
             const leads = await lead_1.lead.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
                 order: { created_on: "DESC" },
                 select: {
                     id: true,
@@ -78,7 +80,7 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
                 return s === lead_1.LeadStatus.WON || s === lead_1.LeadStatus.PROPOSAL;
             }).length;
             const emailCampaigns = await EmailCampaign_entity_1.EmailCampaign.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
                 select: {
                     id: true,
                     tenant_id: true,
@@ -91,7 +93,7 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
                 totalEmailsSent += ec.sent_count || 0;
             }
             const waCampaigns = await WhatsAppCampaign_entity_1.WhatsAppCampaign.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
                 select: {
                     id: true,
                     tenant_id: true,
@@ -104,7 +106,7 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
                 totalWaSent += wc.sent_count || 0;
             }
             const handoffs = await AgentHandoffLog_entity_1.AgentHandoffLog.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
                 order: { created_on: "DESC" },
                 take: 30,
                 select: {
@@ -119,7 +121,7 @@ let DashboardTelemetryService = DashboardTelemetryService_1 = class DashboardTel
                 },
             }).catch(() => []);
             const states = await ConversationAgentState_entity_1.ConversationAgentState.find({
-                where: { tenant_id: tenantFilter },
+                where: tenantWhere,
             }).catch(() => []);
             const totalCalls = totalCallsRaw;
             const answeredCalls = answeredRaw;

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from "@nestjs/common";
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Headers } from "@nestjs/common";
 import { VoiceAgentService } from "../Services/VoiceAgent.service";
 import { VoiceFactoryService } from "../Services/VoiceFactory.service";
 import { CreateVoiceAgentDto, UpdateVoiceAgentDto } from "../Interfaces/VoiceTypes";
@@ -11,8 +11,12 @@ export class VoiceAgentController {
   ) {}
 
   @Get()
-  async list(@Query("tenantId") tenantId?: string) {
-    const agents = await this.agentService.list(tenantId || "default");
+  async list(
+    @Query("tenantId") queryTenantId?: string,
+    @Headers("x-tenant-id") headerTenantId?: string
+  ) {
+    const activeTenant = headerTenantId || queryTenantId || "default";
+    const agents = await this.agentService.list(activeTenant);
     return { ok: true, data: agents };
   }
 

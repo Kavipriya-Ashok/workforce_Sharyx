@@ -5,7 +5,7 @@ export declare class VoiceAgentController {
     private readonly agentService;
     private readonly factory;
     constructor(agentService: VoiceAgentService, factory: VoiceFactoryService);
-    list(tenantId?: string): Promise<{
+    list(queryTenantId?: string, headerTenantId?: string): Promise<{
         ok: boolean;
         data: import("../../Database/Table/Voice/VoiceAgent.entity").VoiceAgent[];
     }>;

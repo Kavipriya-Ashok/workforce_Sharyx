@@ -118,41 +118,56 @@ export interface VoiceStats {
   completionRate: number;
 }
 
+function getActiveTenantId(explicitTenantId?: string): string {
+  if (explicitTenantId && explicitTenantId !== 'default') return explicitTenantId;
+  try {
+    const stored = localStorage.getItem('sharyx_active_tenant_id');
+    if (stored && stored !== 'all') return stored;
+  } catch {}
+  return '646b4abe-e6de-401b-ba33-46884bf3f6e6';
+}
+
 export class VoiceService {
   // Provider Configs
-  public static async getConfigs(tenantId: string = 'default'): Promise<Record<VoiceProviderType, MaskedVoiceConfig>> {
+  public static async getConfigs(tenantId?: string): Promise<Record<VoiceProviderType, MaskedVoiceConfig>> {
     try {
-      const res = await axios.get('/api/v1/Voice/Config', { params: { tenantId } });
+      const activeTenant = getActiveTenantId(tenantId);
+      const res = await axios.get('/api/v1/Voice/Config', { params: { tenantId: activeTenant } });
       return res.data?.data || {};
     } catch {
       return {} as any;
     }
   }
 
-  public static async saveConfig(payload: SaveVoiceConfigPayload, tenantId: string = 'default'): Promise<any> {
-    const res = await axios.post('/api/v1/Voice/Config', payload, { params: { tenantId } });
+  public static async saveConfig(payload: SaveVoiceConfigPayload, tenantId?: string): Promise<any> {
+    const activeTenant = getActiveTenantId(tenantId);
+    const res = await axios.post('/api/v1/Voice/Config', payload, { params: { tenantId: activeTenant } });
     return res.data?.data;
   }
 
-  public static async activateProvider(provider: VoiceProviderType, tenantId: string = 'default'): Promise<any> {
-    const res = await axios.post(`/api/v1/Voice/Config/activate/${provider}`, {}, { params: { tenantId } });
+  public static async activateProvider(provider: VoiceProviderType, tenantId?: string): Promise<any> {
+    const activeTenant = getActiveTenantId(tenantId);
+    const res = await axios.post(`/api/v1/Voice/Config/activate/${provider}`, {}, { params: { tenantId: activeTenant } });
     return res.data;
   }
 
-  public static async disconnectProvider(provider: VoiceProviderType, tenantId: string = 'default'): Promise<any> {
-    const res = await axios.post(`/api/v1/Voice/Config/disconnect/${provider}`, {}, { params: { tenantId } });
+  public static async disconnectProvider(provider: VoiceProviderType, tenantId?: string): Promise<any> {
+    const activeTenant = getActiveTenantId(tenantId);
+    const res = await axios.post(`/api/v1/Voice/Config/disconnect/${provider}`, {}, { params: { tenantId: activeTenant } });
     return res.data;
   }
 
-  public static async testConnection(provider: VoiceProviderType, apiKey?: string, tenantId: string = 'default'): Promise<{ ok: boolean; message: string; latencyMs: number }> {
-    const res = await axios.post('/api/v1/Voice/Config/test', { provider, apiKey }, { params: { tenantId } });
+  public static async testConnection(provider: VoiceProviderType, apiKey?: string, tenantId?: string): Promise<{ ok: boolean; message: string; latencyMs: number }> {
+    const activeTenant = getActiveTenantId(tenantId);
+    const res = await axios.post('/api/v1/Voice/Config/test', { provider, apiKey }, { params: { tenantId: activeTenant } });
     return res.data;
   }
 
   // Voice Agents
-  public static async listAgents(tenantId: string = 'default'): Promise<VoiceAgentDto[]> {
+  public static async listAgents(tenantId?: string): Promise<VoiceAgentDto[]> {
     try {
-      const res = await axios.get('/api/v1/Voice/Agents', { params: { tenantId } });
+      const activeTenant = getActiveTenantId(tenantId);
+      const res = await axios.get('/api/v1/Voice/Agents', { params: { tenantId: activeTenant } });
       return Array.isArray(res.data?.data) ? res.data.data : [];
     } catch {
       return [];
@@ -247,14 +262,15 @@ export class VoiceService {
   }
 
   public static async getCallLogs(
-    tenantId: string = 'default',
+    tenantId?: string,
     limit: number = 50,
     agentId?: string,
     skipSync: boolean = false
   ): Promise<VoiceCallLogItem[]> {
     try {
+      const activeTenant = getActiveTenantId(tenantId);
       const res = await axios.get('/api/v1/Voice/Calls/logs', {
-        params: { tenantId, limit, agentId: agentId || undefined, skipSync: skipSync ? 'true' : undefined },
+        params: { tenantId: activeTenant, limit, agentId: agentId || undefined, skipSync: skipSync ? 'true' : undefined },
       });
       return Array.isArray(res.data?.data) ? res.data.data : [];
     } catch {
@@ -262,9 +278,10 @@ export class VoiceService {
     }
   }
 
-  public static async getCallStats(tenantId: string = 'default'): Promise<VoiceStats> {
+  public static async getCallStats(tenantId?: string): Promise<VoiceStats> {
     try {
-      const res = await axios.get('/api/v1/Voice/Calls/stats', { params: { tenantId } });
+      const activeTenant = getActiveTenantId(tenantId);
+      const res = await axios.get('/api/v1/Voice/Calls/stats', { params: { tenantId: activeTenant } });
       return res.data?.data || { totalCalls: 0, completedCalls: 0, avgDurationSeconds: 0, completionRate: 0 };
     } catch {
       return { totalCalls: 0, completedCalls: 0, avgDurationSeconds: 0, completionRate: 0 };

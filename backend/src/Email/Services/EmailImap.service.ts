@@ -30,10 +30,10 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    // Start background poller every 60 seconds
+    // Start background poller every 15 seconds
     this.timer = setInterval(() => {
       this.pollInbox().catch((err) => this.logger.debug(`Email sync pass: ${err.message}`));
-    }, 60000);
+    }, 15000);
   }
 
   onModuleDestroy() {
@@ -336,7 +336,9 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     bodyText: string,
     leadRecord: lead | null,
     hasPhone: boolean,
-    tenantId: string
+    tenantId: string,
+    threadId?: string,
+    inReplyTo?: string
   ) {
     const aiConfig = await this.aiService.getConfig(tenantId);
     if (!aiConfig || !aiConfig.auto_reply_enabled) return;
@@ -413,6 +415,9 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
           subject: replySubject,
           html: replyHtml,
           lead_id: leadRecord?.id,
+          bypassValidation: true,
+          threadId,
+          inReplyTo,
         },
         "ai_auto_responder",
         true,
@@ -582,6 +587,11 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
       return true;
     }
 
+    const xSharyx = headers.find((h) => h.name?.toLowerCase() === "x-sharyx-auto-reply")?.value?.toLowerCase();
+    if (xSharyx === "true") {
+      return true;
+    }
+
     return false;
   }
 
@@ -613,11 +623,11 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-        // Search for unread messages in INBOX
+        // Search for recent incoming messages in INBOX
         const listRes = await gmail.users.messages.list({
           userId: "me",
-          q: "is:unread label:INBOX",
-          maxResults: 15,
+          q: "label:INBOX",
+          maxResults: 20,
         });
 
         const messages = listRes.data.messages || [];
@@ -645,10 +655,7 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
               fromEmail = match[2].trim();
             }
 
-            // Skip self-sent emails
-            if (fromEmail.toLowerCase() === config.email_address.toLowerCase()) {
-              continue;
-            }
+            const isSelfSent = fromEmail.toLowerCase() === (config.email_address || "").toLowerCase();
 
             // Skip bounces, system alerts, mailer-daemon, and no-reply messages
             if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
@@ -684,18 +691,20 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
             // Check if already processed
             const exists = await EmailLog.findOne({ where: { message_id: messageIdHeader } });
             if (!exists) {
+              const targetTenant = config.tenant_id || "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+
               // 1. Auto-Link or Create Lead in CRM & Extract Phone Number
               const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(
                 fromEmail,
                 fromName,
                 bodyText,
                 subjectHeader,
-                config.tenant_id
+                targetTenant
               );
 
               // 2. Save Inbound EmailLog
               const log = new EmailLog();
-              log.tenant_id = config.tenant_id;
+              log.tenant_id = targetTenant;
               log.lead_id = leadRecord?.id || null;
               log.from_email = fromEmail;
               log.to_email = config.email_address;
@@ -722,14 +731,28 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
               }
 
               // 4. Trigger Autonomous AI Reply
-              await this.triggerAutoReply(
-                fromEmail,
-                subjectHeader,
-                bodyText,
-                leadRecord,
-                !!(extractedPhone || leadRecord?.phone),
-                config.tenant_id
-              );
+              const isAiAutoReplyLoop =
+                subjectHeader.toLowerCase().includes("[ai auto-reply]") ||
+                headers.some((h) => h.name?.toLowerCase() === "x-sharyx-auto-reply" && h.value?.toLowerCase() === "true");
+
+              // If self-sent (e.g. user testing by emailing themselves), allow auto-reply as long as it is not a Re: thread reply
+              const isBotReplyLoop = isSelfSent && subjectHeader.toLowerCase().startsWith("re:");
+
+              if (!isAiAutoReplyLoop && !isBotReplyLoop) {
+                this.logger.log(`🤖 Triggering AI Auto-Reply for inbound email from: ${fromEmail} | Subject: "${subjectHeader}"`);
+                await this.triggerAutoReply(
+                  fromEmail,
+                  subjectHeader,
+                  bodyText,
+                  leadRecord,
+                  !!(extractedPhone || leadRecord?.phone),
+                  targetTenant,
+                  msg.data.threadId || undefined,
+                  messageIdHeader || undefined
+                );
+              } else {
+                this.logger.log(`🛡️ Skipping auto-reply for automated or thread reply from: ${fromEmail}`);
+              }
             }
           } catch (msgErr: any) {
             this.logger.warn(`Could not process Gmail message ${item.id}: ${msgErr.message}`);

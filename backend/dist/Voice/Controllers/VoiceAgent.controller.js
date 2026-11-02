@@ -21,8 +21,9 @@ let VoiceAgentController = class VoiceAgentController {
         this.agentService = agentService;
         this.factory = factory;
     }
-    async list(tenantId) {
-        const agents = await this.agentService.list(tenantId || "default");
+    async list(queryTenantId, headerTenantId) {
+        const activeTenant = headerTenantId || queryTenantId || "default";
+        const agents = await this.agentService.list(activeTenant);
         return { ok: true, data: agents };
     }
     getProviders() {
@@ -85,8 +86,9 @@ exports.VoiceAgentController = VoiceAgentController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)("tenantId")),
+    __param(1, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], VoiceAgentController.prototype, "list", null);
 __decorate([

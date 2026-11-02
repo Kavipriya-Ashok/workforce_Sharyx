@@ -10,6 +10,9 @@ export class EmailAIService {
 
   async getConfig(tenantId: string = "default"): Promise<EmailAIConfig | null> {
     let config = await EmailAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
+    if (!config && tenantId !== "default") {
+      config = await EmailAIConfig.findOne({ where: { tenant_id: "default", status: true } });
+    }
     if (!config) {
       config = new EmailAIConfig();
       config.tenant_id = tenantId;
@@ -64,7 +67,7 @@ export class EmailAIService {
       if (meetRes?.meetUrl) {
         gmeetUrl = meetRes.meetUrl;
       }
-    } catch {}
+    } catch { }
 
     // 2. Classify intent (Recruitment vs Sales) & Demo acceptance
     const combinedText = `${dto.subject || ""} ${dto.incoming_body || ""}`.toLowerCase();
@@ -83,8 +86,8 @@ export class EmailAIService {
     const phoneInfo = dto.phone_number
       ? `Customer Phone on File: YES (${dto.phone_number})`
       : dto.has_phone
-      ? `Customer Phone on File: YES (Provided)`
-      : `Customer Phone on File: NO (Not provided yet)`;
+        ? `Customer Phone on File: YES (Provided)`
+        : `Customer Phone on File: NO (Not provided yet)`;
 
     const customInstruction = config?.system_prompt?.trim()
       ? `\n\nADMIN CONFIGURED INSTRUCTIONS & KNOWLEDGE BASE:\n${config.system_prompt.trim()}\n`
@@ -173,7 +176,7 @@ GENERAL MEMORY & FORMATTING:
     if (geminiKey) {
       const selectedModel = config?.llm_model || "gemini-2.5-flash";
       const modelsToTry = [selectedModel, "gemini-2.5-flash", "gemini-flash-latest"];
-      const uniqueModels = [...new Set(modelsToTry)];
+      const uniqueModels = modelsToTry.filter((v, i, a) => a.indexOf(v) === i);
       for (const model of uniqueModels) {
         try {
           const response = await axios.post(
@@ -329,4 +332,3 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
     };
   }
 }
-

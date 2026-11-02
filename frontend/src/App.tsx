@@ -3,6 +3,7 @@ import { Route, Switch, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/lib/auth';
+import { TenantProvider } from '@/context/TenantContext';
 import { AdminRoute, PublicOnlyRoute } from '@/components/routing/RouteGuards';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { SignupPage } from '@/pages/auth/SignupPage';
@@ -34,49 +35,51 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="sharyx-theme">
         <AuthProvider>
-          <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-white transition-colors duration-300">
-            <Switch>
-            {/* Public Auth Routes */}
-            <Route path="/login">
-              <PublicOnlyRoute component={LoginPage} />
-            </Route>
-            <Route path="/signup">
-              <PublicOnlyRoute component={SignupPage} />
-            </Route>
+          <TenantProvider>
+            <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-white transition-colors duration-300">
+              <Switch>
+                {/* Public Auth Routes */}
+                <Route path="/login">
+                  <PublicOnlyRoute component={LoginPage} />
+                </Route>
+                <Route path="/signup">
+                  <PublicOnlyRoute component={SignupPage} />
+                </Route>
 
-            {/* 10-Step Onboarding Wizard */}
-            <Route path="/onboarding" component={OnboardingWizard} />
+                {/* 10-Step Onboarding Wizard */}
+                <Route path="/onboarding" component={OnboardingWizard} />
 
-            {/* Google OAuth Callback */}
-            <Route path="/oauth/callback" component={OAuthCallback} />
+                {/* Google OAuth Callback */}
+                <Route path="/oauth/callback" component={OAuthCallback} />
 
-            {/* Protected Admin Command Center Routes */}
-            <Route path="/admin/*">
-              <AdminRoute component={AdminLayout} />
-            </Route>
-            <Route path="/admin">
-              <AdminRoute component={AdminLayout} />
-            </Route>
-            <Route path="/dashboard">
-              <AdminRoute component={AdminLayout} />
-            </Route>
+                {/* Protected Admin Command Center Routes */}
+                <Route path="/admin/*">
+                  <AdminRoute component={AdminLayout} />
+                </Route>
+                <Route path="/admin">
+                  <AdminRoute component={AdminLayout} />
+                </Route>
+                <Route path="/dashboard">
+                  <AdminRoute component={AdminLayout} />
+                </Route>
 
-            {/* Root Redirection */}
-            <Route path="/">
-              {() => <RedirectToLogin />}
-            </Route>
+                {/* Root Redirection */}
+                <Route path="/">
+                  {() => <RedirectToLogin />}
+                </Route>
 
-            {/* Fallback 404 */}
-            <Route>
-              {() => <RedirectToLogin />}
-            </Route>
-          </Switch>
+                {/* Fallback 404 */}
+                <Route>
+                  {() => <RedirectToLogin />}
+                </Route>
+              </Switch>
 
-          {/* Global Toast Provider */}
-          <Toaster richColors position="top-right" />
-        </div>
-      </AuthProvider>
-    </ThemeProvider>
+              {/* Global Toast Provider */}
+              <Toaster richColors position="top-right" />
+            </div>
+          </TenantProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

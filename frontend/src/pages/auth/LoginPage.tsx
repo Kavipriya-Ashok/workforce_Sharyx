@@ -19,8 +19,8 @@ export const LoginPage: React.FC = () => {
   const [, setLocation] = useLocation();
   const { login, user } = useAuth();
 
-  const [username, setUsername] = useState('admin@sharyx.com');
-  const [password, setPassword] = useState('Password123!');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 

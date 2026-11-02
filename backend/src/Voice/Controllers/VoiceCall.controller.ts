@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Res } from "@nestjs/common";
+import { Controller, Get, Post, Body, Query, Res, Headers } from "@nestjs/common";
 import { VoiceCallService } from "../Services/VoiceCall.service";
 import { MakeVoiceCallDto } from "../Interfaces/VoiceTypes";
 
@@ -14,13 +14,15 @@ export class VoiceCallController {
 
   @Get("logs")
   async getLogs(
-    @Query("tenantId") tenantId?: string,
+    @Query("tenantId") queryTenantId?: string,
+    @Headers("x-tenant-id") headerTenantId?: string,
     @Query("limit") limit?: string,
     @Query("agentId") agentId?: string,
     @Query("skipSync") skipSync?: string
   ) {
+    const activeTenant = headerTenantId || queryTenantId || "default";
     const logs = await this.callService.getCallLogs(
-      tenantId || "default",
+      activeTenant,
       limit ? parseInt(limit, 10) : 50,
       agentId || undefined,
       skipSync === "true"
@@ -29,8 +31,12 @@ export class VoiceCallController {
   }
 
   @Get("stats")
-  async getStats(@Query("tenantId") tenantId?: string) {
-    const stats = await this.callService.getCallStats(tenantId || "default");
+  async getStats(
+    @Query("tenantId") queryTenantId?: string,
+    @Headers("x-tenant-id") headerTenantId?: string
+  ) {
+    const activeTenant = headerTenantId || queryTenantId || "default";
+    const stats = await this.callService.getCallStats(activeTenant);
     return { ok: true, data: stats };
   }
 

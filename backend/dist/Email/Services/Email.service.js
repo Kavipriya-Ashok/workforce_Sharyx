@@ -70,6 +70,18 @@ let EmailService = EmailService_1 = class EmailService {
         return new googleapis_1.google.auth.OAuth2(clientId, clientSecret, rUri);
     }
     async getConfig(tenantId = "default") {
+        const isDefaultOrSharyx = !tenantId || tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6" || tenantId === "all";
+        if (isDefaultOrSharyx) {
+            const found = await EmailAccountConfig_entity_1.EmailAccountConfig.findOne({
+                where: [
+                    { tenant_id: "646b4abe-e6de-401b-ba33-46884bf3f6e6", is_active: true },
+                    { tenant_id: "default", is_active: true },
+                ],
+                order: { updated_on: "DESC" },
+            });
+            if (found)
+                return found;
+        }
         return await EmailAccountConfig_entity_1.EmailAccountConfig.findOne({ where: { tenant_id: tenantId, is_active: true } });
     }
     getGoogleAuthUrl(customRedirectUri) {
@@ -230,6 +242,9 @@ let EmailService = EmailService_1 = class EmailService {
                         `To: ${dto.to}`,
                         "Content-Type: text/html; charset=utf-8",
                         "MIME-Version: 1.0",
+                        "Auto-Submitted: auto-replied",
+                        "X-Sharyx-Auto-Reply: true",
+                        ...(dto.inReplyTo ? [`In-Reply-To: ${dto.inReplyTo}`, `References: ${dto.inReplyTo}`] : []),
                         `Subject: ${utf8Subject}`,
                         "",
                         dto.html,
@@ -241,9 +256,7 @@ let EmailService = EmailService_1 = class EmailService {
                         .replace(/=+$/, "");
                     const res = await gmail.users.messages.send({
                         userId: "me",
-                        requestBody: {
-                            raw: rawEmail,
-                        },
+                        requestBody: Object.assign({ raw: rawEmail }, (dto.threadId ? { threadId: dto.threadId } : {})),
                     });
                     messageId = res.data.id || messageId;
                 }
@@ -264,6 +277,12 @@ let EmailService = EmailService_1 = class EmailService {
                         to: dto.to,
                         subject: dto.subject,
                         html: dto.html,
+                        inReplyTo: dto.inReplyTo,
+                        references: dto.inReplyTo,
+                        headers: {
+                            "Auto-Submitted": "auto-replied",
+                            "X-Sharyx-Auto-Reply": "true",
+                        },
                     });
                     messageId = info.messageId || messageId;
                 }
@@ -356,12 +375,20 @@ let EmailService = EmailService_1 = class EmailService {
         return log;
     }
     async getInboxLogs(tenantId = "default") {
-        return await EmailLog_entity_1.EmailLog.createQueryBuilder("log")
+        const isAll = tenantId === "all" || !tenantId;
+        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+        const qb = EmailLog_entity_1.EmailLog.createQueryBuilder("log")
             .addSelect("log.created_on")
-            .where("log.tenant_id = :tenantId AND log.status = true", { tenantId })
-            .orderBy("log.created_on", "DESC")
-            .take(100)
-            .getMany();
+            .where("log.status = true");
+        if (!isAll) {
+            if (isDefaultOrSharyx) {
+                qb.andWhere("log.tenant_id IN (:...tIds)", { tIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"] });
+            }
+            else {
+                qb.andWhere("log.tenant_id = :tenantId", { tenantId });
+            }
+        }
+        return await qb.orderBy("log.created_on", "DESC").take(100).getMany();
     }
     async getThread(leadIdOrEmail) {
         return await EmailLog_entity_1.EmailLog.createQueryBuilder("log")

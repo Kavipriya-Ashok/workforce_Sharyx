@@ -20,6 +20,12 @@ export class CompanyController extends JWTAuthController {
     return EmailData;
   }
 
+  @Get('List')
+  async List() {
+    const list = await this._CompanyService.GetAll();
+    return this.SendResponseData(list);
+  }
+
   @Patch('Update')
   async Update(@Body() CompanyData: CompanyModel, @CurrentUser() UserId: string) {
     if (CompanyData.id > "0") {

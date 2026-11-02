@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Headers } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { AuthBaseController } from "@Controller/AuthBase.controller";
 import { CurrentUser } from "@Helper/Common.helper";
@@ -21,13 +21,20 @@ export class EmailController extends AuthBaseController {
   }
 
   @Get("Config")
-  async getConfig() {
-    const config = await this.emailService.getConfig();
+  async getConfig(@Headers("x-tenant-id") headerTenantId?: string) {
+    const config = await this.emailService.getConfig(headerTenantId || "default");
     return this.SendResponseData(config);
   }
 
   @Post("Config")
-  async saveConfig(@Body() body: EmailAccountConfigModel, @CurrentUser() userId: string) {
+  async saveConfig(
+    @Body() body: EmailAccountConfigModel,
+    @CurrentUser() userId: string,
+    @Headers("x-tenant-id") headerTenantId?: string
+  ) {
+    if (headerTenantId && headerTenantId !== "all") {
+      body.tenant_id = headerTenantId;
+    }
     const result = await this.emailService.saveConfig(body, userId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Saved, result);
   }
@@ -43,21 +50,28 @@ export class EmailController extends AuthBaseController {
   @Post("OAuth/Connect")
   async connectGoogle(
     @Body() body: { code: string; redirectUri?: string },
-    @CurrentUser() userId: string
+    @CurrentUser() userId: string,
+    @Headers("x-tenant-id") headerTenantId?: string
   ) {
-    const result = await this.emailService.connectGoogleAccount(body.code, body.redirectUri, userId);
+    const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+    const result = await this.emailService.connectGoogleAccount(body.code, body.redirectUri, userId, activeTenant);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Saved, result);
   }
 
   @Get("OAuth/Status")
-  async getOAuthStatus() {
-    const status = await this.emailService.getOAuthStatus();
+  async getOAuthStatus(@Headers("x-tenant-id") headerTenantId?: string) {
+    const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+    const status = await this.emailService.getOAuthStatus(activeTenant);
     return this.SendResponseData(status);
   }
 
   @Post("OAuth/Disconnect")
-  async disconnectGoogle(@CurrentUser() userId: string) {
-    const result = await this.emailService.disconnectGoogleAccount("default", userId);
+  async disconnectGoogle(
+    @CurrentUser() userId: string,
+    @Headers("x-tenant-id") headerTenantId?: string
+  ) {
+    const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+    const result = await this.emailService.disconnectGoogleAccount(activeTenant, userId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Deleted, result);
   }
 
@@ -105,14 +119,15 @@ export class EmailController extends AuthBaseController {
   }
 
   @Get("Inbox")
-  async getInbox() {
-    const logs = await this.emailService.getInboxLogs();
+  async getInbox(@Headers("x-tenant-id") headerTenantId?: string) {
+    const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+    const logs = await this.emailService.getInboxLogs(activeTenant);
     return this.SendResponseData(logs);
   }
 
   @Post("Sync")
   async syncInbox() {
-    const result = await this.emailImapService.syncNow();
+    const result = await this.emailImapService.pollInbox();
     return this.SendResponseData(result);
   }
 

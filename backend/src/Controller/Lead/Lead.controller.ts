@@ -3,7 +3,7 @@ import {
   Body, Param, Query
 } from "@nestjs/common";
 import { AuthBaseController } from "@Controller/AuthBase.controller";
-import { CurrentUser } from "@Helper/Common.helper";
+import { CurrentUser, CurrentTenant } from "@Helper/Common.helper";
 import { LeadService } from "@Service/Lead/Lead.service";
 import { ApiTags } from "@nestjs/swagger";
 
@@ -15,21 +15,33 @@ export class LeadController extends AuthBaseController {
   }
 
   @Get("List")
-  async list(@Query() filter: any, @CurrentUser() userId: string) {
-    const res = await this.leadService.getAll(filter, { userId });
+  async list(
+    @Query() filter: any,
+    @CurrentUser() userId: string,
+    @CurrentTenant() tenantId: string
+  ) {
+    const res = await this.leadService.getAll(filter, { userId, tenant_id: tenantId, active_tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 
   @Get("Stats")
-  async stats(@Query("is_candidate") isCandidate: any, @CurrentUser() userId: string) {
+  async stats(
+    @Query("is_candidate") isCandidate: any,
+    @CurrentUser() userId: string,
+    @CurrentTenant() tenantId: string
+  ) {
     const isCandBool = isCandidate === "true" ? true : isCandidate === "false" ? false : undefined;
-    const stats = await this.leadService.getStats({ userId }, isCandBool);
+    const stats = await this.leadService.getStats({ userId, tenant_id: tenantId, active_tenant_id: tenantId }, isCandBool);
     return this.SendResponseData(stats);
   }
 
   @Get("ById/:id")
-  async getById(@Param("id") id: string, @CurrentUser() userId: string) {
-    const lead = await this.leadService.getById(id, { userId });
+  async getById(
+    @Param("id") id: string,
+    @CurrentUser() userId: string,
+    @CurrentTenant() tenantId: string
+  ) {
+    const lead = await this.leadService.getById(id, { userId, tenant_id: tenantId, active_tenant_id: tenantId });
     return this.SendResponseData(lead);
   }
 

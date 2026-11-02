@@ -7,11 +7,11 @@ export declare class VoiceCallController {
         ok: boolean;
         data: import("../../Database/Table/Voice/VoiceCallLog.entity").VoiceCallLog;
     }>;
-    getLogs(tenantId?: string, limit?: string, agentId?: string, skipSync?: string): Promise<{
+    getLogs(queryTenantId?: string, headerTenantId?: string, limit?: string, agentId?: string, skipSync?: string): Promise<{
         ok: boolean;
         data: import("../../Database/Table/Voice/VoiceCallLog.entity").VoiceCallLog[];
     }>;
-    getStats(tenantId?: string): Promise<{
+    getStats(queryTenantId?: string, headerTenantId?: string): Promise<{
         ok: boolean;
         data: {
             totalCalls: number;

@@ -9,7 +9,7 @@ import { Entity, Column, JoinColumn, ManyToOne, Index } from "typeorm";
 import { BaseTable } from "../BaseTable";
 import { user_role } from "./user_role";
 
-@Entity()
+@Entity({ name: "user" })
 export class user extends BaseTable {
   @ManyToOne(() => user_role, { onDelete: "RESTRICT" })
   @JoinColumn({ name: "user_role_id" })

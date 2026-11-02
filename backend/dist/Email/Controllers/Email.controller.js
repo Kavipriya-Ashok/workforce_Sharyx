@@ -30,11 +30,14 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         this.emailAiService = emailAiService;
         this.emailImapService = emailImapService;
     }
-    async getConfig() {
-        const config = await this.emailService.getConfig();
+    async getConfig(headerTenantId) {
+        const config = await this.emailService.getConfig(headerTenantId || "default");
         return this.SendResponseData(config);
     }
-    async saveConfig(body, userId) {
+    async saveConfig(body, userId, headerTenantId) {
+        if (headerTenantId && headerTenantId !== "all") {
+            body.tenant_id = headerTenantId;
+        }
         const result = await this.emailService.saveConfig(body, userId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, result);
     }
@@ -42,16 +45,19 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         const res = this.emailService.getGoogleAuthUrl(redirectUri);
         return this.SendResponseData(res);
     }
-    async connectGoogle(body, userId) {
-        const result = await this.emailService.connectGoogleAccount(body.code, body.redirectUri, userId);
+    async connectGoogle(body, userId, headerTenantId) {
+        const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+        const result = await this.emailService.connectGoogleAccount(body.code, body.redirectUri, userId, activeTenant);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, result);
     }
-    async getOAuthStatus() {
-        const status = await this.emailService.getOAuthStatus();
+    async getOAuthStatus(headerTenantId) {
+        const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+        const status = await this.emailService.getOAuthStatus(activeTenant);
         return this.SendResponseData(status);
     }
-    async disconnectGoogle(userId) {
-        const result = await this.emailService.disconnectGoogleAccount("default", userId);
+    async disconnectGoogle(userId, headerTenantId) {
+        const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+        const result = await this.emailService.disconnectGoogleAccount(activeTenant, userId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Deleted, result);
     }
     async generateLeadDraft(body) {
@@ -77,12 +83,13 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         const result = await this.emailService.sendEmail(body, userId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Mail, result);
     }
-    async getInbox() {
-        const logs = await this.emailService.getInboxLogs();
+    async getInbox(headerTenantId) {
+        const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "default";
+        const logs = await this.emailService.getInboxLogs(activeTenant);
         return this.SendResponseData(logs);
     }
     async syncInbox() {
-        const result = await this.emailImapService.syncNow();
+        const result = await this.emailImapService.pollInbox();
         return this.SendResponseData(result);
     }
     async getThread(identifier) {
@@ -93,16 +100,18 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
 exports.EmailController = EmailController;
 __decorate([
     (0, common_1.Get)("Config"),
+    __param(0, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getConfig", null);
 __decorate([
     (0, common_1.Post)("Config"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel, String]),
+    __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "saveConfig", null);
 __decorate([
@@ -116,21 +125,24 @@ __decorate([
     (0, common_1.Post)("OAuth/Connect"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "connectGoogle", null);
 __decorate([
     (0, common_1.Get)("OAuth/Status"),
+    __param(0, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getOAuthStatus", null);
 __decorate([
     (0, common_1.Post)("OAuth/Disconnect"),
     __param(0, (0, Common_helper_1.CurrentUser)()),
+    __param(1, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "disconnectGoogle", null);
 __decorate([
@@ -165,8 +177,9 @@ __decorate([
 ], EmailController.prototype, "sendEmail", null);
 __decorate([
     (0, common_1.Get)("Inbox"),
+    __param(0, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getInbox", null);
 __decorate([

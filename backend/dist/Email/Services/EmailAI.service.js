@@ -54,6 +54,9 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
     }
     async getConfig(tenantId = "default") {
         let config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
+        if (!config && tenantId !== "default") {
+            config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: "default", status: true } });
+        }
         if (!config) {
             config = new EmailAIConfig_entity_1.EmailAIConfig();
             config.tenant_id = tenantId;
@@ -204,7 +207,7 @@ GENERAL MEMORY & FORMATTING:
         if (geminiKey) {
             const selectedModel = (config === null || config === void 0 ? void 0 : config.llm_model) || "gemini-2.5-flash";
             const modelsToTry = [selectedModel, "gemini-2.5-flash", "gemini-flash-latest"];
-            const uniqueModels = [...new Set(modelsToTry)];
+            const uniqueModels = modelsToTry.filter((v, i, a) => a.indexOf(v) === i);
             for (const model of uniqueModels) {
                 try {
                     const response = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {

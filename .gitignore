@@ -1,4 +1,7 @@
 # Environment & Secret files
+.env
+*.env
+backend/.env
 .env.backup
 .env.local
 .env.*.local

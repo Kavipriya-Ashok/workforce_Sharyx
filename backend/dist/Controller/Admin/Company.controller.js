@@ -29,6 +29,10 @@ let CompanyController = class CompanyController extends JWTAuth_controller_1.JWT
         const EmailData = await this._CompanyService.Get();
         return EmailData;
     }
+    async List() {
+        const list = await this._CompanyService.GetAll();
+        return this.SendResponseData(list);
+    }
     async Update(CompanyData, UserId) {
         if (CompanyData.id > "0") {
             await this._CompanyService.Update(CompanyData.id, CompanyData, UserId);
@@ -46,6 +50,12 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], CompanyController.prototype, "Get", null);
+__decorate([
+    (0, common_1.Get)('List'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], CompanyController.prototype, "List", null);
 __decorate([
     (0, common_1.Patch)('Update'),
     __param(0, (0, common_1.Body)()),

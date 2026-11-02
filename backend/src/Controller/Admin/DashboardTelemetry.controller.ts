@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Query, Headers } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { DashboardTelemetryService } from "@Service/Admin/DashboardTelemetry.service";
 
@@ -10,11 +10,13 @@ export class DashboardTelemetryController {
   @Get("telemetry")
   async getTelemetry(
     @Query("range") range?: string,
-    @Query("tenantId") tenantId?: string
+    @Query("tenantId") tenantId?: string,
+    @Headers("x-tenant-id") headerTenantId?: string
   ) {
+    const effectiveTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : (tenantId || "default");
     const data = await this.telemetryService.getTelemetry(
       range || "7d",
-      tenantId || "default"
+      effectiveTenant
     );
     return {
       Type: "Success",
@@ -25,8 +27,12 @@ export class DashboardTelemetryController {
   }
 
   @Get("sync")
-  async syncNow(@Query("tenantId") tenantId?: string) {
-    const data = await this.telemetryService.getTelemetry("today", tenantId || "default");
+  async syncNow(
+    @Query("tenantId") tenantId?: string,
+    @Headers("x-tenant-id") headerTenantId?: string
+  ) {
+    const effectiveTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : (tenantId || "default");
+    const data = await this.telemetryService.getTelemetry("today", effectiveTenant);
     return {
       Type: "Success",
       Message: "Telemetry synchronized successfully",

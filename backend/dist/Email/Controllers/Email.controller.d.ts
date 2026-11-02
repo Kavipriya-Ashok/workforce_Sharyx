@@ -10,8 +10,8 @@ export declare class EmailController extends AuthBaseController {
     private readonly emailAiService;
     private readonly emailImapService;
     constructor(emailService: EmailService, emailAiService: EmailAIService, emailImapService: EmailImapService);
-    getConfig(): Promise<any>;
-    saveConfig(body: EmailAccountConfigModel, userId: string): Promise<{
+    getConfig(headerTenantId?: string): Promise<any>;
+    saveConfig(body: EmailAccountConfigModel, userId: string, headerTenantId?: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -24,7 +24,7 @@ export declare class EmailController extends AuthBaseController {
     connectGoogle(body: {
         code: string;
         redirectUri?: string;
-    }, userId: string): Promise<{
+    }, userId: string, headerTenantId?: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -33,8 +33,8 @@ export declare class EmailController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    getOAuthStatus(): Promise<any>;
-    disconnectGoogle(userId: string): Promise<{
+    getOAuthStatus(headerTenantId?: string): Promise<any>;
+    disconnectGoogle(userId: string, headerTenantId?: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -73,7 +73,7 @@ export declare class EmailController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    getInbox(): Promise<any>;
+    getInbox(headerTenantId?: string): Promise<any>;
     syncInbox(): Promise<any>;
     getThread(identifier: string): Promise<any>;
 }

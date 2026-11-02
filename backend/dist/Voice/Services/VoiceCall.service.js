@@ -1066,6 +1066,8 @@ Recent Email:
         if (!skipSync) {
             this.syncCallLogsFromVapi(tenantId).catch((e) => this.logger.warn(`Auto-sync call logs from Vapi failed: ${e.message}`));
         }
+        const isAll = tenantId === "all" || !tenantId;
+        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
         const qb = VoiceCallLog_entity_1.VoiceCallLog.createQueryBuilder("log")
             .select([
             "log.id",
@@ -1088,8 +1090,17 @@ Recent Email:
             "log.summary",
             "log.call_outcome",
             "log.extracted_slots",
-        ])
-            .where("log.tenant_id = :tenantId", { tenantId });
+        ]);
+        if (!isAll) {
+            if (isDefaultOrSharyx) {
+                qb.where("log.tenant_id IN (:...tenantIds)", {
+                    tenantIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"],
+                });
+            }
+            else {
+                qb.where("log.tenant_id = :tenantId", { tenantId });
+            }
+        }
         if (agentId) {
             const agent = await VoiceAgent_entity_1.VoiceAgent.findOne({ where: { id: agentId } });
             qb.andWhere("(log.agent_id = :agentId OR log.raw_webhook_payload->>'assistantId' = :remoteId OR log.agent_name = :agentName)", { agentId, remoteId: (agent === null || agent === void 0 ? void 0 : agent.remote_agent_id) || "__none__", agentName: (agent === null || agent === void 0 ? void 0 : agent.name) || "__none__" });
@@ -1427,7 +1438,20 @@ Recent Email:
         }
     }
     async getCallStats(tenantId = "default") {
-        const logs = await VoiceCallLog_entity_1.VoiceCallLog.find({ where: { tenant_id: tenantId } });
+        const isAll = tenantId === "all" || !tenantId;
+        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+        let logs;
+        if (isAll) {
+            logs = await VoiceCallLog_entity_1.VoiceCallLog.find();
+        }
+        else if (isDefaultOrSharyx) {
+            logs = await VoiceCallLog_entity_1.VoiceCallLog.find({
+                where: { tenant_id: (0, typeorm_1.In)(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"]) },
+            });
+        }
+        else {
+            logs = await VoiceCallLog_entity_1.VoiceCallLog.find({ where: { tenant_id: tenantId } });
+        }
         const totalCalls = logs.length;
         const completed = logs.filter((l) => l.call_status === "completed").length;
         const avgDuration = totalCalls > 0 ? Math.round(logs.reduce((acc, l) => acc + (l.duration_seconds || 0), 0) / totalCalls) : 0;

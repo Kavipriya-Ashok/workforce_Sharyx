@@ -12,38 +12,50 @@ export class VoiceAgentService {
   constructor(private readonly factory: VoiceFactoryService) { }
 
   async list(tenantId: string = "default"): Promise<VoiceAgent[]> {
+    const isAll = tenantId === "all" || !tenantId;
+    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+
     // 1. Identify active providers with valid credentials
     const activeConfigs = await VoiceProviderConfig.find({
-      where: { tenant_id: tenantId, is_active: true },
+      where: isAll
+        ? { is_active: true }
+        : { tenant_id: In([tenantId, "default", "646b4abe-e6de-401b-ba33-46884bf3f6e6"]), is_active: true },
     });
 
     const activeProviders = activeConfigs
       .filter((c) => c.provider === "saas_fallback" || (c.api_key && c.api_key.trim().length > 0))
       .map((c) => c.provider);
 
-    // If no provider is active/connected, all agents vanish
+    // Fallback default providers if none found explicitly
     if (activeProviders.length === 0) {
-      return [];
+      activeProviders.push("vapi", "saas_fallback");
     }
 
-    // Auto-sync only active providers
-    for (const cfg of activeConfigs) {
-      if ((cfg.api_key || cfg.provider === "saas_fallback") && cfg.is_active) {
-        try {
-          await this.syncFromProvider(cfg.provider, tenantId);
-        } catch (err: any) {
-          this.logger.warn(`Auto-sync on list failed for ${cfg.provider}: ${err.message}`);
+    // Auto-sync active providers in the background non-blocking so agents load instantly (<100ms)
+    if (!isAll) {
+      for (const cfg of activeConfigs) {
+        if ((cfg.api_key || cfg.provider === "saas_fallback") && cfg.is_active) {
+          this.syncFromProvider(cfg.provider, tenantId).catch((err: any) => {
+            this.logger.warn(`Background sync failed for ${cfg.provider}: ${err.message}`);
+          });
         }
       }
     }
 
-    // Return ONLY agents belonging to active, connected provider(s) and currently enabled
+    // 2. Query agents with proper tenant scoping
+    const agentWhere: any = {
+      status: true,
+      provider: In(activeProviders as any),
+    };
+
+    if (!isAll) {
+      agentWhere.tenant_id = isDefaultOrSharyx
+        ? In(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"])
+        : tenantId;
+    }
+
     const agents = await VoiceAgent.find({
-      where: {
-        tenant_id: tenantId,
-        status: true,
-        provider: In(activeProviders as any),
-      },
+      where: agentWhere,
       order: { created_on: "DESC" },
     });
 

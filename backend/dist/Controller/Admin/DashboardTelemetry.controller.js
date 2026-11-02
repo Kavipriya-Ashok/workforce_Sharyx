@@ -20,8 +20,9 @@ let DashboardTelemetryController = class DashboardTelemetryController {
     constructor(telemetryService) {
         this.telemetryService = telemetryService;
     }
-    async getTelemetry(range, tenantId) {
-        const data = await this.telemetryService.getTelemetry(range || "7d", tenantId || "default");
+    async getTelemetry(range, tenantId, headerTenantId) {
+        const effectiveTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : (tenantId || "default");
+        const data = await this.telemetryService.getTelemetry(range || "7d", effectiveTenant);
         return {
             Type: "Success",
             Message: "Telemetry loaded successfully",
@@ -29,8 +30,9 @@ let DashboardTelemetryController = class DashboardTelemetryController {
             data,
         };
     }
-    async syncNow(tenantId) {
-        const data = await this.telemetryService.getTelemetry("today", tenantId || "default");
+    async syncNow(tenantId, headerTenantId) {
+        const effectiveTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : (tenantId || "default");
+        const data = await this.telemetryService.getTelemetry("today", effectiveTenant);
         return {
             Type: "Success",
             Message: "Telemetry synchronized successfully",
@@ -44,15 +46,17 @@ __decorate([
     (0, common_1.Get)("telemetry"),
     __param(0, (0, common_1.Query)("range")),
     __param(1, (0, common_1.Query)("tenantId")),
+    __param(2, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], DashboardTelemetryController.prototype, "getTelemetry", null);
 __decorate([
     (0, common_1.Get)("sync"),
     __param(0, (0, common_1.Query)("tenantId")),
+    __param(1, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], DashboardTelemetryController.prototype, "syncNow", null);
 exports.DashboardTelemetryController = DashboardTelemetryController = __decorate([

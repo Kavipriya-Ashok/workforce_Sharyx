@@ -28,5 +28,15 @@ export class SendEmailModel {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
+  threadId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  inReplyTo?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   attachments?: Array<{ filename: string; content: Buffer | string; contentType?: string }>;
 }

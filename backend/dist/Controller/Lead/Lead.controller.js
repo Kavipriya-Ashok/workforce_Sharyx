@@ -23,17 +23,17 @@ let LeadController = class LeadController extends AuthBase_controller_1.AuthBase
         super();
         this.leadService = leadService;
     }
-    async list(filter, userId) {
-        const res = await this.leadService.getAll(filter, { userId });
+    async list(filter, userId, tenantId) {
+        const res = await this.leadService.getAll(filter, { userId, tenant_id: tenantId, active_tenant_id: tenantId });
         return this.SendResponseData(res);
     }
-    async stats(isCandidate, userId) {
+    async stats(isCandidate, userId, tenantId) {
         const isCandBool = isCandidate === "true" ? true : isCandidate === "false" ? false : undefined;
-        const stats = await this.leadService.getStats({ userId }, isCandBool);
+        const stats = await this.leadService.getStats({ userId, tenant_id: tenantId, active_tenant_id: tenantId }, isCandBool);
         return this.SendResponseData(stats);
     }
-    async getById(id, userId) {
-        const lead = await this.leadService.getById(id, { userId });
+    async getById(id, userId, tenantId) {
+        const lead = await this.leadService.getById(id, { userId, tenant_id: tenantId, active_tenant_id: tenantId });
         return this.SendResponseData(lead);
     }
     async checkDuplicate(phone, excludeId, userId) {
@@ -94,24 +94,27 @@ __decorate([
     (0, common_1.Get)("List"),
     __param(0, (0, common_1.Query)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "list", null);
 __decorate([
     (0, common_1.Get)("Stats"),
     __param(0, (0, common_1.Query)("is_candidate")),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "stats", null);
 __decorate([
     (0, common_1.Get)("ById/:id"),
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "getById", null);
 __decorate([

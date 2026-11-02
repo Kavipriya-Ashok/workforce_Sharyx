@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { EventEmitter2, OnEvent } from "@nestjs/event-emitter";
-import { Like } from "typeorm";
+import { Like, In } from "typeorm";
 import axios from "axios";
 import { VoiceCallLog } from "@Database/Table/Voice/VoiceCallLog.entity";
 import { VoiceAgent } from "@Database/Table/Voice/VoiceAgent.entity";
@@ -1305,6 +1305,9 @@ Recent Email:
       );
     }
 
+    const isAll = tenantId === "all" || !tenantId;
+    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+
     // Select lightweight columns (excluding 90KB raw_webhook_payload per row) so 50+ call logs load in <300ms
     const qb = VoiceCallLog.createQueryBuilder("log")
       .select([
@@ -1328,8 +1331,17 @@ Recent Email:
         "log.summary",
         "log.call_outcome",
         "log.extracted_slots",
-      ])
-      .where("log.tenant_id = :tenantId", { tenantId });
+      ]);
+
+    if (!isAll) {
+      if (isDefaultOrSharyx) {
+        qb.where("log.tenant_id IN (:...tenantIds)", {
+          tenantIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"],
+        });
+      } else {
+        qb.where("log.tenant_id = :tenantId", { tenantId });
+      }
+    }
 
     if (agentId) {
       const agent = await VoiceAgent.findOne({ where: { id: agentId } });
@@ -1718,7 +1730,19 @@ Recent Email:
   }
 
   async getCallStats(tenantId: string = "default") {
-    const logs = await VoiceCallLog.find({ where: { tenant_id: tenantId } });
+    const isAll = tenantId === "all" || !tenantId;
+    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+
+    let logs: VoiceCallLog[];
+    if (isAll) {
+      logs = await VoiceCallLog.find();
+    } else if (isDefaultOrSharyx) {
+      logs = await VoiceCallLog.find({
+        where: { tenant_id: In(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"]) },
+      });
+    } else {
+      logs = await VoiceCallLog.find({ where: { tenant_id: tenantId } });
+    }
     const totalCalls = logs.length;
     const completed = logs.filter((l) => l.call_status === "completed").length;
     const avgDuration =

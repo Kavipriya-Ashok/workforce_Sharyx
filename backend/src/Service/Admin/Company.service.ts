@@ -16,6 +16,13 @@ export class CompanyService {
   ) {
   }
 
+  async GetAll() {
+    return await company.find({
+      relations: ['currency', 'country'],
+      order: { name: 'ASC' },
+    });
+  }
+
   async Get() {
     const ResultData = await this._CacheService.Get(`${CacheEnum.Company}:*`);
     if (ResultData.length > 0) {

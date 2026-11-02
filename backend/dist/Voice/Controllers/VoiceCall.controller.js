@@ -23,12 +23,14 @@ let VoiceCallController = class VoiceCallController {
         const callLog = await this.callService.dispatchCall(body);
         return { ok: true, data: callLog };
     }
-    async getLogs(tenantId, limit, agentId, skipSync) {
-        const logs = await this.callService.getCallLogs(tenantId || "default", limit ? parseInt(limit, 10) : 50, agentId || undefined, skipSync === "true");
+    async getLogs(queryTenantId, headerTenantId, limit, agentId, skipSync) {
+        const activeTenant = headerTenantId || queryTenantId || "default";
+        const logs = await this.callService.getCallLogs(activeTenant, limit ? parseInt(limit, 10) : 50, agentId || undefined, skipSync === "true");
         return { ok: true, data: logs };
     }
-    async getStats(tenantId) {
-        const stats = await this.callService.getCallStats(tenantId || "default");
+    async getStats(queryTenantId, headerTenantId) {
+        const activeTenant = headerTenantId || queryTenantId || "default";
+        const stats = await this.callService.getCallStats(activeTenant);
         return { ok: true, data: stats };
     }
     async syncFromSaas(tenantId) {
@@ -54,18 +56,20 @@ __decorate([
 __decorate([
     (0, common_1.Get)("logs"),
     __param(0, (0, common_1.Query)("tenantId")),
-    __param(1, (0, common_1.Query)("limit")),
-    __param(2, (0, common_1.Query)("agentId")),
-    __param(3, (0, common_1.Query)("skipSync")),
+    __param(1, (0, common_1.Headers)("x-tenant-id")),
+    __param(2, (0, common_1.Query)("limit")),
+    __param(3, (0, common_1.Query)("agentId")),
+    __param(4, (0, common_1.Query)("skipSync")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "getLogs", null);
 __decorate([
     (0, common_1.Get)("stats"),
     __param(0, (0, common_1.Query)("tenantId")),
+    __param(1, (0, common_1.Headers)("x-tenant-id")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "getStats", null);
 __decorate([
