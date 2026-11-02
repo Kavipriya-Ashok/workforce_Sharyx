@@ -10,7 +10,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   /* ── Light Theme HSL Colors ── */
-  --color-background: hsl(214 32% 95%);
+  --color-background: #eaedf2;
   --color-foreground: #334155;
   --color-heading: #0f172a;
   --color-text-light: #FFFFFF;
@@ -56,7 +56,15 @@
   --font-display: 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'Plus Jakarta Sans', monospace;
 
-  --radius: 1.5rem;
+  --radius: 0.75rem;
+
+  /* ── Restrained SaaS Shadow Tokens ── */
+  --shadow-2xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-xs: 0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 5px -1px rgba(15, 23, 42, 0.08), 0 1px 3px -1px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 8px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+
 }
 
 /* ── Base Styles & Dark Theme Overrides ── */
@@ -101,23 +109,17 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* ── Animated Ambient Radial Mesh Background (Light - Soft Blue & Anti-Glare) ── */
+  /* ── Clean Anti-Glare Canvas (Light) ── */
   body {
     @apply bg-background text-foreground font-sans antialiased overflow-x-hidden;
+    background-color: var(--color-background);
     
-    background-image: 
-      radial-gradient(at 0% 0%, hsla(217, 91%, 60%, 0.12) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(224, 76%, 48%, 0.08) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, hsla(210, 100%, 75%, 0.08) 0px, transparent 50%);
-    
-    background-attachment: fixed;
-    background-size: 100% 100%;
-    animation: mesh-shimmer 30s ease infinite alternate;
+    /* static canvas in light mode */
   }
 
   /* ── Deep Space Dark Mesh Background ── */
   :root.dark body {
-    background-image: 
+    background-image:
       radial-gradient(at 0% 0%, hsla(221, 83%, 53%, 0.18) 0px, transparent 50%),
       radial-gradient(at 100% 0%, hsla(217, 91%, 60%, 0.12) 0px, transparent 50%),
       radial-gradient(at 50% 100%, hsla(239, 84%, 67%, 0.1) 0px, transparent 50%);
@@ -165,6 +167,27 @@
 }
 
 @layer utilities {
+
+  /* ── Enterprise SaaS Card & Surface Tokens ── */
+  .saas-card {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] transition-all;
+  }
+  .saas-card-hover {
+    @apply hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md transition-all;
+  }
+  .saas-sub-card {
+    @apply bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 rounded-xl transition-all;
+  }
+  .saas-table-container {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] overflow-hidden;
+  }
+  .saas-table-header {
+    @apply bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider;
+  }
+  .saas-table-row {
+    @apply border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors;
+  }
+
   .bg-gradient-primary {
     @apply bg-linear-to-r from-accent to-primary bg-[length:200%_auto] animate-[gradient_3s_ease_infinite];
   }

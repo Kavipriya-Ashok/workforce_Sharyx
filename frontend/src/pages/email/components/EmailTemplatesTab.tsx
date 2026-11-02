@@ -23,12 +23,12 @@ import {
 import { toast } from 'sonner';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Sales: 'bg-blue-50 text-blue-700 border-blue-200',
-  Recruitment: 'bg-purple-50 text-purple-700 border-purple-200',
-  Onboarding: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  'Follow-up': 'bg-amber-50 text-amber-700 border-amber-200',
-  Support: 'bg-rose-50 text-rose-700 border-rose-200',
-  General: 'bg-slate-100 text-slate-700 border-slate-200',
+  Sales: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/60',
+  Recruitment: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/60',
+  Onboarding: 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800/60',
+  'Follow-up': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60',
+  Support: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60',
+  General: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
 };
 
 const ALL_CATEGORIES = ['All', 'Sales', 'Recruitment', 'Onboarding', 'Follow-up', 'Support', 'General'];
@@ -102,14 +102,18 @@ export const EmailTemplatesTab: React.FC = () => {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <LayoutTemplate className="h-5 w-5 text-blue-600" />
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <LayoutTemplate className="h-4 w-4" />
+          </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">Email Templates</h2>
-            <p className="text-xs text-slate-500">{templates.length} template{templates.length !== 1 ? 's' : ''} · reusable HTML templates with dynamic placeholders & PDF attachments</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Email Templates</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {templates.length} template{templates.length !== 1 ? 's' : ''} · reusable HTML templates with dynamic placeholders & PDF attachments
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -118,15 +122,15 @@ export const EmailTemplatesTab: React.FC = () => {
             size="sm"
             onClick={fetchTemplates}
             disabled={loading}
-            className="gap-1.5 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 rounded-xl"
+            className="gap-1.5 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-blue-600' : ''}`} />
             Refresh
           </Button>
           <Button
             size="sm"
             onClick={() => { setEditingTemplate(null); setDialogOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 rounded-xl font-semibold shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 rounded-xl font-semibold shadow-xs"
           >
             <PlusCircle className="h-4 w-4" />
             New Template
@@ -135,25 +139,25 @@ export const EmailTemplatesTab: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative flex-1 max-w-xs w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
           <Input
             placeholder="Search templates..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-slate-50 border-slate-200 text-slate-900 text-xs h-8 rounded-xl focus:bg-white"
+            className="pl-8 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-xs h-8 rounded-xl focus:bg-white"
           />
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap w-full sm:w-auto">
           {ALL_CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`text-xs px-3 py-1 rounded-full border font-semibold transition-all ${
+              className={`text-xs px-3 py-1 rounded-full border font-semibold transition-all cursor-pointer ${
                 activeCategory === cat
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               {cat}
@@ -166,16 +170,16 @@ export const EmailTemplatesTab: React.FC = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-52 rounded-2xl bg-slate-100 animate-pulse border border-slate-200" />
+            <div key={i} className="h-52 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
-          <LayoutTemplate className="h-10 w-10 text-slate-300 mb-2" />
-          <p className="text-slate-700 font-semibold text-sm">
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
+          <LayoutTemplate className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-2" />
+          <p className="text-slate-700 dark:text-slate-300 font-semibold text-sm">
             {search || activeCategory !== 'All' ? 'No templates match your filter' : 'No templates yet'}
           </p>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">
             {search || activeCategory !== 'All'
               ? 'Try clearing your search or selecting a different category'
               : 'Click "New Template" to create your first reusable email template'}
@@ -186,7 +190,7 @@ export const EmailTemplatesTab: React.FC = () => {
           {filtered.map(tpl => (
             <div
               key={tpl.id}
-              className="group relative bg-white border border-slate-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 flex flex-col gap-3 shadow-xs"
+              className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200 flex flex-col gap-3 shadow-xs"
             >
               {/* Card Header */}
               <div className="flex items-start justify-between gap-2">
@@ -198,14 +202,14 @@ export const EmailTemplatesTab: React.FC = () => {
                       {tpl.category}
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 truncate">{tpl.name}</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{tpl.name}</h3>
                 </div>
               </div>
 
               {/* Subject */}
               <div className="space-y-0.5">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subject</p>
-                <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-medium">{tpl.subject}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Subject</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed font-medium">{tpl.subject}</p>
               </div>
 
               {/* Variables */}
@@ -214,7 +218,7 @@ export const EmailTemplatesTab: React.FC = () => {
                   {tpl.variables.slice(0, 4).map(v => (
                     <span
                       key={v}
-                      className="text-[10px] px-1.5 py-0.5 bg-slate-50 text-slate-600 border border-slate-200 rounded font-mono"
+                      className="text-[10px] px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded font-mono"
                     >
                       {`{{${v}}}`}
                     </span>
@@ -228,12 +232,12 @@ export const EmailTemplatesTab: React.FC = () => {
               {/* Outcome + PDF badges */}
               <div className="flex flex-wrap gap-1.5">
                 {tpl.outcome_filter && tpl.outcome_filter !== 'ALL' && (
-                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-semibold">
+                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full font-semibold">
                     <Zap className="h-2.5 w-2.5" /> {tpl.outcome_filter}
                   </span>
                 )}
                 {tpl.attach_pdf && tpl.pdf_template_type && (
-                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full font-semibold">
+                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-full font-semibold">
                     <FileText className="h-2.5 w-2.5" /> PDF: {tpl.pdf_template_type.replace(/_/g, ' ')}
                   </span>
                 )}
@@ -241,36 +245,36 @@ export const EmailTemplatesTab: React.FC = () => {
 
               {/* Preview snippet */}
               {tpl.preview_text && (
-                <p className="text-[11px] text-slate-400 italic line-clamp-1 border-t border-slate-100 pt-2">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 italic line-clamp-1 border-t border-slate-100 dark:border-slate-800 pt-2">
                   "{tpl.preview_text}"
                 </p>
               )}
 
               {/* Actions */}
-              <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-1.5 mt-auto pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => { setPreviewTemplate(tpl); }}
-                  className="flex-1 flex items-center justify-center gap-1 text-[11px] py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all font-semibold"
+                  className="flex-1 flex items-center justify-center gap-1 text-[11px] py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-semibold cursor-pointer"
                 >
                   <Eye className="h-3 w-3" /> Preview
                 </button>
                 <button
                   onClick={() => handleCopyHTML(tpl)}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-pointer"
                   title="Copy HTML body"
                 >
                   {copiedId === tpl.id ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                 </button>
                 <button
                   onClick={() => { setEditingTemplate(tpl); setDialogOpen(true); }}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400 transition-all cursor-pointer"
                   title="Edit"
                 >
                   <Edit className="h-3 w-3" />
                 </button>
                 <button
                   onClick={() => handleDelete(tpl.id, tpl.name)}
-                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                  className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 transition-all cursor-pointer"
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -283,20 +287,20 @@ export const EmailTemplatesTab: React.FC = () => {
 
       {/* Preview Dialog */}
       {previewTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
               <div>
-                <h3 className="font-bold text-sm text-slate-900">{previewTemplate.name}</h3>
-                <p className="text-xs text-slate-500">{previewTemplate.subject}</p>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">{previewTemplate.name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{previewTemplate.subject}</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => setPreviewTemplate(null)} className="rounded-xl">
                 Close
               </Button>
             </div>
-            <div className="p-6 overflow-y-auto space-y-4">
+            <div className="p-6 overflow-y-auto space-y-4 text-slate-800 dark:text-slate-200">
               <div
-                className="prose prose-sm max-w-none text-slate-800"
+                className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-200"
                 dangerouslySetInnerHTML={{ __html: previewTemplate.body_html || '' }}
               />
             </div>

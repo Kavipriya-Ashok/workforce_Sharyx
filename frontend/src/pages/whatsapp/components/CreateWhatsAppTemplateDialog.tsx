@@ -312,7 +312,7 @@ export const CreateWhatsAppTemplateDialog: React.FC<Props> = ({
 
               {/* Phone Bubble */}
               <div className="w-full max-w-[280px] bg-[#efeae2] rounded-2xl p-3 shadow-md border border-slate-200 space-y-2 text-[13px]">
-                <div className="bg-white rounded-xl p-3 shadow-xs text-slate-800 space-y-1.5 border border-slate-200/70">
+                <div className="bg-white rounded-xl p-3 shadow-xs text-slate-800 space-y-1.5 border border-slate-200">
                   {form.header_text && (
                     <div className="font-bold text-xs text-blue-700 pb-1 border-b border-slate-100">
                       {form.header_text}

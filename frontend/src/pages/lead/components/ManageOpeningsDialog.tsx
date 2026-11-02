@@ -357,7 +357,7 @@ export const ManageOpeningsDialog: React.FC<ManageOpeningsDialogProps> = ({
                 className={`p-4 rounded-xl border transition-all ${
                   op.status === "open"
                     ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs"
-                    : "bg-slate-50 dark:bg-slate-950/40 border-slate-200/60 dark:border-slate-800/60 opacity-60"
+                    : "bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800/60 opacity-60"
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">

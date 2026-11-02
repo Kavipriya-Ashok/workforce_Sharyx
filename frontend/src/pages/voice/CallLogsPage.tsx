@@ -169,7 +169,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <button
             onClick={handleSyncVapi}
             disabled={syncingVapi}
-            className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50 text-xs text-purple-700 hover:bg-purple-100 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-xs"
+            className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50 text-xs text-purple-700 hover:bg-purple-100 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
             title="Pull calls directly from Vapi API"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncingVapi ? 'animate-spin' : ''}`} />
@@ -179,7 +179,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <button
             onClick={handleSyncSaas}
             disabled={syncingSaas}
-            className="px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-xs text-blue-700 hover:bg-blue-100 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-xs"
+            className="px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-xs text-blue-700 hover:bg-blue-100 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncingSaas ? 'animate-spin' : ''}`} />
             <span>Sync SaaS Calls</span>
@@ -188,7 +188,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <button
             onClick={() => loadData(false)}
             disabled={loading}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-xs"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer font-semibold disabled:opacity-50 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -198,7 +198,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
 
       {/* KPI Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-1">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-1">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Total Calls</span>
             <Phone className="h-4 w-4 text-blue-600" />
@@ -207,7 +207,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <div className="text-[11px] text-slate-400">All inbound & outbound sessions</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-1">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-1">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Completed Calls</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -216,7 +216,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <div className="text-[11px] text-slate-400">Successfully connected & finished</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-1">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-1">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Avg Duration</span>
             <Clock className="h-4 w-4 text-purple-600" />
@@ -225,7 +225,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
           <div className="text-[11px] text-slate-400">Average dialogue length</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-1">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-1">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
             <span>Success Rate</span>
             <Activity className="h-4 w-4 text-cyan-600" />
@@ -236,7 +236,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
       </div>
 
       {/* Filters & Search Control Bar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-3">
         <div className="flex flex-col md:flex-row items-center gap-3">
           {/* Search Bar */}
           <div className="relative flex-1 w-full">
@@ -278,7 +278,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                 onClick={() => setStatusFilter(st)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                   statusFilter === st
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -296,7 +296,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                 onClick={() => setProviderFilter(pv)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
                   providerFilter === pv
-                    ? 'bg-purple-600 text-white shadow-xs'
+                    ? 'bg-purple-600 text-white shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]'
                     : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                 }`}
               >
@@ -309,7 +309,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
 
       {/* Call Logs List */}
       {filteredLogs.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500 text-xs shadow-xs space-y-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500 text-xs shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-2">
           <Phone className="h-10 w-10 text-slate-300 mx-auto" />
           <div className="text-sm font-bold text-slate-700">No calls matching your search or filters</div>
           <p>Try clearing your filters or click "Sync from Vapi" above to pull recent call recordings.</p>
@@ -340,7 +340,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
             return (
               <div
                 key={log.id}
-                className="rounded-2xl border border-slate-200 bg-white overflow-hidden transition-all hover:border-slate-300 shadow-xs"
+                className="rounded-2xl border border-slate-200 bg-white overflow-hidden transition-all hover:border-slate-300 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
               >
                 <div
                   onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
@@ -389,7 +389,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 shadow-xs"
+                            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
                           >
                             <span>🎥 Join Google Meet</span>
                           </a>
@@ -423,7 +423,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
 
                       {/* Always-Visible Summary Preview on Every Call Row */}
                       {log.summary && (
-                        <div className="mt-2 text-xs text-slate-700 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 max-w-2xl line-clamp-2">
+                        <div className="mt-2 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 max-w-2xl line-clamp-2">
                           <span className="font-bold text-slate-900 mr-1">📝 Summary:</span>
                           {log.summary}
                         </div>
@@ -487,7 +487,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                   <div className="border-t border-slate-100 bg-slate-50/70 p-5 space-y-4">
                     {/* Audio Player */}
                     {log.recording_url ? (
-                      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2.5">
+                      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-2.5">
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
                           <div className="flex items-center gap-2">
                             <Volume2 className="h-4 w-4 text-emerald-600" />
@@ -521,7 +521,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                           <Sparkles className="h-3.5 w-3.5 text-blue-600" />
                           AI Call Summary & Synthesized Outcome ({log.call_outcome || 'Completed'})
                         </div>
-                        <p className="text-xs text-slate-700 bg-white border border-slate-200 p-3.5 rounded-2xl leading-relaxed shadow-xs">
+                        <p className="text-xs text-slate-700 bg-white border border-slate-200 p-3.5 rounded-2xl leading-relaxed shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
                           {log.summary}
                         </p>
                       </div>
@@ -542,7 +542,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                           href={meetUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0 text-center shadow-xs"
+                          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0 text-center shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]"
                         >
                           🎥 Open Google Meet Room
                         </a>
@@ -584,7 +584,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                         <FileText className="h-3.5 w-3.5 text-slate-500" />
                         Full Dialogue Transcript
                       </div>
-                      <div className="max-h-80 overflow-y-auto p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2.5">
+                      <div className="max-h-80 overflow-y-auto p-4 rounded-2xl bg-white border border-slate-200 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-2.5">
                         {log.transcript ? (
                           log.transcript.split('\n').map((line, idx) => {
                             const trimmed = line.trim();

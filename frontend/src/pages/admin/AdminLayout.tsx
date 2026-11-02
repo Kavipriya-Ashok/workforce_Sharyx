@@ -193,7 +193,7 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] text-slate-900 flex font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* SIDEBAR */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#1a2846] bg-[#0c1427] text-slate-200 transition-all duration-300 shadow-xl ${
@@ -548,7 +548,7 @@ export const AdminLayout: React.FC = () => {
         }`}
       >
         {/* TOPBAR */}
-        <header className="sticky top-0 z-30 h-16 border-b border-blue-100/90 bg-white/90 backdrop-blur-xl flex items-center justify-between px-6 shadow-xs">
+        <header className="sticky top-0 z-30 h-16 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-6 shadow-2xs transition-colors duration-200">
           {/* Tenant Switcher & Breadcrumb */}
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -559,7 +559,7 @@ export const AdminLayout: React.FC = () => {
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${
                       isImpersonating
                         ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
-                        : 'bg-blue-50/80 border-blue-200/80 hover:bg-blue-100/80 text-blue-950'
+                        : 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/60 hover:bg-blue-100/80 dark:hover:bg-blue-900/40 text-blue-950 dark:text-blue-200'
                     }`}
                   >
                     {isImpersonating ? (
@@ -579,16 +579,16 @@ export const AdminLayout: React.FC = () => {
                   </button>
 
                   {tenantDropdownOpen && (
-                    <div className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-blue-100 bg-white shadow-2xl p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute top-11 left-0 z-50 w-72 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
                       {/* Search box within dropdown */}
-                      <div className="relative pb-1 border-b border-slate-100">
+                      <div className="relative pb-1 border-b border-slate-100 dark:border-slate-800">
                         <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
                         <input
                           type="text"
                           value={tenantSearch}
                           onChange={(e) => setTenantSearch(e.target.value)}
                           placeholder="Filter tenants..."
-                          className="w-full h-7 pl-8 pr-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full h-7 pl-8 pr-2 rounded-lg bg-[#eaedf2] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-[11px] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           onClick={(e) => e.stopPropagation()}
                         />
                       </div>
@@ -602,8 +602,8 @@ export const AdminLayout: React.FC = () => {
                         }}
                         className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
                           selectedTenant === null
-                            ? 'bg-blue-50 text-blue-700 font-bold'
-                            : 'text-slate-700 hover:bg-slate-100'
+                            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -636,7 +636,7 @@ export const AdminLayout: React.FC = () => {
                                 className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
                                   isSelected
                                     ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/60'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                                 }`}
                               >
                                 <div className="truncate">
@@ -655,7 +655,7 @@ export const AdminLayout: React.FC = () => {
                   )}
                 </>
               ) : (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/80 text-xs font-semibold text-blue-950 shadow-xs">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 text-xs font-semibold text-blue-950 dark:text-blue-200 shadow-2xs">
                   <Building2 className="h-3.5 w-3.5 text-blue-600" />
                   <span>{user?.company_name || 'Sharyx Enterprise Inc'}</span>
                 </div>
@@ -663,10 +663,10 @@ export const AdminLayout: React.FC = () => {
             </div>
 
             {/* Dynamic Page Breadcrumb */}
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-medium border-l border-slate-200 pl-4">
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium border-l border-slate-200 dark:border-slate-800 pl-4">
               <span>Sharyx</span>
               <span>/</span>
-              <span className="font-bold text-slate-800">
+              <span className="font-bold text-slate-800 dark:text-slate-200">
                 {activePage === 'dashboard' && 'Overview & KPIs'}
                 {activePage === 'whatsapp_chat' && 'WhatsApp Live Chat Inbox'}
                 {activePage === 'whatsapp_sync' && 'WhatsApp Live Sync & Diagnostics'}
@@ -698,15 +698,15 @@ export const AdminLayout: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search leads, calls, messages..."
-                className="w-full h-9 pl-9 pr-4 rounded-xl border border-blue-100 bg-blue-50/40 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/60 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
 
             <ThemeToggle />
 
-            <button className="relative text-slate-600 hover:text-blue-600 p-2 rounded-xl bg-blue-50/60 border border-blue-100/80 hover:border-blue-200 transition-all">
+            <button className="relative text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white dark:ring-slate-900" />
             </button>
           </div>
         </header>
@@ -741,7 +741,7 @@ export const AdminLayout: React.FC = () => {
         )}
 
         {/* CONTENT BODY */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 w-full min-w-0 overflow-x-hidden bg-[#eaedf2] dark:bg-slate-950">
           {activePage === 'dashboard' && <AdminDashboard />}
           {activePage.startsWith('whatsapp') && (
             <WhatsAppAutomation

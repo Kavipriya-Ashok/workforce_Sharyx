@@ -60,23 +60,23 @@ export const CreateCampaignView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Email Campaign Creator */}
         <div className="lg:col-span-6">
-          <Card className="bg-white border-slate-200 shadow-xs rounded-2xl">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 Launch Mass Email Sequence
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Send HTML email blasts, quotations, and newsletters to customer segments
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLaunch} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Campaign Name</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Campaign Name</label>
                   <Input
                     placeholder="e.g. October Feature Release Announcement"
-                    className="mt-1 bg-slate-50 border-slate-200 text-xs text-slate-900 focus:bg-white rounded-xl"
+                    className="mt-1 bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 rounded-xl"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -84,10 +84,10 @@ export const CreateCampaignView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Email Subject Line</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email Subject Line</label>
                   <Input
                     placeholder="e.g. Introducing Sharyx AI Copilot v2"
-                    className="mt-1 bg-slate-50 border-slate-200 text-xs text-slate-900 focus:bg-white rounded-xl"
+                    className="mt-1 bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 rounded-xl"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     required
@@ -95,13 +95,13 @@ export const CreateCampaignView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Recipients (One email per line or comma separated)
                   </label>
                   <Textarea
                     placeholder="client1@domain.com&#10;client2@domain.com"
                     rows={3}
-                    className="mt-1 font-mono text-xs bg-slate-50 border-slate-200 text-slate-900 focus:bg-white rounded-xl"
+                    className="mt-1 font-mono text-xs bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 rounded-xl"
                     value={recipientsText}
                     onChange={(e) => setRecipientsText(e.target.value)}
                     required
@@ -109,11 +109,11 @@ export const CreateCampaignView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">HTML Email Template</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">HTML Email Template</label>
                   <Textarea
                     placeholder="<h1>Exciting News!</h1><p>We are thrilled to unveil...</p>"
                     rows={6}
-                    className="mt-1 font-mono text-xs bg-slate-50 border-slate-200 text-slate-900 focus:bg-white rounded-xl"
+                    className="mt-1 font-mono text-xs bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 rounded-xl"
                     value={html}
                     onChange={(e) => setHtml(e.target.value)}
                     required
@@ -122,7 +122,7 @@ export const CreateCampaignView: React.FC = () => {
 
                 <Button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-xs"
                   disabled={submitting}
                 >
                   <Send className="mr-2 h-4 w-4" />
@@ -135,55 +135,48 @@ export const CreateCampaignView: React.FC = () => {
 
         {/* Right: Email Campaigns Stats */}
         <div className="lg:col-span-6">
-          <Card className="bg-white border-slate-200 shadow-xs rounded-2xl">
+          <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Users className="h-4 w-4 text-purple-600" />
+              <CardTitle className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                 Active & Sent Email Campaigns
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">Delivery and open rate telemetry</CardDescription>
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">Delivery and open rate telemetry</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {campaigns.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-400">No email campaigns created yet</div>
+                  <div className="py-8 text-center text-xs text-slate-400 dark:text-slate-500">No email campaigns created yet</div>
                 ) : (
                   campaigns.map((camp) => (
-                    <div key={camp.id} className="py-4 first:pt-0 last:pb-0 space-y-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-xs font-bold text-slate-900">{camp.campaign_name}</h4>
+                    <div key={camp.id} className="py-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{camp.campaign_name}</span>
                         <Badge
-                          variant={
+                          variant="outline"
+                          className={`text-[10px] ${
                             camp.campaign_status === 'sent'
-                              ? 'success'
-                              : camp.campaign_status === 'sending'
-                              ? 'warning'
-                              : 'secondary'
-                          }
-                          className="capitalize text-[10px]"
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                          }`}
                         >
                           {camp.campaign_status}
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-500 truncate">{camp.subject}</p>
-
-                      <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                        <div>
-                          <p className="text-[10px] text-slate-500 font-medium">Target Contacts</p>
-                          <p className="text-xs font-bold text-slate-900">{camp.recipients_count}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-500 font-medium flex items-center justify-center gap-0.5">
-                            <CheckCircle className="h-2.5 w-2.5 text-blue-600" /> Sent Out
-                          </p>
-                          <p className="text-xs font-bold text-blue-600">{camp.sent_count}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-slate-500 font-medium flex items-center justify-center gap-0.5">
-                            <Eye className="h-2.5 w-2.5 text-emerald-600" /> Opened
-                          </p>
-                          <p className="text-xs font-bold text-emerald-600">{camp.opened_count}</p>
-                        </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{camp.subject}</p>
+                      <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3 text-slate-400" />
+                          {camp.recipients_count} Recipients
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3 text-emerald-500" />
+                          {camp.sent_count} Delivered
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3 text-blue-500" />
+                          {camp.opened_count} Opened
+                        </span>
                       </div>
                     </div>
                   ))

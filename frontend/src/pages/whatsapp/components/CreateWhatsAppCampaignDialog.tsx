@@ -101,28 +101,28 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white border border-blue-150 shadow-2xl text-slate-900">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-900">
-            <Zap className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             {campaign ? "Edit Campaign" : "New Automated WhatsApp Campaign"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Campaign Title *</Label>
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Campaign Title *</Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="e.g. Round 2 Google Meet Invite"
-              className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
+              className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 rounded-xl"
               required
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Trigger Event *</Label>
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Trigger Event *</Label>
             <Select
               value={form.trigger_event}
               onValueChange={(val) => {
@@ -153,10 +153,10 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
                 });
               }}
             >
-              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 rounded-xl">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <SelectItem value="appointment_booked">📅 Appointment / Meeting Scheduled ➔ Send Google Meet Link</SelectItem>
                 <SelectItem value="demo_booked">🎥 Live Demo Booked ➔ Send Demo Google Meet Link</SelectItem>
                 <SelectItem value="interview_booked">🎓 Placement / Candidate Interview ➔ Send Interview Meet Link</SelectItem>
@@ -173,15 +173,15 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">Outcome Trigger Filter (When Outcome Matches) *</Label>
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Outcome Trigger Filter (When Outcome Matches) *</Label>
             <Select
               value={form.outcome_filter}
               onValueChange={(val) => setForm({ ...form, outcome_filter: val })}
             >
-              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 rounded-xl">
                 <SelectValue placeholder="Select outcome condition" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 <SelectItem value="ALL">⚡ ALL - Fire for any call outcome</SelectItem>
                 <SelectItem value="Appointment Scheduled">📅 Appointment Scheduled (Doctor / Service / General Meet)</SelectItem>
                 <SelectItem value="Demo Booked">🎥 Demo Booked (Product Walkthrough + Google Meet)</SelectItem>
@@ -200,15 +200,15 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">WhatsApp Template *</Label>
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">WhatsApp Template *</Label>
             <Select
               value={form.template_name}
               onValueChange={(val) => setForm({ ...form, template_name: val })}
             >
-              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900">
+              <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 rounded-xl">
                 <SelectValue placeholder="Select an approved template" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                 {templates.map((t) => (
                   <SelectItem key={t.id || t.name} value={t.name}>
                     {t.name} ({t.category || "UTILITY"})
@@ -220,17 +220,17 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-3 items-center">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Delay (Minutes)</Label>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Delay (Minutes)</Label>
               <Input
                 type="number"
                 min={0}
                 value={form.delay_minutes}
                 onChange={(e) => setForm({ ...form, delay_minutes: Number(e.target.value) })}
-                className="bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
+                className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 rounded-xl"
               />
             </div>
             <div className="flex items-center justify-between pt-5">
-              <Label className="text-xs font-semibold text-slate-700">Active Now</Label>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Active Now</Label>
               <Switch
                 checked={form.is_active}
                 onCheckedChange={(checked) => setForm({ ...form, is_active: checked })}
@@ -238,19 +238,19 @@ export const CreateWhatsAppCampaignDialog: React.FC<Props> = ({
             </div>
           </div>
 
-          <DialogFooter className="border-t border-slate-100 pt-3">
+          <DialogFooter className="border-t border-slate-100 dark:border-slate-800 pt-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="text-xs text-slate-600 hover:text-slate-800"
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !form.name || !form.template_name}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs rounded-xl"
             >
               {loading ? "Saving..." : campaign ? "Update Campaign" : "Create Campaign"}
             </Button>

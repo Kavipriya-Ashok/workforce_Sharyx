@@ -20,9 +20,9 @@ interface Props {
 }
 
 const SectionHeader = ({ icon: Icon, label }: { icon: any; label: string }) => (
-  <div className="flex items-center gap-2 pt-3 pb-1 border-b border-blue-100">
-    <Icon className="h-4 w-4 text-blue-600" />
-    <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">{label}</span>
+  <div className="flex items-center gap-2 pt-3 pb-1 border-b border-slate-200 dark:border-slate-800">
+    <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+    <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{label}</span>
   </div>
 );
 
@@ -217,7 +217,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
     opts?: { type?: string; placeholder?: string; required?: boolean }
   ) => (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs font-bold text-slate-700 flex items-center">
+      <Label htmlFor={id} className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center">
         <span>{label}</span>
         {opts?.required && <span className="text-red-500 font-extrabold ml-1 text-sm">*</span>}
       </Label>
@@ -228,35 +228,34 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
         onChange={(e) => onChange(e.target.value)}
         placeholder={opts?.placeholder}
         required={opts?.required}
-        className="bg-white border-blue-100 text-slate-800 focus:border-blue-400 focus:ring-blue-100 h-9 text-sm"
+        className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
       />
     </div>
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl bg-white border-blue-100 text-slate-800 max-h-[92vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-blue-800 font-bold text-lg">
+          <DialogTitle className="font-bold text-lg">
             {lead
               ? isCandidate ? "Edit Candidate" : "Edit Lead"
               : isCandidate ? "Add New Candidate" : "Add New Lead"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-2 py-2">
-
+        <form onSubmit={handleSubmit} className="space-y-3 py-2">
           {/* Duplicate Warnings */}
           {(duplicatePhoneWarning || duplicateEmailWarning) && (
             <div className="space-y-1.5">
               {duplicatePhoneWarning && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-2.5 text-xs flex items-center gap-2">
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 rounded-xl p-2.5 text-xs flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{duplicatePhoneWarning}</span>
                 </div>
               )}
               {duplicateEmailWarning && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-2.5 text-xs flex items-center gap-2">
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 rounded-xl p-2.5 text-xs flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <span>{duplicateEmailWarning}</span>
                 </div>
@@ -285,12 +284,12 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
 
             {!isCandidate && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Deal Value (₹)</Label>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Deal Value (₹)</Label>
                 <Input
                   type="number"
                   value={formData.deal_value}
                   onChange={(e) => setFormData({ ...formData, deal_value: Number(e.target.value) })}
-                  className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                  className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                 />
               </div>
             )}
@@ -303,7 +302,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               <SectionHeader icon={Briefcase} label="Experience" />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="total_exp" className="text-xs font-semibold text-slate-600">Total Experience (yrs)</Label>
+                  <Label htmlFor="total_exp" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Total Experience (yrs)</Label>
                   <Input
                     id="total_exp"
                     type="number"
@@ -312,11 +311,11 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
                     value={formData.total_experience}
                     onChange={(e) => setFormData({ ...formData, total_experience: e.target.value })}
                     placeholder="e.g. 3.5"
-                    className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                    className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rel_exp" className="text-xs font-semibold text-slate-600">Relevant Experience (yrs)</Label>
+                  <Label htmlFor="rel_exp" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Relevant Experience (yrs)</Label>
                   <Input
                     id="rel_exp"
                     type="number"
@@ -325,7 +324,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
                     value={formData.relevant_experience}
                     onChange={(e) => setFormData({ ...formData, relevant_experience: e.target.value })}
                     placeholder="e.g. 2"
-                    className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                    className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                   />
                 </div>
               </div>
@@ -334,15 +333,15 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               <SectionHeader icon={Building} label="Employment Status" />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Employment Status</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Employment Status</Label>
                   <Select
                     value={formData.employment_status}
                     onValueChange={(v) => setFormData({ ...formData, employment_status: v })}
                   >
-                    <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                       <SelectItem value="working">Working</SelectItem>
                       <SelectItem value="notice">Serving Notice</SelectItem>
                       <SelectItem value="relieved">Relieved</SelectItem>
@@ -351,14 +350,14 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
                 </div>
                 {(formData.employment_status === "notice" || formData.employment_status === "relieved") && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-600">
+                    <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       {formData.employment_status === "notice" ? "Notice End / Last Working Date" : "Relieving Date"}
                     </Label>
                     <Input
                       type="date"
                       value={formData.relieving_date}
                       onChange={(e) => setFormData({ ...formData, relieving_date: e.target.value })}
-                      className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                      className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                     />
                   </div>
                 )}
@@ -368,35 +367,35 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               <SectionHeader icon={BadgeDollarSign} label="Salary / CTC" />
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Current CTC (₹)</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Current CTC (₹)</Label>
                   <Input
                     type="number"
                     value={formData.current_ctc}
                     onChange={(e) => setFormData({ ...formData, current_ctc: e.target.value })}
                     placeholder="e.g. 600000"
-                    className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                    className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Expected CTC (₹)</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Expected CTC (₹)</Label>
                   <Input
                     type="number"
                     value={formData.expected_ctc}
                     onChange={(e) => setFormData({ ...formData, expected_ctc: e.target.value })}
                     placeholder="e.g. 800000"
-                    className="bg-white border-blue-100 text-slate-800 h-9 text-sm"
+                    className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 h-9 text-xs rounded-xl"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">CTC Basis</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">CTC Basis</Label>
                   <Select
                     value={formData.ctc_basis}
                     onValueChange={(v) => setFormData({ ...formData, ctc_basis: v })}
                   >
-                    <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                       <SelectItem value="annual">Annual</SelectItem>
                       <SelectItem value="monthly">Monthly</SelectItem>
                     </SelectContent>
@@ -408,15 +407,15 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               <SectionHeader icon={MapPin} label="Relocation & Interview Preference" />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Relocation Availability</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Relocation Availability</Label>
                   <Select
                     value={formData.relocation}
                     onValueChange={(v) => setFormData({ ...formData, relocation: v })}
                   >
-                    <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                       <SelectItem value="yes">Yes — Open to relocation</SelectItem>
                       <SelectItem value="no">No — Not open</SelectItem>
                       <SelectItem value="conditional">Conditional (specific cities)</SelectItem>
@@ -440,15 +439,15 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               <SectionHeader icon={Calendar} label="Candidate Stage" />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-600">Pipeline Stage</Label>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Pipeline Stage</Label>
                   <Select
                     value={formData.candidate_stage}
                     onValueChange={(v) => setFormData({ ...formData, candidate_stage: v })}
                   >
-                    <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                    <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                       <SelectItem value="new">🆕 New</SelectItem>
                       <SelectItem value="screening">🔍 Screening</SelectItem>
                       <SelectItem value="scheduled">📅 Interview Scheduled</SelectItem>
@@ -465,17 +464,17 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
           {/* ── Status & Source (all) ── */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-600">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 {isCandidate ? "Lead Status" : "Lead Status"}
               </Label>
               <Select
                 value={formData.lead_status}
                 onValueChange={(val) => setFormData({ ...formData, lead_status: val })}
               >
-                <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                   <SelectItem value="NEW">New</SelectItem>
                   <SelectItem value="CONTACTED">Contacted</SelectItem>
                   <SelectItem value="QUALIFIED">Qualified</SelectItem>
@@ -486,15 +485,15 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-600">Source</Label>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Source</Label>
               <Select
                 value={formData.source}
                 onValueChange={(val) => setFormData({ ...formData, source: val })}
               >
-                <SelectTrigger className="bg-white border-blue-100 text-slate-800 h-9 text-sm">
+                <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                   <SelectItem value="MANUAL">Manual</SelectItem>
                   <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
                   <SelectItem value="CSV_IMPORT">CSV Import</SelectItem>
@@ -507,24 +506,24 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
           </div>
 
           {/* ── AI Voice Agent Selection & Instant Call ── */}
-          <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100 space-y-2.5">
+          <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/40 rounded-xl border border-blue-200/80 dark:border-blue-800/60 space-y-2.5">
             <div className="flex items-center gap-2">
-              <PhoneCall className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">
+              <PhoneCall className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
                 AI Voice Telephony Agent
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600">Assigned Voice Agent</Label>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Assigned Voice Agent</Label>
                 <Select
                   value={assignedVoiceAgentId}
                   onValueChange={setAssignedVoiceAgentId}
                 >
-                  <SelectTrigger className="bg-white border-blue-200 text-slate-800 h-9 text-xs">
+                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-9 text-xs rounded-xl">
                     <SelectValue placeholder="Choose an AI Voice Agent..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
                     {voiceAgents.map((ag) => (
                       <SelectItem key={ag.id} value={ag.id} className="text-xs">
                         {ag.name} ({ag.provider.toUpperCase()})
@@ -543,7 +542,7 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
                     onChange={(e) => setAutoTriggerCall(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <Label htmlFor="autoTriggerCall" className="text-xs font-medium text-slate-700 cursor-pointer">
+                  <Label htmlFor="autoTriggerCall" className="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
                     Trigger outbound call immediately
                   </Label>
                 </div>
@@ -552,29 +551,29 @@ export function LeadFormDialog({ open, onOpenChange, lead, isCandidate = false, 
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-600">Notes</Label>
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Notes</Label>
             <Textarea
               rows={2}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Key notes from conversation..."
-              className="bg-white border-blue-100 text-slate-800 text-sm"
+              className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs rounded-xl"
             />
           </div>
 
-          <DialogFooter className="pt-3">
+          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
             <Button
-              variant="outline"
+              variant="ghost"
               type="button"
               onClick={() => onOpenChange(false)}
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs h-9 px-4 rounded-xl shadow-xs shadow-blue-600/20"
             >
               {loading ? "Saving..." : lead ? "Save Changes" : isCandidate ? "Add Candidate" : "Create Lead"}
             </Button>

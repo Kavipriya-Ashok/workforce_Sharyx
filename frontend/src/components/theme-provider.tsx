@@ -23,15 +23,18 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 export function ThemeProvider({
   children,
   defaultTheme = "light",
-  storageKey = "app-theme",
+  storageKey = "sharyx-theme",
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem(storageKey) as Theme;
-    if (saved === "dark") {
-      localStorage.setItem(storageKey, "light");
-      return "light";
+    try {
+      const saved = localStorage.getItem(storageKey) as Theme;
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved;
+      }
+    } catch {
+      // Local storage fallback
     }
-    return saved || defaultTheme;
+    return defaultTheme;
   });
 
   useEffect(() => {
@@ -51,9 +54,11 @@ export function ThemeProvider({
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (newTheme: Theme) => {
+      try {
+        localStorage.setItem(storageKey, newTheme);
+      } catch {}
+      setTheme(newTheme);
     },
   };
 

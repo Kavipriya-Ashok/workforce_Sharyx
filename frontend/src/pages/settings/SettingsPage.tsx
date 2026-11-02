@@ -346,14 +346,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
             variant="outline"
             size="sm"
             onClick={onBack}
-            className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs"
+            className="rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-xs"
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Dashboard
           </Button>
         </div>
       )}
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-300 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <span className="p-1 rounded-md bg-blue-50 text-blue-700">
@@ -375,14 +375,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
           variant="outline"
           size="sm"
           onClick={loadConfigs}
-          className="h-9 text-xs border-slate-200 hover:bg-slate-50 gap-1.5 self-start sm:self-center"
+          className="h-9 text-xs border-slate-300 hover:bg-slate-50 gap-1.5 self-start sm:self-center"
         >
           <RefreshCw className="h-3.5 w-3.5 text-slate-500" /> Reload Configs
         </Button>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-300 pb-2">
         <button
           onClick={() => setActiveTab('voice')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -442,7 +442,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
       {activeTab === 'voice' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* VAPI CONFIG CARD */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center font-bold text-sm">
@@ -554,7 +554,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                   variant="outline"
                   onClick={handleTestVapi}
                   disabled={testingVoice}
-                  className="text-xs h-9 border-slate-200 hover:bg-slate-50 gap-1.5"
+                  className="text-xs h-9 border-slate-300 hover:bg-slate-50 gap-1.5"
                 >
                   <Zap className="h-3.5 w-3.5 text-amber-500" />
                   {testingVoice ? 'Testing...' : 'Test Connection'}
@@ -564,7 +564,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
           </div>
 
           {/* SHARYX SAAS TELEPHONY CARD */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center font-bold text-sm">
@@ -642,7 +642,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
 
       {/* ─── TAB 2: WHATSAPP (META CLOUD API) ─────────────────────────────────── */}
       {activeTab === 'whatsapp' && (
-        <div className="max-w-3xl bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
+        <div className="max-w-3xl bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-6">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm">
@@ -729,7 +729,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
             </div>
 
             {/* Webhook Callback Info */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-2">
               <span className="text-slate-700 font-bold block text-[11px] uppercase tracking-wider">
                 Meta Webhook Settings (Copy to Meta App)
               </span>
@@ -804,7 +804,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                 variant="outline"
                 onClick={handleTestWhatsApp}
                 disabled={testingWa}
-                className="text-xs h-9 border-slate-200 hover:bg-slate-50 gap-1.5"
+                className="text-xs h-9 border-slate-300 hover:bg-slate-50 gap-1.5"
               >
                 <Zap className="h-3.5 w-3.5 text-emerald-600" />
                 {testingWa ? 'Verifying...' : 'Test Connection'}
@@ -816,7 +816,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
 
       {/* ─── TAB 3: AI COPILOT LLM (GEMINI / OPENAI) ─────────────────────────── */}
       {activeTab === 'ai' && (
-        <div className="max-w-2xl bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
+        <div className="max-w-2xl bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-6">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
             <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-sm">
               <Bot className="h-5 w-5" />
@@ -841,7 +841,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                   className={`p-3 rounded-xl border text-left transition-all ${
                     llmProvider === 'gemini'
                       ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      : 'border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <p className="font-bold text-slate-900">Google Gemini (Recommended)</p>
@@ -854,7 +854,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                   className={`p-3 rounded-xl border text-left transition-all ${
                     llmProvider === 'openai'
                       ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      : 'border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <p className="font-bold text-slate-900">OpenAI</p>
@@ -925,7 +925,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
       {activeTab === 'email' && (
         <div className="max-w-2xl space-y-6">
           {/* Main Google OAuth 2.0 Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+          <div className="bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-5">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-sm">
@@ -947,7 +947,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                   Connected
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300">
                   Not Connected
                 </span>
               )}
@@ -956,7 +956,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
             {/* Google OAuth Details / Actions */}
             {oauthStatus?.isConnected && oauthStatus?.provider === 'google-email' ? (
               <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-300 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Authenticated Google Account:</span>
                     <span className="font-bold text-slate-900 font-mono text-sm">{oauthStatus.email_address}</span>
@@ -980,7 +980,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                     onClick={handleConnectGoogle}
                     disabled={oauthLoading}
                     variant="outline"
-                    className="flex-1 gap-2 text-xs font-semibold h-10 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl"
+                    className="flex-1 gap-2 text-xs font-semibold h-10 border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl"
                   >
                     {oauthLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -1076,7 +1076,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
           </div>
 
           {/* Manual SMTP / IMAP Fallback Section */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-300 p-6 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
               <div className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
                 <Server className="h-4 w-4 text-cyan-600" />

@@ -85,7 +85,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
         name: '',
         category: 'General',
         subject: 'Welcome to Sharyx AI — Your Account Details',
-        body_html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; rounded: 12px;">
+        body_html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
   <h2 style="color: #1e40af;">Hello {{lead_name}},</h2>
   <p>Thank you for reaching out to <strong>Sharyx Workforce</strong>. We have confirmed your session details:</p>
   <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
@@ -115,7 +115,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
   const getRenderedPreview = () => {
     let html = form.body_html || '<p style="color:#94a3b8;">Empty email body...</p>';
     Object.entries(SAMPLE_VARS).forEach(([k, v]) => {
-      html = html.replace(new RegExp(`{{${k}}}`, 'g'), `<span style="background:#fef08a;padding:1px 4px;border-radius:3px;">${v}</span>`);
+      html = html.replace(new RegExp(`{{${k}}}`, 'g'), `<span style="background:#fef08a;color:#0f172a;padding:1px 4px;border-radius:3px;">${v}</span>`);
     });
     return html;
   };
@@ -156,23 +156,23 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={onBack}
-            className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold"
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Templates
           </Button>
-          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
           <div>
-            <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <LayoutTemplate className="h-5 w-5 text-indigo-600" />
+            <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               {templateToEdit ? 'Edit Email Template' : 'Create Rich HTML Email Template'}
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Compose reusable emails with dynamic placeholders and automatic PDF attachments.
             </p>
           </div>
@@ -183,16 +183,16 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
             variant="outline"
             size="sm"
             onClick={() => setPreviewMode(previewMode === 'edit' ? 'preview' : 'edit')}
-            className="rounded-xl border-slate-200 text-xs font-semibold gap-1.5"
+            className="rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold gap-1.5"
           >
-            {previewMode === 'edit' ? <Eye className="h-3.5 w-3.5 text-blue-600" /> : <Code2 className="h-3.5 w-3.5 text-blue-600" />}
+            {previewMode === 'edit' ? <Eye className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> : <Code2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
             {previewMode === 'edit' ? 'Live Preview' : 'Edit HTML'}
           </Button>
 
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 shadow-xs"
           >
             <Save className="h-4 w-4" />
             {loading ? 'Saving...' : templateToEdit ? 'Update Template' : 'Save Template'}
@@ -203,11 +203,11 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
       {/* Main Form & Preview Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Settings & Body (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Template Name <span className="text-red-500 font-bold ml-0.5">*</span>
                 </Label>
                 <Input
@@ -215,16 +215,16 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
                   placeholder="e.g. Candidate Interview Confirmation"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="bg-white border-slate-200 text-xs rounded-xl h-10"
+                  className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-xs rounded-xl h-10"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-700">
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Category <span className="text-red-500 font-bold ml-0.5">*</span>
                 </Label>
                 <Select value={form.category} onValueChange={val => setForm({ ...form, category: val })}>
-                  <SelectTrigger className="bg-white border-slate-200 text-xs rounded-xl h-10">
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-xs rounded-xl h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -237,7 +237,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Email Subject Line <span className="text-red-500 font-bold ml-0.5">*</span>
               </Label>
               <Input
@@ -245,14 +245,14 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
                 placeholder="e.g. Interview Scheduled: {{job_title}} at Sharyx"
                 value={form.subject}
                 onChange={e => setForm({ ...form, subject: e.target.value })}
-                className="bg-white border-slate-200 text-xs rounded-xl h-10"
+                className="bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-xs rounded-xl h-10"
               />
             </div>
 
             {/* Variable Chips */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-purple-600" /> Insert Dynamic Placeholders (Click to Add):
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-purple-600 dark:text-purple-400" /> Insert Dynamic Placeholders (Click to Add):
               </Label>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {VARIABLE_CHIPS.map(chip => (
@@ -260,7 +260,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
                     key={chip}
                     type="button"
                     onClick={() => insertVariable(chip)}
-                    className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors"
+                    className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 transition-colors cursor-pointer"
                   >
                     {chip}
                   </button>
@@ -270,7 +270,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
 
             {/* Body HTML */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 HTML Email Body <span className="text-red-500 font-bold ml-0.5">*</span>
               </Label>
               {previewMode === 'edit' ? (
@@ -279,18 +279,18 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
                   rows={9}
                   value={form.body_html}
                   onChange={e => setForm({ ...form, body_html: e.target.value })}
-                  className="font-mono text-xs rounded-2xl border-slate-200 p-3 leading-relaxed"
+                  className="font-mono text-xs rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 p-3 leading-relaxed"
                 />
               ) : (
                 <div
-                  className="p-4 rounded-2xl border border-slate-200 min-h-[220px] bg-slate-50 overflow-y-auto"
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 min-h-[220px] bg-slate-50 dark:bg-slate-800/40 overflow-y-auto text-slate-900 dark:text-slate-100"
                   dangerouslySetInnerHTML={{ __html: getRenderedPreview() }}
                 />
               )}
             </div>
 
             {/* Outcome Filter Selector */}
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <OutcomeFilterSelector
                 value={form.outcome_filter}
                 onChange={(val: string) => setForm({ ...form, outcome_filter: val })}
@@ -298,7 +298,7 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
             </div>
 
             {/* Dynamic PDF Attachment Generator */}
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <PdfTemplateSelector
                 attachPdf={form.attach_pdf}
                 pdfTemplateType={form.pdf_template_type}
@@ -313,21 +313,21 @@ export const EmailTemplateEditorPage: React.FC<Props> = ({
 
         {/* Live Preview Column (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <Eye className="h-4 w-4 text-blue-600" /> Live Recipient Mailbox Preview
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" /> Live Recipient Mailbox Preview
               </span>
-              <Badge className="bg-blue-100 text-blue-700 text-[10px]">Client Preview</Badge>
+              <Badge className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px]">Client Preview</Badge>
             </div>
 
-            <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <p><strong className="text-slate-800">To:</strong> rahul.sharma@megacorp.com</p>
-              <p><strong className="text-slate-800">Subject:</strong> {form.subject || '(Subject line)'}</p>
+            <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+              <p><strong className="text-slate-800 dark:text-slate-200">To:</strong> rahul.sharma@megacorp.com</p>
+              <p><strong className="text-slate-800 dark:text-slate-200">Subject:</strong> {form.subject || '(Subject line)'}</p>
             </div>
 
             <div
-              className="p-4 rounded-2xl border border-slate-100 min-h-[280px] bg-white overflow-y-auto shadow-inner text-xs"
+              className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 min-h-[280px] bg-white dark:bg-slate-950 overflow-y-auto shadow-inner text-xs text-slate-900 dark:text-slate-100"
               dangerouslySetInnerHTML={{ __html: getRenderedPreview() }}
             />
           </div>

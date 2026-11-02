@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,18 @@ export const ComposeEmailDialog: React.FC<Props> = ({
   const [sending, setSending] = useState(false);
   const [drafting, setDrafting] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setTo(defaultTo);
+      setSubject(defaultSubject);
+      setBody('');
+    }
+  }, [open, defaultTo, defaultSubject]);
+
   const handleGenerateAIDraft = async () => {
+    if (!to && !subject) {
+      toast.info('Enter recipient or subject so the AI knows what to draft about.');
+    }
     setDrafting(true);
     try {
       const res = await emailService.generateAIDraft({
@@ -64,12 +75,15 @@ export const ComposeEmailDialog: React.FC<Props> = ({
     setSending(true);
     try {
       await emailService.sendEmail({
-        to,
-        subject,
+        to: to.trim(),
+        subject: subject.trim(),
         html: `<p>${body.replace(/\n/g, '<br/>')}</p>`,
       });
       toast.success(`Email sent to ${to}!`);
       onOpenChange(false);
+      setTo('');
+      setSubject('');
+      setBody('');
       if (onSent) onSent();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to dispatch email');
@@ -82,18 +96,20 @@ export const ComposeEmailDialog: React.FC<Props> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <div className="flex items-center space-x-2 text-indigo-400">
+          <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
             <Mail className="h-5 w-5" />
             <DialogTitle>Compose Email</DialogTitle>
           </div>
           <DialogDescription>
-            Dispatch outbound emails or use the AI Copilot to draft a response.
+            Dispatch outbound emails or use the AI Copilot to generate an executive draft.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSend} className="space-y-4 mt-2">
           <div>
-            <label className="text-xs font-medium text-slate-300">Recipient Email</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Recipient Email
+            </label>
             <Input
               type="email"
               placeholder="client@company.com"
@@ -105,9 +121,11 @@ export const ComposeEmailDialog: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-300">Subject</label>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Subject
+            </label>
             <Input
-              placeholder="e.g. Sharyx Enterprise Proposal"
+              placeholder="e.g. Sharyx Workforce Enterprise Proposal"
               className="mt-1"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
@@ -117,14 +135,16 @@ export const ComposeEmailDialog: React.FC<Props> = ({
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-slate-300">Email Message</label>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Email Message
+              </label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleGenerateAIDraft}
                 disabled={drafting}
-                className="h-7 text-xs text-indigo-400 border-indigo-500/30 hover:bg-indigo-950/30"
+                className="h-7 text-xs text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/50"
               >
                 {drafting ? (
                   <>
@@ -133,7 +153,7 @@ export const ComposeEmailDialog: React.FC<Props> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5 text-indigo-400" />
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
                     Auto-Draft with AI
                   </>
                 )}
@@ -142,18 +162,27 @@ export const ComposeEmailDialog: React.FC<Props> = ({
             <Textarea
               rows={8}
               placeholder="Dear Client..."
-              className="font-sans text-sm"
+              className="font-sans text-xs sm:text-sm"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               required
             />
           </div>
 
-          <div className="pt-2 flex justify-end space-x-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="pt-2 flex justify-end space-x-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            >
               Discard
             </Button>
-            <Button type="submit" variant="emerald" disabled={sending}>
+            <Button
+              type="submit"
+              disabled={sending}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs"
+            >
               {sending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
