@@ -283,7 +283,7 @@ export const WhatsAppLiveChat: React.FC = () => {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 h-[calc(100vh-175px)] min-h-[620px] rounded-xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] transition-colors">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 h-[calc(100vh-215px)] min-h-[480px] rounded-xl overflow-hidden border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] transition-colors">
       {/* ── AREA 1: Conversation Sidebar (4 cols) ── */}
       <div className="lg:col-span-4 border-r border-slate-300 dark:border-slate-800 flex flex-col h-full bg-slate-50/70 dark:bg-slate-950/40 overflow-hidden">
         {/* Top Header & Search */}

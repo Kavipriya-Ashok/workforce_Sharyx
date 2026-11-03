@@ -193,41 +193,41 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
+    <div className="h-screen w-screen overflow-hidden bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#1a2846] bg-[#0c1427] text-slate-200 transition-all duration-300 shadow-xl ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
           sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Brand */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-[#1a2846]">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/30">
               <Sparkles className="h-4 w-4 text-white font-bold" />
             </div>
             {!sidebarCollapsed && (
-              <span className="font-extrabold text-sm text-white tracking-tight">
-                Sharyx <span className="text-blue-400 font-semibold">Workforce</span>
+              <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
+                Sharyx <span className="text-blue-600 dark:text-blue-400 font-semibold">Workforce</span>
               </span>
             )}
           </div>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="text-slate-400 hover:text-white hover:bg-white/5 p-1 rounded-lg transition-colors"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             {sidebarCollapsed ? <Menu className="h-4 w-4" /> : <X className="h-4 w-4" />}
           </button>
         </div>
 
         {/* Navigation links */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           <button
             onClick={() => navigateToPage('dashboard')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'dashboard'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <LayoutDashboard className={`h-4 w-4 shrink-0 ${activePage === 'dashboard' ? 'text-white' : 'text-blue-400'}`} />
@@ -246,7 +246,7 @@ export const AdminLayout: React.FC = () => {
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 activePage.startsWith('whatsapp')
                   ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-                  : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -264,17 +264,17 @@ export const AdminLayout: React.FC = () => {
 
             {/* WHATSAPP DEDICATED SEPARATE PAGES */}
             {!sidebarCollapsed && whatsappSubmenuOpen && (
-              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-[#1a2846] ml-5 my-1">
+              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-slate-200 dark:border-slate-800 ml-5 my-1">
                 <button
                   onClick={() => navigateToPage('whatsapp_chat')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_chat'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <MessageSquare className="h-3 w-3 text-emerald-400 shrink-0" />
-                  <span>💬 Live Chat Inbox</span>
+                  <span>Live Chat Inbox</span>
                 </button>
 
                 <button
@@ -282,11 +282,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Megaphone className="h-3 w-3 text-indigo-400 shrink-0" />
-                  <span>🚀 Campaigns & Broadcast</span>
+                  <span>Campaigns & Broadcast</span>
                 </button>
 
                 <button
@@ -294,11 +294,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
-                  <span>📋 Meta Templates</span>
+                  <span>Meta Templates</span>
                 </button>
 
                 <button
@@ -306,11 +306,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_brain'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
-                  <span>🧠 AI Brain & Copilot</span>
+                  <span>AI Brain & Copilot</span>
                 </button>
 
                 <button
@@ -318,11 +318,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_analytics'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <BarChart3 className="h-3 w-3 text-sky-400 shrink-0" />
-                  <span>📊 Telemetry & SLAs</span>
+                  <span>Telemetry & SLAs</span>
                 </button>
               </div>
             )}
@@ -338,7 +338,7 @@ export const AdminLayout: React.FC = () => {
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 activePage.startsWith('email')
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                  : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -355,17 +355,17 @@ export const AdminLayout: React.FC = () => {
             </button>
 
             {!sidebarCollapsed && emailSubmenuOpen && (
-              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-[#1a2846] ml-5 my-1">
+              <div className="pl-3 pr-1 py-1 space-y-1 border-l border-slate-200 dark:border-slate-800 ml-5 my-1">
                 <button
                   onClick={() => navigateToPage('email_inbox')}
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_inbox' || activePage === 'email'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Inbox className="h-3 w-3 text-indigo-400 shrink-0" />
-                  <span>📥 Two-Way Inbox</span>
+                  <span>Two-Way Inbox</span>
                 </button>
 
                 <button
@@ -373,11 +373,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-blue-400 shrink-0" />
-                  <span>📋 Email Templates</span>
+                  <span>Email Templates</span>
                 </button>
 
                 <button
@@ -385,11 +385,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_ai'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
-                  <span>🧠 AI Auto-Reply</span>
+                  <span>AI Auto-Reply</span>
                 </button>
 
                 <button
@@ -397,11 +397,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Send className="h-3 w-3 text-emerald-400 shrink-0" />
-                  <span>🚀 Sequences & Broadcast</span>
+                  <span>Sequences & Broadcast</span>
                 </button>
 
                 <button
@@ -409,11 +409,11 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_settings'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-[#15223e]'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
                   }`}
                 >
                   <Key className="h-3 w-3 text-amber-400 shrink-0" />
-                  <span>⚙️ Mailbox & SMTP Setup</span>
+                  <span>Mailbox & SMTP Setup</span>
                 </button>
               </div>
             )}
@@ -424,7 +424,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'voice'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <PhoneCall className={`h-4 w-4 shrink-0 ${activePage === 'voice' ? 'text-white' : 'text-cyan-400'}`} />
@@ -436,7 +436,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'voice_logs'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <FileText className={`h-4 w-4 shrink-0 ${activePage === 'voice_logs' ? 'text-white' : 'text-blue-400'}`} />
@@ -463,7 +463,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'leads'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <Users className={`h-4 w-4 shrink-0 ${activePage === 'leads' ? 'text-white' : 'text-blue-400'}`} />
@@ -475,7 +475,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'candidates'
                 ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-purple-600/30 font-bold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <GraduationCap className={`h-4 w-4 shrink-0 ${activePage === 'candidates' ? 'text-white' : 'text-amber-400'}`} />
@@ -487,7 +487,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'customers'
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <UserCheck className={`h-4 w-4 shrink-0 ${activePage === 'customers' ? 'text-white' : 'text-emerald-400'}`} />
@@ -506,7 +506,7 @@ export const AdminLayout: React.FC = () => {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'settings'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                : 'text-slate-300 hover:text-white hover:bg-[#15223e]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
             }`}
           >
             <Key className={`h-4 w-4 shrink-0 ${activePage === 'settings' ? 'text-white' : 'text-amber-400'}`} />
@@ -515,15 +515,15 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         {/* User Card & Logout */}
-        <div className="p-3 border-t border-[#1a2846]">
-          <div className="flex items-center justify-between p-2 rounded-xl bg-[#121c35] border border-[#1d2c4f]">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
             <div className="flex items-center gap-2.5 overflow-hidden">
               <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center text-xs font-bold text-white shrink-0">
                 {user?.first_name ? user.first_name[0] : 'A'}
               </div>
               {!sidebarCollapsed && (
                 <div className="truncate">
-                  <p className="text-xs font-semibold text-white truncate">
+                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                     {user?.first_name || 'Admin'} {user?.last_name || ''}
                   </p>
                   <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
@@ -533,7 +533,7 @@ export const AdminLayout: React.FC = () => {
             <button
               onClick={handleLogout}
               title="Logout"
-              className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
+              className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -543,7 +543,7 @@ export const AdminLayout: React.FC = () => {
 
       {/* MAIN VIEW AREA */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-screen min-w-0 overflow-hidden transition-all duration-300 ${
           sidebarCollapsed ? 'pl-20' : 'pl-64'
         }`}
       >
@@ -741,7 +741,7 @@ export const AdminLayout: React.FC = () => {
         )}
 
         {/* CONTENT BODY */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-6 w-full min-w-0 overflow-x-hidden bg-[#eaedf2] dark:bg-slate-950">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 w-full min-w-0 bg-[#eaedf2] dark:bg-slate-950 flex flex-col [scrollbar-width:thin]">
           {activePage === 'dashboard' && <AdminDashboard />}
           {activePage.startsWith('whatsapp') && (
             <WhatsAppAutomation

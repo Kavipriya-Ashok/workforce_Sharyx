@@ -216,7 +216,7 @@ export const EmailInbox: React.FC<EmailInboxProps> = ({ onOpenCompose }) => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-175px)] min-h-[620px] rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] transition-colors">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-215px)] min-h-[480px] rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] transition-colors">
       {/* ── PANEL 1: Email Folders Navigation Rail (~180px) ── */}
       <div className="w-full lg:w-48 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-300 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 p-3 flex flex-row lg:flex-col justify-between overflow-x-auto">
         <div className="space-y-1 w-full flex flex-row lg:flex-col gap-1 lg:gap-1">
@@ -361,7 +361,7 @@ export const EmailInbox: React.FC<EmailInboxProps> = ({ onOpenCompose }) => {
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           {filteredEmails.length === 0 ? (
             <div className="m-4 p-6 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 text-center space-y-2 text-slate-400 dark:text-slate-500">
               <Mail className="h-8 w-8 mx-auto opacity-30 text-blue-500" />

@@ -54,6 +54,7 @@ import { LeadDetailDrawer } from "./components/LeadDetailDrawer";
 import { LeadDetailPage } from "./components/LeadDetailPage";
 import { LeadImportDialog } from "./components/LeadImportDialog";
 import { SendLeadEmailModal } from "./components/SendLeadEmailModal";
+import { ManageOpeningsDialog } from "./components/ManageOpeningsDialog";
 import { toast } from "sonner";
 
 const STAGES = [
@@ -88,6 +89,7 @@ export default function Leads({ isCandidate = false }: { isCandidate?: boolean }
 
   // Dialog & Drawer States
   const [formOpen, setFormOpen] = useState(false);
+  const [openingsDialogOpen, setOpeningsDialogOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
