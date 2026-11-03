@@ -3,7 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-require("dotenv/config");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config({ path: ".env.local" });
+dotenv_1.default.config();
 process.on("uncaughtException", (err) => {
     console.error("⚠️ [SERVER SAFEGUARD] Uncaught Exception handled gracefully:", (err === null || err === void 0 ? void 0 : err.message) || err);
 });
