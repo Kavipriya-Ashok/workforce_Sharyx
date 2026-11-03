@@ -208,7 +208,11 @@ export const AdminLayout: React.FC = () => {
         {/* Brand */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <img src="/sharyx_logo.png" alt="Sharyx" className="h-8 w-8 rounded-full object-contain shrink-0 shadow-sm ring-1 ring-blue-500/20" />
+            <img
+              src="/sharyx_logo.jpg?v=2"
+              alt="Sharyx Workforce"
+              className="h-8 w-8 rounded-xl object-cover shrink-0 shadow-sm ring-1 ring-slate-800/20 dark:ring-white/10"
+            />
             {!sidebarCollapsed && (
               <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
                 Sharyx <span className="text-blue-600 dark:text-blue-400 font-semibold">Workforce</span>
