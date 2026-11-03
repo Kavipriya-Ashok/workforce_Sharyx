@@ -18,7 +18,7 @@ export interface WhatsAppConversation {
   customer_phone: string;
   customer_name?: string;
   lead_id?: string;
-  conversation_status: 'open' | 'closed' | 'waiting_human';
+  conversation_status: 'open' | 'closed' | 'waiting_human' | 'human_takeover';
   last_message_text?: string;
   last_message_at: string;
   unread_count: number;

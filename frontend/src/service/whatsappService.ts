@@ -147,6 +147,11 @@ export class WhatsAppService {
     const res = await axios.delete(`${API_BASE}/Campaigns/Delete/${id}`);
     return res.data;
   }
+
+  public static async updateConversationStatus(id: string, status: string): Promise<any> {
+    const res = await axios.patch(`${API_BASE}/Conversations/${id}/status`, { status });
+    return res.data?.AddtionalData || res.data;
+  }
 }
 
 // Backward-compatible export
@@ -264,4 +269,5 @@ export const whatsappService = {
   getTemplates: WhatsAppService.getTemplates,
   createTemplate: WhatsAppService.createTemplate,
   syncMetaTemplates: WhatsAppService.syncMetaTemplates,
+  updateConversationStatus: WhatsAppService.updateConversationStatus,
 };

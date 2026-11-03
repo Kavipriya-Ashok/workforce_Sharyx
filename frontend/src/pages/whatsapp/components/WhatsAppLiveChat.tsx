@@ -138,6 +138,7 @@ export const WhatsAppLiveChat: React.FC = () => {
   // Fetch real messages for selected conversation
   useEffect(() => {
     if (selectedConv?.id) {
+      setAiEnabled(selectedConv.conversation_status !== 'human_takeover');
       whatsappService
         .getMessages(selectedConv.id)
         .then((res) => {
@@ -249,6 +250,23 @@ export const WhatsAppLiveChat: React.FC = () => {
       toast.error(err?.message || 'Failed to send message via Meta Cloud API');
     } finally {
       setNewChatSending(false);
+    }
+  };
+
+  const handleToggleAi = async (enabled: boolean) => {
+    if (!selectedConv) return;
+    const newStatus = enabled ? 'open' : 'human_takeover';
+    setAiEnabled(enabled);
+    try {
+      await whatsappService.updateConversationStatus(selectedConv.id, newStatus);
+      setSelectedConv((prev) => (prev ? { ...prev, conversation_status: newStatus } : null));
+      setConversations((prev) =>
+        prev.map((c) => (c.id === selectedConv.id ? { ...c, conversation_status: newStatus } : c))
+      );
+      toast.success(enabled ? 'AI copilot resumed' : 'Human takeover active: Bot paused');
+    } catch (err: any) {
+      setAiEnabled(!enabled);
+      toast.error('Failed to update takeover status in database');
     }
   };
 
@@ -432,12 +450,14 @@ export const WhatsAppLiveChat: React.FC = () => {
                     <div className="flex items-center gap-2 mt-2">
                       <span
                         className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border uppercase ${
-                          conv.conversation_status === 'open'
+                          conv.conversation_status === 'human_takeover'
+                            ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                            : conv.conversation_status === 'open'
                             ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                         }`}
                       >
-                        {conv.conversation_status || 'open'}
+                        {conv.conversation_status === 'human_takeover' ? 'Human Takeover' : (conv.conversation_status || 'open')}
                       </span>
 
                       {conv.unread_count > 0 && (
@@ -513,10 +533,7 @@ export const WhatsAppLiveChat: React.FC = () => {
                   <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">AI</span>
                   <Switch
                     checked={aiEnabled}
-                    onCheckedChange={(val) => {
-                      setAiEnabled(val);
-                      toast.info(val ? 'AI copilot auto-reply enabled' : 'Switched to human agent mode');
-                    }}
+                    onCheckedChange={handleToggleAi}
                   />
                 </div>
 

@@ -216,6 +216,18 @@ export class WhatsAppService {
     });
   }
 
+  async setConversationStatus(id: string, conversationStatus: string, tenantId: string = "default") {
+    const conv = await WhatsAppConversation.findOne({
+      where: { id, tenant_id: tenantId },
+    });
+    if (!conv) {
+      throw new Error(`Conversation ${id} not found`);
+    }
+    conv.conversation_status = conversationStatus;
+    conv.updated_on = new Date();
+    return await conv.save();
+  }
+
   async getMessagesByConversation(conversationId: string) {
     return await WhatsAppMessage.find({
       where: { conversation_id: conversationId },

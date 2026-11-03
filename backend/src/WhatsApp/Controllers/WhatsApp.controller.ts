@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { AuthBaseController } from "@Controller/AuthBase.controller";
 import { CurrentUser } from "@Helper/Common.helper";
@@ -48,5 +48,14 @@ export class WhatsAppController extends AuthBaseController {
   async getMessages(@Param("conversationId") conversationId: string) {
     const messages = await this.whatsAppService.getMessagesByConversation(conversationId);
     return this.SendResponseData(messages);
+  }
+
+  @Patch("Conversations/:id/status")
+  async updateConversationStatus(
+    @Param("id") id: string,
+    @Body("status") status: string
+  ) {
+    const result = await this.whatsAppService.setConversationStatus(id, status);
+    return this.SendResponse(ResponseEnum.Success, ResponseEnum.Updated, result);
   }
 }

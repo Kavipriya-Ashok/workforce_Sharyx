@@ -506,7 +506,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
         return false;
     }
     async pollInbox() {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t;
         if (this.isPolling)
             return { synced: 0, status: "already_running" };
         this.isPolling = true;
@@ -521,18 +521,27 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 try {
                     decryptedRefreshToken = this.encryptionService.Decrypt(config.refresh_token);
                 }
-                catch (_t) {
+                catch (_u) {
                     decryptedRefreshToken = config.refresh_token;
                 }
                 const oauth2Client = new googleapis_1.google.auth.OAuth2(config.client_id || process.env.GOOGLE_CLIENT_ID, config.client_secret || process.env.GOOGLE_CLIENT_SECRET);
                 oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
                 const gmail = googleapis_1.google.gmail({ version: "v1", auth: oauth2Client });
-                const listRes = await gmail.users.messages.list({
-                    userId: "me",
-                    q: "label:INBOX",
-                    maxResults: 20,
-                });
-                const messages = listRes.data.messages || [];
+                let messages = [];
+                try {
+                    const listRes = await gmail.users.messages.list({
+                        userId: "me",
+                        q: "label:INBOX",
+                        maxResults: 20,
+                    });
+                    messages = listRes.data.messages || [];
+                }
+                catch (apiErr) {
+                    if (((_a = apiErr.message) === null || _a === void 0 ? void 0 : _a.includes('insufficient authentication scopes')) || apiErr.code === 403) {
+                        return { synced: 0, status: "insufficient_scopes" };
+                    }
+                    throw apiErr;
+                }
                 for (const item of messages) {
                     if (!item.id)
                         continue;
@@ -542,10 +551,10 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                             id: item.id,
                             format: "full",
                         });
-                        const headers = ((_a = msg.data.payload) === null || _a === void 0 ? void 0 : _a.headers) || [];
-                        const fromHeader = ((_b = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "from"; })) === null || _b === void 0 ? void 0 : _b.value) || "";
-                        const subjectHeader = ((_c = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "subject"; })) === null || _c === void 0 ? void 0 : _c.value) || "No Subject";
-                        const messageIdHeader = ((_d = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "message-id"; })) === null || _d === void 0 ? void 0 : _d.value) || `gmail_${item.id}`;
+                        const headers = ((_b = msg.data.payload) === null || _b === void 0 ? void 0 : _b.headers) || [];
+                        const fromHeader = ((_c = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "from"; })) === null || _c === void 0 ? void 0 : _c.value) || "";
+                        const subjectHeader = ((_d = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "subject"; })) === null || _d === void 0 ? void 0 : _d.value) || "No Subject";
+                        const messageIdHeader = ((_e = headers.find((h) => { var _a; return ((_a = h.name) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "message-id"; })) === null || _e === void 0 ? void 0 : _e.value) || `gmail_${item.id}`;
                         let fromEmail = fromHeader;
                         let fromName = fromHeader;
                         const match = fromHeader.match(/^(.*?)\s*<(.+?)>$/);
@@ -563,23 +572,23 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                                     requestBody: { removeLabelIds: ["UNREAD"] },
                                 });
                             }
-                            catch (_u) { }
+                            catch (_v) { }
                             continue;
                         }
                         let bodyText = "";
                         let bodyHtml = "";
-                        const parts = (_e = msg.data.payload) === null || _e === void 0 ? void 0 : _e.parts;
+                        const parts = (_f = msg.data.payload) === null || _f === void 0 ? void 0 : _f.parts;
                         if (parts && parts.length > 0) {
                             for (const p of parts) {
-                                if (p.mimeType === "text/plain" && ((_f = p.body) === null || _f === void 0 ? void 0 : _f.data)) {
+                                if (p.mimeType === "text/plain" && ((_g = p.body) === null || _g === void 0 ? void 0 : _g.data)) {
                                     bodyText = Buffer.from(p.body.data, "base64").toString("utf-8");
                                 }
-                                if (p.mimeType === "text/html" && ((_g = p.body) === null || _g === void 0 ? void 0 : _g.data)) {
+                                if (p.mimeType === "text/html" && ((_h = p.body) === null || _h === void 0 ? void 0 : _h.data)) {
                                     bodyHtml = Buffer.from(p.body.data, "base64").toString("utf-8");
                                 }
                             }
                         }
-                        else if ((_j = (_h = msg.data.payload) === null || _h === void 0 ? void 0 : _h.body) === null || _j === void 0 ? void 0 : _j.data) {
+                        else if ((_k = (_j = msg.data.payload) === null || _j === void 0 ? void 0 : _j.body) === null || _k === void 0 ? void 0 : _k.data) {
                             bodyText = Buffer.from(msg.data.payload.body.data, "base64").toString("utf-8");
                         }
                         const exists = await EmailLog_entity_1.EmailLog.findOne({ where: { message_id: messageIdHeader } });
@@ -634,7 +643,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                 try {
                     password = this.encryptionService.Decrypt(config.smtp_password);
                 }
-                catch (_v) {
+                catch (_w) {
                 }
                 const imapConfig = {
                     imap: {
@@ -642,7 +651,7 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                         password: password,
                         host: config.imap_host,
                         port: config.imap_port || 993,
-                        tls: (_k = config.use_ssl) !== null && _k !== void 0 ? _k : true,
+                        tls: (_l = config.use_ssl) !== null && _l !== void 0 ? _l : true,
                         authTimeout: 5000,
                     },
                 };
@@ -660,13 +669,13 @@ let EmailImapService = EmailImapService_1 = class EmailImapService {
                     const idHeader = `Imap-UID: ${id}`;
                     if (all) {
                         const parsed = await (0, mailparser_1.simpleParser)(all.body);
-                        const fromEmail = ((_o = (_m = (_l = parsed.from) === null || _l === void 0 ? void 0 : _l.value) === null || _m === void 0 ? void 0 : _m[0]) === null || _o === void 0 ? void 0 : _o.address) || "unknown@client.com";
-                        const fromName = ((_r = (_q = (_p = parsed.from) === null || _p === void 0 ? void 0 : _p.value) === null || _q === void 0 ? void 0 : _q[0]) === null || _r === void 0 ? void 0 : _r.name) || fromEmail.split("@")[0];
+                        const fromEmail = ((_p = (_o = (_m = parsed.from) === null || _m === void 0 ? void 0 : _m.value) === null || _o === void 0 ? void 0 : _o[0]) === null || _p === void 0 ? void 0 : _p.address) || "unknown@client.com";
+                        const fromName = ((_s = (_r = (_q = parsed.from) === null || _q === void 0 ? void 0 : _q.value) === null || _r === void 0 ? void 0 : _r[0]) === null || _s === void 0 ? void 0 : _s.name) || fromEmail.split("@")[0];
                         const subject = parsed.subject || "No Subject";
                         const bodyText = parsed.text || "";
                         const bodyHtml = parsed.html || `<p>${bodyText}</p>`;
                         const messageId = parsed.messageId || `${idHeader}`;
-                        if (fromEmail.toLowerCase() === ((_s = config.email_address) === null || _s === void 0 ? void 0 : _s.toLowerCase())) {
+                        if (fromEmail.toLowerCase() === ((_t = config.email_address) === null || _t === void 0 ? void 0 : _t.toLowerCase())) {
                             continue;
                         }
                         if (this.isSystemOrAutomatedEmail(fromEmail, subject)) {

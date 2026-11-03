@@ -36,4 +36,13 @@ export declare class WhatsAppController extends AuthBaseController {
     }>;
     getConversations(): Promise<any>;
     getMessages(conversationId: string): Promise<any>;
+    updateConversationStatus(id: string, status: string): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        AddtionalData: any;
+    } | {
+        Type: ResponseEnum;
+        Message: string;
+        AddtionalData?: undefined;
+    }>;
 }

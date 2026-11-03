@@ -202,6 +202,17 @@ let WhatsAppService = WhatsAppService_1 = class WhatsAppService {
             order: { last_message_at: "DESC" },
         });
     }
+    async setConversationStatus(id, conversationStatus, tenantId = "default") {
+        const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
+            where: { id, tenant_id: tenantId },
+        });
+        if (!conv) {
+            throw new Error(`Conversation ${id} not found`);
+        }
+        conv.conversation_status = conversationStatus;
+        conv.updated_on = new Date();
+        return await conv.save();
+    }
     async getMessagesByConversation(conversationId) {
         return await WhatsAppMessage_entity_1.WhatsAppMessage.find({
             where: { conversation_id: conversationId },

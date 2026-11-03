@@ -283,6 +283,10 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             inboundMsg.created_by_id = "webhook";
             inboundMsg.created_on = new Date();
             await inboundMsg.save();
+            if (conversation.conversation_status === "human_takeover") {
+                this.logger.log(`🛑 [HUMAN TAKEOVER] Conversation ${conversation.id} (${senderPhone}) is currently handled by a human agent. Bot auto-reply suppressed.`);
+                return { status: "human_takeover_active" };
+            }
             if (messageType === "text" || messageType === "document" || messageType === "image") {
                 this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
                 const res = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {

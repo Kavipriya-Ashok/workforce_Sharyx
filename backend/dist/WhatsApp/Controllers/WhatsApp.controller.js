@@ -50,6 +50,10 @@ let WhatsAppController = class WhatsAppController extends AuthBase_controller_1.
         const messages = await this.whatsAppService.getMessagesByConversation(conversationId);
         return this.SendResponseData(messages);
     }
+    async updateConversationStatus(id, status) {
+        const result = await this.whatsAppService.setConversationStatus(id, status);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Updated, result);
+    }
 };
 exports.WhatsAppController = WhatsAppController;
 __decorate([
@@ -95,6 +99,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], WhatsAppController.prototype, "getMessages", null);
+__decorate([
+    (0, common_1.Patch)("Conversations/:id/status"),
+    __param(0, (0, common_1.Param)("id")),
+    __param(1, (0, common_1.Body)("status")),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], WhatsAppController.prototype, "updateConversationStatus", null);
 exports.WhatsAppController = WhatsAppController = __decorate([
     (0, common_1.Controller)({ path: "WhatsApp", version: "1" }),
     (0, swagger_1.ApiTags)("WhatsApp"),

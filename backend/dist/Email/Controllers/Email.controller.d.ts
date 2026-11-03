@@ -20,6 +20,15 @@ export declare class EmailController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
+    testConnection(body: EmailAccountConfigModel): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        AddtionalData: any;
+    } | {
+        Type: ResponseEnum;
+        Message: string;
+        AddtionalData?: undefined;
+    }>;
     getGoogleAuthUrl(redirectUri?: string): any;
     connectGoogle(body: {
         code: string;

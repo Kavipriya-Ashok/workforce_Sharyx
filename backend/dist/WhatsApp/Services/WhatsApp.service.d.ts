@@ -14,5 +14,6 @@ export declare class WhatsAppService {
         metaResponse: any;
     }>;
     getConversations(tenantId?: string): Promise<WhatsAppConversation[]>;
+    setConversationStatus(id: string, conversationStatus: string, tenantId?: string): Promise<WhatsAppConversation>;
     getMessagesByConversation(conversationId: string): Promise<WhatsAppMessage[]>;
 }

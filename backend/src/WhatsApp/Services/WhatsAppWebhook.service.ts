@@ -312,7 +312,13 @@ export class WhatsAppWebhookService {
       inboundMsg.created_on = new Date();
       await inboundMsg.save();
 
-      // 3. Trigger AI auto-reply (Text messages and Resume/Document attachments)
+      // 3. Check for Active Human Takeover (Human in the loop)
+      if (conversation.conversation_status === "human_takeover") {
+        this.logger.log(`🛑 [HUMAN TAKEOVER] Conversation ${conversation.id} (${senderPhone}) is currently handled by a human agent. Bot auto-reply suppressed.`);
+        return { status: "human_takeover_active" };
+      }
+
+      // 4. Trigger AI auto-reply (Text messages and Resume/Document attachments)
       if (messageType === "text" || messageType === "document" || messageType === "image") {
         this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
         const res = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
