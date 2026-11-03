@@ -33,10 +33,12 @@ let CustomerService = CustomerService_1 = class CustomerService {
         const page = Math.max(1, parseInt(query.page || "1", 10));
         const limit = Math.min(100, Math.max(1, parseInt(query.limit || "10", 10)));
         const skip = (page - 1) * limit;
-        const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || query.tenant_id || "default";
+        const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || query.tenant_id || "default";
         const qb = this.customerRepo.createQueryBuilder("c")
-            .where("c.status = true")
-            .andWhere("c.tenant_id = :tenantId", { tenantId });
+            .where("c.status = true");
+        if (tenantId && tenantId !== "default") {
+            qb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+        }
         if (query.search && query.search.trim()) {
             const term = `%${query.search.trim()}%`;
             qb.andWhere("(c.name ILIKE :term OR c.email ILIKE :term OR c.phone ILIKE :term OR c.company_name ILIKE :term)", { term });
@@ -49,7 +51,11 @@ let CustomerService = CustomerService_1 = class CustomerService {
         }
         qb.orderBy("c.created_on", "DESC").skip(skip).take(limit);
         const [items, total] = await qb.getManyAndCount();
-        const allCustomers = await this.customerRepo.find({ where: { tenant_id: tenantId, status: true } });
+        const allCustQb = this.customerRepo.createQueryBuilder("c").where("c.status = true");
+        if (tenantId && tenantId !== "default") {
+            allCustQb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+        }
+        const allCustomers = await allCustQb.getMany();
         const totalCustomers = allCustomers.length;
         const activeCustomers = allCustomers.filter((c) => c.customer_status === customer_1.CustomerStatus.ACTIVE).length;
         const totalRevenue = allCustomers.reduce((acc, c) => acc + (Number(c.total_spend) || 0), 0);
@@ -106,10 +112,11 @@ let CustomerService = CustomerService_1 = class CustomerService {
         return { success: true };
     }
     async listDeals(tenantId = "default") {
-        return await this.dealRepo.find({
-            where: { tenant_id: tenantId, status: true },
-            order: { created_on: "DESC" },
-        });
+        const dealsQb = this.dealRepo.createQueryBuilder("d").where("d.status = true");
+        if (tenantId && tenantId !== "default") {
+            dealsQb.andWhere("(d.tenant_id = :tenantId OR d.tenant_id = 'default' OR d.tenant_id IS NULL)", { tenantId });
+        }
+        return await dealsQb.orderBy("d.created_on", "DESC").getMany();
     }
     async addInteraction(customerId, data, userId) {
         const inter = this.interactionRepo.create(Object.assign(Object.assign({}, data), { customer_id: customerId, created_by_id: userId || "system", created_on: new Date(), status: true }));

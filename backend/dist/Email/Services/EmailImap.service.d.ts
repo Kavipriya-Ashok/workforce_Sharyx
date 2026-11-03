@@ -19,6 +19,7 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     onModuleDestroy(): void;
     extractPhoneNumber(text: string): string | null;
     extractCompanyName(fromEmail: string, bodyText: string): string | null;
+    extractPersonName(bodyText: string): string | null;
     extractScheduledSlot(replyHtml: string, bodyText: string, leadRecord?: lead | null): string;
     extractAppliedRole(subject: string, bodyText: string, replyHtml: string, leadRecord?: lead | null): string;
     resolveCandidatePhone(bodyText: string, replyHtml: string, leadRecord: lead | null, fromEmail: string, tenantId?: string): Promise<string | null>;
