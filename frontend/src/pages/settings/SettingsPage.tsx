@@ -353,21 +353,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
         </div>
       )}
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-300 shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="p-1 rounded-md bg-blue-50 text-blue-700">
-              <KeyRound className="h-4 w-4" />
+          <div className="flex items-center gap-2 mb-1">
+            <span className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+              <KeyRound className="h-3.5 w-3.5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
-              Integration & Credentials
+            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              {activeTab === 'email' ? 'Email & Mailbox Configuration' : 'Integrations & Credentials'}
             </span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            API Keys & Connected Platforms
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            {activeTab === 'email' ? 'Email Mailbox & OAuth Settings' : 'API Keys & Connected Platforms'}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Configure your Vapi Voice AI credentials, Meta WhatsApp Cloud API tokens, and AI LLM keys.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {activeTab === 'email'
+              ? 'Configure Google OAuth 2.0 dispatch, SMTP/IMAP credentials, and mailbox synchronization.'
+              : 'Configure your Vapi Voice AI credentials, Meta WhatsApp Cloud API tokens, and AI LLM keys.'}
           </p>
         </div>
 
@@ -375,7 +377,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
           variant="outline"
           size="sm"
           onClick={loadConfigs}
-          className="h-9 text-xs border-slate-300 hover:bg-slate-50 gap-1.5 self-start sm:self-center"
+          className="h-8 text-xs border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 self-start sm:self-center rounded-xl"
         >
           <RefreshCw className="h-3.5 w-3.5 text-slate-500" /> Reload Configs
         </Button>

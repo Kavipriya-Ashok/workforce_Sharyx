@@ -168,6 +168,11 @@ export const AdminLayout: React.FC = () => {
       (t.email || '').toLowerCase().includes(tenantSearch.toLowerCase())
   );
   const [dynamicVoiceAgents, setDynamicVoiceAgents] = useState<VoiceAgentDto[]>([]);
+  const mainRef = React.useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' as any });
+  }, [activePage, location]);
 
   useEffect(() => {
     VoiceService.listAgents()
@@ -196,16 +201,14 @@ export const AdminLayout: React.FC = () => {
     <div className="h-screen w-screen overflow-hidden bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
           sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {/* Brand */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/30">
-              <Sparkles className="h-4 w-4 text-white font-bold" />
-            </div>
+            <img src="/sharyx_logo.png" alt="Sharyx" className="h-8 w-8 rounded-full object-contain shrink-0 shadow-sm ring-1 ring-blue-500/20" />
             {!sidebarCollapsed && (
               <span className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight">
                 Sharyx <span className="text-blue-600 dark:text-blue-400 font-semibold">Workforce</span>
@@ -250,8 +253,8 @@ export const AdminLayout: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3">
-                <MessageSquare className={`h-4 w-4 shrink-0 ${activePage.startsWith('whatsapp') ? 'text-blue-400' : 'text-emerald-400'}`} />
-                {!sidebarCollapsed && <span>WhatsApp Suite</span>}
+                <MessageSquare className={`h-4 w-4 shrink-0 ${activePage.startsWith('whatsapp') ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-500'}`} />
+                {!sidebarCollapsed && <span>WhatsApp Automation</span>}
               </div>
               {!sidebarCollapsed && (
                 <ChevronDown
@@ -270,7 +273,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_chat'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <MessageSquare className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -282,7 +285,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Megaphone className="h-3 w-3 text-indigo-400 shrink-0" />
@@ -294,7 +297,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
@@ -306,7 +309,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_brain'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
@@ -318,7 +321,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_analytics'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <BarChart3 className="h-3 w-3 text-sky-400 shrink-0" />
@@ -342,8 +345,8 @@ export const AdminLayout: React.FC = () => {
               }`}
             >
               <div className="flex items-center gap-3">
-                <Mail className={`h-4 w-4 shrink-0 ${activePage.startsWith('email') ? 'text-white' : 'text-indigo-400'}`} />
-                {!sidebarCollapsed && <span>Email Suite</span>}
+                <Mail className={`h-4 w-4 shrink-0 ${activePage.startsWith('email') ? 'text-blue-600 dark:text-blue-400' : 'text-indigo-500'}`} />
+                {!sidebarCollapsed && <span>Email Automation</span>}
               </div>
               {!sidebarCollapsed && (
                 <ChevronDown
@@ -361,7 +364,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_inbox' || activePage === 'email'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Inbox className="h-3 w-3 text-indigo-400 shrink-0" />
@@ -373,7 +376,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-blue-400 shrink-0" />
@@ -385,7 +388,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_ai'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
@@ -397,7 +400,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Send className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -409,7 +412,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_settings'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Key className="h-3 w-3 text-amber-400 shrink-0" />
@@ -741,7 +744,7 @@ export const AdminLayout: React.FC = () => {
         )}
 
         {/* CONTENT BODY */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 w-full min-w-0 bg-[#eaedf2] dark:bg-slate-950 flex flex-col [scrollbar-width:thin]">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 w-full min-w-0 bg-[#eaedf2] dark:bg-slate-950 flex flex-col [scrollbar-width:thin]">
           {activePage === 'dashboard' && <AdminDashboard />}
           {activePage.startsWith('whatsapp') && (
             <WhatsAppAutomation
