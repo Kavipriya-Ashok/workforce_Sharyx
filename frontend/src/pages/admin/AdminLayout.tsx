@@ -201,7 +201,7 @@ export const AdminLayout: React.FC = () => {
     <div className="h-screen w-screen overflow-hidden bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
           sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
@@ -251,9 +251,7 @@ export const AdminLayout: React.FC = () => {
                 }
               }}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage.startsWith('whatsapp')
-                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                activePage.startsWith('whatsapp') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -277,7 +275,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_chat'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <MessageSquare className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -289,7 +287,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Megaphone className="h-3 w-3 text-indigo-400 shrink-0" />
@@ -301,7 +299,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
@@ -313,7 +311,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_brain'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
@@ -325,7 +323,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'whatsapp_analytics'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <BarChart3 className="h-3 w-3 text-sky-400 shrink-0" />
@@ -343,9 +341,7 @@ export const AdminLayout: React.FC = () => {
                 setEmailSubmenuOpen(!emailSubmenuOpen);
               }}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage.startsWith('email')
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+                activePage.startsWith('email') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -368,7 +364,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_inbox' || activePage === 'email'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Inbox className="h-3 w-3 text-indigo-400 shrink-0" />
@@ -380,7 +376,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_templates'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-blue-400 shrink-0" />
@@ -392,7 +388,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_ai'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
@@ -404,7 +400,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_campaigns'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Send className="h-3 w-3 text-emerald-400 shrink-0" />
@@ -416,7 +412,7 @@ export const AdminLayout: React.FC = () => {
                   className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     activePage === 'email_settings'
                       ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
                   }`}
                 >
                   <Key className="h-3 w-3 text-amber-400 shrink-0" />
@@ -540,7 +536,7 @@ export const AdminLayout: React.FC = () => {
             <button
               onClick={handleLogout}
               title="Logout"
-              className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
+              className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
             </button>
