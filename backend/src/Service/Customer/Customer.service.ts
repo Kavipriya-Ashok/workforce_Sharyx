@@ -26,11 +26,14 @@ export class CustomerService {
     const limit = Math.min(100, Math.max(1, parseInt(query.limit || "10", 10)));
     const skip = (page - 1) * limit;
 
-    const tenantId = userContext?.tenant_id || query.tenant_id || "default";
+    const tenantId = userContext?.active_tenant_id || userContext?.tenant_id || query.tenant_id || "default";
 
     const qb = this.customerRepo.createQueryBuilder("c")
-      .where("c.status = true")
-      .andWhere("c.tenant_id = :tenantId", { tenantId });
+      .where("c.status = true");
+
+    if (tenantId && tenantId !== "default") {
+      qb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+    }
 
     if (query.search && query.search.trim()) {
       const term = `%${query.search.trim()}%`;
@@ -53,7 +56,11 @@ export class CustomerService {
     const [items, total] = await qb.getManyAndCount();
 
     // Calculate KPI metrics
-    const allCustomers = await this.customerRepo.find({ where: { tenant_id: tenantId, status: true } });
+    const allCustQb = this.customerRepo.createQueryBuilder("c").where("c.status = true");
+    if (tenantId && tenantId !== "default") {
+      allCustQb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+    }
+    const allCustomers = await allCustQb.getMany();
     const totalCustomers = allCustomers.length;
     const activeCustomers = allCustomers.filter((c) => c.customer_status === CustomerStatus.ACTIVE).length;
     const totalRevenue = allCustomers.reduce((acc, c) => acc + (Number(c.total_spend) || 0), 0);
@@ -127,10 +134,11 @@ export class CustomerService {
   }
 
   async listDeals(tenantId: string = "default") {
-    return await this.dealRepo.find({
-      where: { tenant_id: tenantId, status: true },
-      order: { created_on: "DESC" },
-    });
+    const dealsQb = this.dealRepo.createQueryBuilder("d").where("d.status = true");
+    if (tenantId && tenantId !== "default") {
+      dealsQb.andWhere("(d.tenant_id = :tenantId OR d.tenant_id = 'default' OR d.tenant_id IS NULL)", { tenantId });
+    }
+    return await dealsQb.orderBy("d.created_on", "DESC").getMany();
   }
 
   async addInteraction(customerId: string, data: Partial<CustomerInteraction>, userId?: string) {

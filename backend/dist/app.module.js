@@ -80,7 +80,7 @@ exports.AppModule = AppModule = __decorate([
                 exclude: ["/api/{*path}", "swagger"],
             }),
             event_emitter_1.EventEmitterModule.forRoot({ maxListeners: 0 }),
-            config_1.ConfigModule.forRoot({ isGlobal: true, load: [Configuration_1.default] }),
+            config_1.ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env.local", ".env"], load: [Configuration_1.default] }),
             platform_express_1.MulterModule.register(),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],

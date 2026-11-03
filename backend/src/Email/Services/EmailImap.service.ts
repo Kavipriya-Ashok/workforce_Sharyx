@@ -101,6 +101,33 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     return null;
   }
 
+  // Smart Regex Extractor for candidate/person full name from email body
+  extractPersonName(bodyText: string): string | null {
+    if (!bodyText) return null;
+
+    // Pattern 1: Explicit labels like "Full Name :- Kavipriya Ashok", "Name: Kavipriya", etc.
+    const nameRegex = /(?:full\s*name|candidate\s*name|my\s*name\s*is|name)[\s:=-]+([A-Za-z\s.]{2,40})/i;
+    const match = bodyText.match(nameRegex);
+    if (match && match[1]) {
+      const candidate = match[1].trim().split(/[\r\n]/)[0].trim();
+      if (candidate.length >= 2 && !/^(the|developer|engineer|tester|none|na|n\/a|is)$/i.test(candidate)) {
+        return candidate;
+      }
+    }
+
+    // Pattern 2: Sign-off signatures like "Best regards,\nKavi Priya" or "Thanks,\nKavipriya Ashok"
+    const signoffRegex = /(?:regards|best\s*regards|warm\s*regards|thanks|thank\s*you|sincerely)[,\s\r\n]+([A-Za-z\s.]{2,35})/i;
+    const signoffMatch = bodyText.match(signoffRegex);
+    if (signoffMatch && signoffMatch[1]) {
+      const candidate = signoffMatch[1].trim().split(/[\r\n]/)[0].trim();
+      if (candidate.length >= 2 && !/^(team|sharyx|all|hiring|recruitment|hr)$/i.test(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
   // Extract scheduled date/time slot from email reply, thread, or lead CRM record
   extractScheduledSlot(replyHtml: string, bodyText: string, leadRecord?: lead | null): string {
     if (leadRecord?.preferred_interview_slot && leadRecord.preferred_interview_slot.trim().length > 3) {
@@ -153,21 +180,13 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ");
 
-    const rolePattern = /(?:interview for|applied for|applying for|position of|role of|job profile|position|role)[\s:*_–-]+([A-Za-z0-9\s/&.-]{3,40}?)(?=[,.\n\r<]|at\s|on\s|$)/i;
-    const match = cleanText.match(rolePattern);
-    if (match && match[1]) {
-      const candidate = match[1].trim();
-      if (!/^(the|a|an|your|this|our|scheduled|interview|demo|meeting)$/i.test(candidate)) {
-        return candidate;
-      }
-    }
-
     const standardRoles = [
+      "AI Solutions Engineer",
       "Full Stack Developer",
       "Frontend Developer",
       "Backend Developer",
-      "AI Solutions Engineer",
       "Software Engineer",
+      "Developer",
       "Business Development Executive",
       "Sales Specialist",
       "Product Designer",
@@ -176,8 +195,17 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
       "DevOps Engineer",
     ];
     for (const r of standardRoles) {
-      if (new RegExp(r, "i").test(cleanText)) {
+      if (new RegExp(`\\b${r}\\b`, "i").test(cleanText)) {
         return r;
+      }
+    }
+
+    const rolePattern = /\b(?:interview for|applied for|applying for|position of|role of|job profile|position|role)[\s:*_–-]+([A-Za-z0-9\s/&.-]{3,30}?)(?=[,.\n\r<]|at\s|on\s|$)/i;
+    const match = cleanText.match(rolePattern);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (!/^(the|a|an|your|this|our|scheduled|interview|demo|meeting|dear)$/i.test(candidate)) {
+        return candidate;
       }
     }
 
@@ -192,14 +220,14 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     fromEmail: string,
     tenantId: string = "default"
   ): Promise<string | null> {
-    // 1. Direct phone on CRM lead
+    // 1. Extracted from incoming body text (highest priority: explicit candidate input)
+    const phoneFromBody = this.extractPhoneNumber(bodyText);
+    if (phoneFromBody) return phoneFromBody;
+
+    // 2. Direct phone on CRM lead
     if (leadRecord?.phone && leadRecord.phone.trim().length >= 8) {
       return leadRecord.phone.trim();
     }
-
-    // 2. Extracted from incoming body text
-    const phoneFromBody = this.extractPhoneNumber(bodyText);
-    if (phoneFromBody) return phoneFromBody;
 
     // 3. Extracted from outbound reply text
     const phoneFromReply = this.extractPhoneNumber(replyHtml);
@@ -251,6 +279,7 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
   ): Promise<{ leadRecord: lead; extractedPhone: string | null; extractedCompany: string | null }> {
     const extractedPhone = this.extractPhoneNumber(bodyText);
     const extractedCompany = this.extractCompanyName(fromEmail, bodyText);
+    const extractedName = this.extractPersonName(bodyText);
     let existingLead: lead | null = null;
 
     try {
@@ -269,7 +298,7 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
       if (!existingLead) {
         // Create brand new Lead from inbound email
         existingLead = new lead();
-        existingLead.name = fromName || fromEmail.split("@")[0];
+        existingLead.name = extractedName || fromName || fromEmail.split("@")[0];
         existingLead.email = fromEmail;
         existingLead.phone = extractedPhone || null;
         existingLead.company_name = extractedCompany || null;
@@ -296,12 +325,17 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
         act.created_on = new Date();
         await act.save();
       } else {
-        // Existing lead: update phone and company if captured from email reply
+        // Existing lead: update name, phone and company if captured from email reply
         let updatedDetails = false;
-        if (!existingLead.phone && extractedPhone) {
+        if (extractedName && existingLead.name !== extractedName) {
+          this.logger.log(`👤 [NAME UPDATED FROM EMAIL BODY]: ${existingLead.name} -> ${extractedName}`);
+          existingLead.name = extractedName;
+          updatedDetails = true;
+        }
+        if (extractedPhone && existingLead.phone !== extractedPhone) {
+          this.logger.log(`📱 [PHONE NUMBER CAPTURED FROM EMAIL REPLY]: ${existingLead.name} -> ${extractedPhone}`);
           existingLead.phone = extractedPhone;
           updatedDetails = true;
-          this.logger.log(`📱 [PHONE NUMBER CAPTURED FROM EMAIL REPLY]: ${existingLead.name} -> ${extractedPhone}`);
         }
         if (!existingLead.company_name && extractedCompany) {
           existingLead.company_name = extractedCompany;
@@ -394,7 +428,7 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
             from_email: fromEmail,
             subject,
             incoming_body: bodyText,
-            lead_name: leadRecord?.name || fromEmail.split("@")[0],
+            lead_name: this.extractPersonName(bodyText) || leadRecord?.name || fromEmail.split("@")[0],
             conversation_history: conversationHistory,
             has_phone: hasPhone,
             phone_number: leadRecord?.phone || undefined,
@@ -741,12 +775,17 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
               // 4. Trigger Autonomous AI Reply
               const isAiAutoReplyLoop =
                 subjectHeader.toLowerCase().includes("[ai auto-reply]") ||
-                headers.some((h) => h.name?.toLowerCase() === "x-sharyx-auto-reply" && h.value?.toLowerCase() === "true");
+                headers.some((h) => (h.name?.toLowerCase() === "x-sharyx-auto-reply" && h.value?.toLowerCase() === "true") || (h.name?.toLowerCase() === "auto-submitted" && h.value?.toLowerCase() !== "no"));
 
-              // If self-sent (e.g. user testing by emailing themselves), allow auto-reply as long as it is not a Re: thread reply
-              const isBotReplyLoop = isSelfSent && subjectHeader.toLowerCase().startsWith("re:");
+              // Check if this message was actually generated by the system's own outbound dispatch
+              const wasDispatchedBySystem = await EmailLog.findOne({
+                where: { message_id: messageIdHeader, direction: "outbound" },
+              });
 
-              if (!isAiAutoReplyLoop && !isBotReplyLoop) {
+              // Allow self-sent testing if it's a genuine user message and not an outbound bot echo
+              const isBotEcho = wasDispatchedBySystem || isAiAutoReplyLoop || (isSelfSent && (bodyText.includes("Best regards,\nSharyx") || bodyText.includes("Sharyx AI Team") || bodyText.includes("Sharyx Talent Acquisition")));
+
+              if (!isBotEcho) {
                 this.logger.log(`🤖 Triggering AI Auto-Reply for inbound email from: ${fromEmail} | Subject: "${subjectHeader}"`);
                 await this.triggerAutoReply(
                   fromEmail,
@@ -759,7 +798,7 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
                   messageIdHeader || undefined
                 );
               } else {
-                this.logger.log(`🛡️ Skipping auto-reply for automated or thread reply from: ${fromEmail}`);
+                this.logger.log(`🛡️ Skipping auto-reply for system outbound/bot echo from: ${fromEmail}`);
               }
             }
           } catch (msgErr: any) {

@@ -41,6 +41,10 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         const result = await this.emailService.saveConfig(body, userId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, result);
     }
+    async testConnection(body) {
+        const result = await this.emailService.testConnection(body);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, "Email connection verified successfully", result);
+    }
     getGoogleAuthUrl(redirectUri) {
         const res = this.emailService.getGoogleAuthUrl(redirectUri);
         return this.SendResponseData(res);
@@ -114,6 +118,13 @@ __decorate([
     __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "saveConfig", null);
+__decorate([
+    (0, common_1.Post)("Test-Connection"),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel]),
+    __metadata("design:returntype", Promise)
+], EmailController.prototype, "testConnection", null);
 __decorate([
     (0, common_1.Get)("OAuth/AuthUrl"),
     __param(0, (0, common_1.Query)("redirectUri")),

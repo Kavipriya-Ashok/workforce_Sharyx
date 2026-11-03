@@ -22,8 +22,19 @@ let WhatsAppService = WhatsAppService_1 = class WhatsAppService {
         this.apiUrl = "https://graph.facebook.com/v21.0";
     }
     async getConfig(tenantId = "default") {
-        const config = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { tenant_id: tenantId, status: true } });
-        return config;
+        const isDefaultOrSharyx = !tenantId || tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6" || tenantId === "all";
+        if (isDefaultOrSharyx) {
+            const found = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({
+                where: [
+                    { tenant_id: "646b4abe-e6de-401b-ba33-46884bf3f6e6", is_connected: true },
+                    { tenant_id: "default", is_connected: true },
+                ],
+                order: { updated_on: "DESC" },
+            });
+            if (found)
+                return found;
+        }
+        return await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { tenant_id: tenantId, status: true } });
     }
     async saveConfig(data, userId) {
         var _a;
@@ -197,10 +208,19 @@ let WhatsAppService = WhatsAppService_1 = class WhatsAppService {
         };
     }
     async getConversations(tenantId = "default") {
-        return await WhatsAppConversation_entity_1.WhatsAppConversation.find({
-            where: { tenant_id: tenantId, status: true },
-            order: { last_message_at: "DESC" },
-        });
+        const isAll = tenantId === "all" || !tenantId;
+        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+        const qb = WhatsAppConversation_entity_1.WhatsAppConversation.createQueryBuilder("c")
+            .where("c.status = true");
+        if (!isAll) {
+            if (isDefaultOrSharyx) {
+                qb.andWhere("c.tenant_id IN (:...tIds)", { tIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"] });
+            }
+            else {
+                qb.andWhere("c.tenant_id = :tenantId", { tenantId });
+            }
+        }
+        return await qb.orderBy("c.last_message_at", "DESC", "NULLS LAST").getMany();
     }
     async setConversationStatus(id, conversationStatus, tenantId = "default") {
         const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({

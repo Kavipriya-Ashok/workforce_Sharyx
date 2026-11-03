@@ -115,6 +115,10 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
         const combinedText = `${dto.subject || ""} ${dto.incoming_body || ""}`.toLowerCase();
         const isRecruitment = /(?:job|vacancy|career|resume|cv|hiring|apply|applicant|candidate|interview|opening|employment|ctc|notice period|reliev)/i.test(combinedText);
         const isDemoAccepted = /(?:(?:yes|yeah|sure|okay|ok|let's|book|schedule|share|send|provide).*(?:demo|meet|link|call|walkthrough|session|slot)|^(?:yes|yeah|sure|okay|ok|fine|yep|definitely|let's do it|let's book|agreed)[!.,\s]*$)/i.test(((_a = dto.incoming_body) === null || _a === void 0 ? void 0 : _a.trim()) || "");
+        const isSlotOrMeetingConfirmed = isDemoAccepted ||
+            /(?:available|free|prefer|slot|timing|convenient).*(?:tomorrow|today|mon|tue|wed|thu|fri|sat|am|pm|\d{1,2})/i.test(dto.incoming_body || "") ||
+            /(?:tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+at\s+\d{1,2}/i.test(dto.incoming_body || "") ||
+            /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\s*(?:ist|gmt)?\b/i.test(dto.incoming_body || "");
         let threadSection = "";
         if (dto.conversation_history && dto.conversation_history.length > 0) {
             threadSection = `\n\nRecent Conversation Thread History:\n` +
@@ -174,7 +178,7 @@ GENERAL MEMORY & FORMATTING:
 - Company: ${dto.company_name || "Not specified"}
 - ${phoneInfo}
 - Track Detected: ${isRecruitment ? "RECRUITMENT_CANDIDATE" : "SALES_SERVICES"}
-- Demo Requested/Accepted: ${isDemoAccepted ? "YES" : "NO"}
+- Demo / Interview Slot Confirmed: ${isSlotOrMeetingConfirmed ? "YES" : "NO"}
 - Google Meet Link Available: ${gmeetUrl}
 - Subject: ${dto.subject || "No subject"}
 - Incoming Message: ${dto.incoming_body || ""}${threadSection}`;
@@ -234,8 +238,8 @@ GENERAL MEMORY & FORMATTING:
         }
         let fallbackDraft = "";
         if (isRecruitment) {
-            if (isDemoAccepted || combinedText.includes("interview")) {
-                fallbackDraft = `Dear ${recipientName},\n\nThank you for sharing your availability. We are pleased to invite you for an interview discussion regarding your application.\n\n🔗 Google Meet Interview Link: ${gmeetUrl}\n\nPlease join the meeting at the scheduled time or let us know if you need to adjust the timing. Looking forward to speaking with you!\n\nBest regards,\nSharyx Talent Acquisition`;
+            if (isSlotOrMeetingConfirmed || combinedText.includes("interview") || combinedText.includes("slot")) {
+                fallbackDraft = `Dear ${recipientName},\n\nThank you for sharing your availability. We are pleased to confirm your interview discussion regarding your application for the role.\n\n🔗 Google Meet Interview Link: ${gmeetUrl}\n\nPlease join the meeting at the scheduled time or let us know if you need to adjust the timing. Looking forward to speaking with you!\n\nBest regards,\nSharyx Talent Acquisition`;
             }
             else {
                 fallbackDraft = `Dear ${recipientName},\n\nThank you for your interest in joining Sharyx! We have received your application regarding "${dto.subject || "Open Roles"}".\n\nTo proceed with the screening round, could you please confirm your total experience, current employment status (serving notice/relieved), and share your updated resume/CV?\n\nBest regards,\nSharyx Talent Acquisition`;

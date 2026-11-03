@@ -287,25 +287,41 @@ let LeadService = LeadService_1 = class LeadService {
         const target = await this.leadRepo.findOne({ where: { id } });
         if (!target)
             throw new common_1.NotFoundException("Lead not found");
+        const oldStatus = (target.lead_status || "").toUpperCase().trim();
         Object.assign(target, data);
-        return await this.leadRepo.save(target);
+        if (data.lead_status) {
+            target.lead_status = data.lead_status.toUpperCase().trim();
+        }
+        const saved = await this.leadRepo.save(target);
+        const newStatus = (saved.lead_status || "").toUpperCase().trim();
+        if (newStatus === "WON" && oldStatus !== "WON") {
+            this.logger.log(`🏆 Lead ${saved.name} (${id}) transitioned to WON via update()! Emitting lead.stage.won...`);
+            this.events.emit("lead.stage.won", {
+                leadId: id,
+                tenantId: saved.tenant_id,
+                dealValue: Number(saved.deal_value) || 5000,
+                lead: saved,
+            });
+        }
+        return saved;
     }
     async updateStatus(id, newStatus, userId) {
         const target = await this.leadRepo.findOne({ where: { id } });
         if (!target)
             throw new common_1.NotFoundException("Lead not found");
-        const oldStatus = target.lead_status;
-        target.lead_status = newStatus;
+        const oldStatus = (target.lead_status || "").toUpperCase().trim();
+        const normalizedNewStatus = (newStatus || "").toUpperCase().trim();
+        target.lead_status = normalizedNewStatus;
         const updated = await this.leadRepo.save(target);
         const activity = this.activityRepo.create({
             lead_id: id,
             activity_type: "STATUS_CHANGE",
-            title: `Status Changed to ${newStatus}`,
-            description: `Transitioned from ${oldStatus} ➔ ${newStatus}`,
+            title: `Status Changed to ${normalizedNewStatus}`,
+            description: `Transitioned from ${oldStatus} ➔ ${normalizedNewStatus}`,
             tenant_id: target.tenant_id
         });
         await this.activityRepo.save(activity);
-        if (newStatus === lead_1.LeadStatus.WON || newStatus === "WON") {
+        if (normalizedNewStatus === "WON" || normalizedNewStatus === lead_1.LeadStatus.WON) {
             this.logger.log(`🏆 Lead ${target.name} (${id}) transitioned to WON! Emitting lead.stage.won...`);
             this.events.emit("lead.stage.won", {
                 leadId: id,
@@ -341,7 +357,22 @@ let LeadService = LeadService_1 = class LeadService {
         return { success: true, count: ids.length };
     }
     async bulkUpdateStatus(ids, lead_status, userId) {
-        await this.leadRepo.update({ id: (0, typeorm_2.In)(ids) }, { lead_status });
+        const normalized = (lead_status || "").toUpperCase().trim();
+        await this.leadRepo.update({ id: (0, typeorm_2.In)(ids) }, { lead_status: normalized });
+        if (normalized === "WON" || normalized === lead_1.LeadStatus.WON) {
+            for (const id of ids) {
+                const l = await this.leadRepo.findOne({ where: { id } });
+                if (l) {
+                    this.logger.log(`🏆 Bulk update: Lead ${l.name} (${id}) transitioned to WON! Emitting lead.stage.won...`);
+                    this.events.emit("lead.stage.won", {
+                        leadId: id,
+                        tenantId: l.tenant_id,
+                        dealValue: Number(l.deal_value) || 5000,
+                        lead: l,
+                    });
+                }
+            }
+        }
         return { success: true, count: ids.length };
     }
     async addActivity(body, userId) {

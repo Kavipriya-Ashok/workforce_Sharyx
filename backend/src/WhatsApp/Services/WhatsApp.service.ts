@@ -12,8 +12,18 @@ export class WhatsAppService {
   private readonly apiUrl = "https://graph.facebook.com/v21.0";
 
   async getConfig(tenantId: string = "default"): Promise<WhatsAppConfig | null> {
-    const config = await WhatsAppConfig.findOne({ where: { tenant_id: tenantId, status: true } });
-    return config;
+    const isDefaultOrSharyx = !tenantId || tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6" || tenantId === "all";
+    if (isDefaultOrSharyx) {
+      const found = await WhatsAppConfig.findOne({
+        where: [
+          { tenant_id: "646b4abe-e6de-401b-ba33-46884bf3f6e6", is_connected: true },
+          { tenant_id: "default", is_connected: true },
+        ],
+        order: { updated_on: "DESC" },
+      });
+      if (found) return found;
+    }
+    return await WhatsAppConfig.findOne({ where: { tenant_id: tenantId, status: true } });
   }
 
   async saveConfig(data: WhatsAppConfigModel, userId?: string): Promise<WhatsAppConfig> {
@@ -210,10 +220,21 @@ export class WhatsAppService {
   }
 
   async getConversations(tenantId: string = "default") {
-    return await WhatsAppConversation.find({
-      where: { tenant_id: tenantId, status: true },
-      order: { last_message_at: "DESC" },
-    });
+    const isAll = tenantId === "all" || !tenantId;
+    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+
+    const qb = WhatsAppConversation.createQueryBuilder("c")
+      .where("c.status = true");
+
+    if (!isAll) {
+      if (isDefaultOrSharyx) {
+        qb.andWhere("c.tenant_id IN (:...tIds)", { tIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"] });
+      } else {
+        qb.andWhere("c.tenant_id = :tenantId", { tenantId });
+      }
+    }
+
+    return await qb.orderBy("c.last_message_at", "DESC", "NULLS LAST").getMany();
   }
 
   async setConversationStatus(id: string, conversationStatus: string, tenantId: string = "default") {

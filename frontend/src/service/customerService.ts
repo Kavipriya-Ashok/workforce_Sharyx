@@ -1,3 +1,4 @@
+import axios from 'axios';
 import {
   Customer,
   CustomerListResponse,
@@ -24,75 +25,49 @@ export const customerService = {
     if (params?.customer_status && params.customer_status !== 'ALL') query.append('customer_status', params.customer_status);
     if (params?.tier && params.tier !== 'ALL') query.append('tier', params.tier);
 
-    const res = await fetch(`${API_BASE}/Customer/List?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch customers');
-    return res.json();
+    const res = await axios.get(`${API_BASE}/Customer/List?${query.toString()}`);
+    return res.data?.AddtionalData || res.data;
   },
 
   async getCustomerById(id: string): Promise<Customer> {
-    const res = await fetch(`${API_BASE}/Customer/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch customer details');
-    return res.json();
+    const res = await axios.get(`${API_BASE}/Customer/${id}`);
+    return res.data?.AddtionalData || res.data;
   },
 
   async updateCustomer(id: string, data: Partial<Customer>): Promise<Customer> {
-    const res = await fetch(`${API_BASE}/Customer/Update/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to update customer');
-    return res.json();
+    const res = await axios.put(`${API_BASE}/Customer/Update/${id}`, data);
+    return res.data?.AddtionalData || res.data;
   },
 
   async deleteCustomer(id: string): Promise<{ success: boolean }> {
-    const res = await fetch(`${API_BASE}/Customer/Delete/${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Failed to delete customer');
-    return res.json();
+    const res = await axios.delete(`${API_BASE}/Customer/Delete/${id}`);
+    return res.data?.AddtionalData || res.data;
   },
 
   async getDeals(): Promise<CrmDeal[]> {
-    const res = await fetch(`${API_BASE}/Customer/Deals`);
-    if (!res.ok) throw new Error('Failed to fetch CRM deals');
-    return res.json();
+    const res = await axios.get(`${API_BASE}/Customer/Deals`);
+    return res.data?.AddtionalData || res.data;
   },
 
   // ─── Automation Rules & Dry Run ───────────────────────────────────────────
 
   async getConversionRules(): Promise<LeadConversionRule[]> {
-    const res = await fetch(`${API_BASE}/Automation`);
-    if (!res.ok) throw new Error('Failed to fetch conversion rules');
-    return res.json();
+    const res = await axios.get(`${API_BASE}/Automation`);
+    return res.data?.AddtionalData || res.data;
   },
 
   async dryRunTest(data: DryRunTestRequest): Promise<DryRunTestResponse> {
-    const res = await fetch(`${API_BASE}/Automation/DryRunTest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to perform dry-run test');
-    return res.json();
+    const res = await axios.post(`${API_BASE}/Automation/DryRunTest`, data);
+    return res.data?.AddtionalData || res.data;
   },
 
   async convertLeadToCustomer(leadId: string, options?: any): Promise<any> {
-    const res = await fetch(`${API_BASE}/Automation/ConvertLead/${leadId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(options || {}),
-    });
-    if (!res.ok) throw new Error('Failed to convert lead to customer');
-    return res.json();
+    const res = await axios.post(`${API_BASE}/Automation/ConvertLead/${leadId}`, options || {});
+    return res.data?.AddtionalData || res.data;
   },
 
   async seedDefaultRules(): Promise<LeadConversionRule[]> {
-    const res = await fetch(`${API_BASE}/Automation/SeedRules`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!res.ok) throw new Error('Failed to seed rules');
-    return res.json();
+    const res = await axios.post(`${API_BASE}/Automation/SeedRules`);
+    return res.data?.AddtionalData || res.data;
   },
 };
