@@ -65,7 +65,7 @@ import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.se
       exclude: ["/api/{*path}", "swagger"],
     }),
     EventEmitterModule.forRoot({ maxListeners: 0 }),
-    ConfigModule.forRoot({ isGlobal: true, load: [Configuration] }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env.local", ".env"], load: [Configuration] }),
     MulterModule.register(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

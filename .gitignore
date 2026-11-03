@@ -7,6 +7,12 @@ backend/.env
 .env.*.local
 *.env.backup
 backend/.env.backup
+*.local_backup
+*.master.backup
+
+# Build outputs
+backend/dist/
+frontend/dist/
 
 # Logs
 logs/
