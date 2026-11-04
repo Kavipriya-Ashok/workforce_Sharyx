@@ -44,6 +44,7 @@ import { EmailModule } from "./Email/email.module";
 import { LeadModule } from "./Module/Lead.module";
 import { CustomerModule } from "./Module/Customer.module";
 import { AutomationModule } from "./Module/Automation.module";
+import { OmnichannelModule } from "./Omnichannel/omnichannel.module";
 import { AgentOrchestratorModule } from "./AgentOrchestrator/agent-orchestrator.module";
 import { VoiceModule } from "./Voice/voice.module";
 import { DashboardTelemetryController } from "./Controller/Admin/DashboardTelemetry.controller";
@@ -59,6 +60,7 @@ import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.se
     LeadModule,
     CustomerModule,
     AutomationModule,
+    OmnichannelModule,
     ClsModule,
     ServeStaticModule.forRoot({
       rootPath: __dirname + "/client",

@@ -12,6 +12,7 @@ import { VoiceService, VoiceAgentDto } from '@/service/voiceService';
 import Leads from '@/pages/lead/Leads';
 import { Customers } from '@/pages/customer/Customers';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { OmnichannelInboxPage } from '@/pages/omnichannel/OmnichannelInboxPage';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LayoutDashboard,
@@ -46,6 +47,7 @@ import {
 
 export type AdminPage =
   | 'dashboard'
+  | 'omnichannel'
   | 'whatsapp_chat'
   | 'whatsapp_sync'
   | 'whatsapp_templates'
@@ -78,6 +80,7 @@ export const AdminLayout: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const query = (params.get('page') || params.get('tab') || '').toLowerCase().trim();
       if (query === 'api' || query === 'settings' || query === 'credentials') return 'settings';
+      if (query === 'omnichannel' || query === 'inbox') return 'omnichannel';
       if (query === 'whatsapp') return 'whatsapp_chat';
       if (query === 'email') return 'email_inbox';
       if (query === 'voice') return 'voice';
@@ -87,6 +90,7 @@ export const AdminLayout: React.FC = () => {
     }
 
     if (!path || path === 'dashboard') return 'dashboard';
+    if (path === 'omnichannel' || path === 'inbox' || path.startsWith('omnichannel/')) return 'omnichannel';
     if (path === 'api' || path === 'settings' || path === 'credentials' || path === 'api-credentials') return 'settings';
     if (path === 'whatsapp' || path === 'whatsapp/chat' || path === 'whatsapp_chat') return 'whatsapp_chat';
     if (path === 'whatsapp/campaigns' || path === 'whatsapp_campaigns') return 'whatsapp_campaigns';
@@ -114,6 +118,7 @@ export const AdminLayout: React.FC = () => {
     setActivePage(page);
     const routeMap: Record<AdminPage, string> = {
       dashboard: '/admin/dashboard',
+      omnichannel: '/admin/omnichannel',
       whatsapp_chat: '/admin/whatsapp',
       whatsapp_sync: '/admin/whatsapp',
       whatsapp_campaigns: '/admin/whatsapp/campaigns',
@@ -241,7 +246,30 @@ export const AdminLayout: React.FC = () => {
             {!sidebarCollapsed && <span>Overview & KPIs</span>}
           </button>
 
-          {/* WHATSAPP AUTOMATION & SUB-PAGES */}
+                    <button
+            onClick={() => navigateToPage('omnichannel')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activePage === 'omnichannel'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+            }`}
+          >
+            <Inbox className={`h-4 w-4 shrink-0 ${activePage === 'omnichannel' ? 'text-white' : 'text-indigo-500'}`} />
+            {!sidebarCollapsed && (
+              <div className="flex items-center justify-between flex-1">
+                <span>Omnichannel Inbox</span>
+                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded ${
+                  activePage === 'omnichannel'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
+                }`}>
+                  Unified
+                </span>
+              </div>
+            )}
+          </button>
+
+{/* WHATSAPP AUTOMATION & SUB-PAGES */}
           <div className="space-y-1">
             <button
               onClick={() => {
@@ -744,8 +772,9 @@ export const AdminLayout: React.FC = () => {
         )}
 
         {/* CONTENT BODY */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6 w-full min-w-0 bg-[#eaedf2] dark:bg-slate-950 flex flex-col [scrollbar-width:thin]">
+        <main ref={mainRef} className={`flex-1 w-full min-w-0 bg-[#eaedf2] dark:bg-slate-950 flex flex-col ${activePage === "omnichannel" ? "p-0 overflow-hidden h-[calc(100vh-4rem)]" : "overflow-y-auto p-3 sm:p-5 lg:p-6 [scrollbar-width:thin]"}`}>
           {activePage === 'dashboard' && <AdminDashboard />}
+          {activePage === 'omnichannel' && <OmnichannelInboxPage />}
           {activePage.startsWith('whatsapp') && (
             <WhatsAppAutomation
               key={activePage}

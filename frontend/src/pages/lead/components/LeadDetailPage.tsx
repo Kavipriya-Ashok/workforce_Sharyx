@@ -273,6 +273,13 @@ export function LeadDetailPage({
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/admin/omnichannel/${lead.id}`}
+            className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1.5 text-amber-300" />
+            <span>360° Omnichannel Stream</span>
+          </a>
           {lead.phone && onOpenVoiceCall && (
             <Button
               size="sm"

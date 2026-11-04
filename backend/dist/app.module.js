@@ -56,6 +56,7 @@ const email_module_1 = require("./Email/email.module");
 const Lead_module_1 = require("./Module/Lead.module");
 const Customer_module_1 = require("./Module/Customer.module");
 const Automation_module_1 = require("./Module/Automation.module");
+const omnichannel_module_1 = require("./Omnichannel/omnichannel.module");
 const agent_orchestrator_module_1 = require("./AgentOrchestrator/agent-orchestrator.module");
 const voice_module_1 = require("./Voice/voice.module");
 const DashboardTelemetry_controller_1 = require("./Controller/Admin/DashboardTelemetry.controller");
@@ -74,6 +75,7 @@ exports.AppModule = AppModule = __decorate([
             Lead_module_1.LeadModule,
             Customer_module_1.CustomerModule,
             Automation_module_1.AutomationModule,
+            omnichannel_module_1.OmnichannelModule,
             nestjs_cls_1.ClsModule,
             serve_static_1.ServeStaticModule.forRoot({
                 rootPath: __dirname + "/client",
