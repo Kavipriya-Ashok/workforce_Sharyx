@@ -383,7 +383,7 @@ Meta  ->  POST /api/v1/WhatsApp/Webhook
              and    voice.call.requested (-> this tenant's voice agent calls the customer; its LLM prompt includes chat + e-mail history [leak #1/#2 were here])
    9. send reply with THIS tenant's token + phone_number_id  ->  save wa_message (tenant_id)
 ```
-**Where the "first message" and the "follow-up message" are today:** the first message is `wa_ai_config.welcome_message`, the follow-up is `followup_message` / `followup_delay_minutes` / `auto_followup_enabled`. They are editable in the Brain page, but **no scheduler reads the follow-up settings** (dead setting, Bug 10 of the original audit) and the welcome text is not variable-aware. Making both fully tenant-written, previewable and actually sent is **Phase 4, item 3** (the half-built UI from an interrupted attempt was set aside, not shipped — see 14.6).
+**Where the "first message" and the "follow-up message" are today:** the first message is `wa_ai_config.welcome_message`, the follow-up is `followup_message` / `followup_delay_minutes` / `auto_followup_enabled`. They are editable in the Brain page, and, **correction of 2026-11-05**, a follow-up scheduler (`WhatsAppFollowup.service.ts`) and first-message rendering already exist in the code. The scheduler is OFF unless `WA_FOLLOWUP_SCHEDULER=true` and has not been tested yet (Phase 4). Making both fully tenant-written, previewable and actually sent is **Phase 4, item 3** (the half-built UI from an interrupted attempt was set aside, not shipped — see 14.6).
 
 ### 14.6 Process notes
 
@@ -403,3 +403,93 @@ Meta  ->  POST /api/v1/WhatsApp/Webhook
 ### 14.8 Proposed next step — Phase 1 (waiting for your "continue")
 
 Database and contact identity: `wa_message` (+`campaign_id`, `outcome`, `channel`), `wa_conversation` (+`detected_intent`, `intent_confidence`, `topic`), `contact_memory`, `wa_opt_outs`, `wa_outcome_mapping`, `email_event_template`, an extended `email_delivery_log`, health columns on `whatsapp_config` if Module 2's status table is not enough, and one E.164 helper used everywhere. Each migration will come with its rollback, will be tested on a fresh restore, and the new code will keep working before it is applied.
+
+---
+
+## 15. Phase 0.5 — Path 5 hotfix (DONE) — commit `1b3d3c66`
+
+Test: `backend/test/module3/phase05-hotfix.cjs` (no database, no network: Meta, the LLM and the entities are in-memory fakes, so it shows exactly what the customer receives). Same file run on the old code and on the fixed code: **3/17 before → 17/17 after**.
+
+### What the customer received — before and after
+
+| Situation | BEFORE (old code) | AFTER (fixed) |
+| :-- | :-- | :-- |
+| Customer asks for pricing; the business has **no** template/campaign | "Hello Priya! 👋 Thank you for speaking with **Sharyx AI**. Here are the details you requested… 💼 Starter AI Plan ₹15,000/month, Growth Omnichannel Plan ₹18,000/month…" (another company's brand and invented prices) | **Nothing is sent.** A task "Send the requested details to the customer" is created on the lead and the chat is flagged `needs_human` |
+| Demo booked, the business has a template, **no real meeting link** | "Your *Demo Booked* with **Sharyx AI** is confirmed! … Google Meet Link: `https://meet.google.com/tth-tdew-rcs`" (a made-up link that opens nothing) | The business's own text (Tamil/Tanglish stays as written): "Vanakkam Priya, unga demo book aayiduchu. **Your meeting link will be shared with you shortly.**" + task "Send the meeting link to the customer" |
+| Demo booked with a **real** link | same text with the Sharyx brand | the business's own text + the real link unchanged |
+| Free text **and** the business's template are both rejected by Meta | Meta's sample `hello_world` was sent to the customer and the run was recorded **as sent** | **Nothing reaches the customer and the run is recorded as failed** (`failed:1`); no "sent" row is saved; a task holds the reason: "Free text: Meta error 131047… Template 'demo_confirmation': Meta error 132001…" |
+| Meta answers 200 but without a message id (`WhatsApp.service`) | saved as `mock_<time>`, status **sent** | Rejected as a failure ("WhatsApp did not confirm the message… not recorded as sent"); `mock_` ids are kept only when `NODE_ENV=test` |
+
+### Items you listed
+
+| Item | Result | Proof |
+| :-- | :-- | :-- |
+| 1. Remove `hello_world`; failed = failed + human task | **Fixed** | H-08, H-09, H-10 |
+| 2. Remove "Sharyx AI" text and fixed prices (lines 138, 183, 189, 197, 267, 402, 536–572) | **Fixed.** Also removed from the LLM instructions (it now says "never state a price or link that is not in the facts"), the calendar title, the template variable defaults and the hard-coded dashboard address. No content set up → nothing sent + task | H-01, H-02, H-06, H-11 |
+| 3. Remove the fake Meet link generator | **Fixed** (`generateMeetSlug` deleted; `isRealMeetingLink()` also rejects the old `shx-demo-room` placeholder). The message says the link will be shared shortly and a task is created | H-03, H-04, H-05, H-07 |
+| 4. Meta response without a message id = failure | **Fixed** in `WhatsApp.service`, and the same rule in the outcome path | H-15, H-16, H-17 |
+
+### Extra problems found and fixed on the way
+
+| # | Problem | Fix | Proof |
+| :-- | :-- | :-- | :-- |
+| X-1 | **Cross-tenant leak (new, missed by the Phase 0 scan):** the outcome path looked up templates **without `tenant_id`** (twice). Tenant B's template text was sent to Tenant A's customer | Both lookups are pinned to the tenant | H-12 |
+| X-2 | The default **e-mails** invented a price (`dealValue \|\| "15,000"`) and a fake link (`shx-demo-room`) | The quotation e-mail needs a real amount and the meeting e-mail needs a real link; otherwise it is not sent and the reason goes to the e-mail delivery log | H-13, H-14 |
+| X-3 | A campaign whose template does not exist silently fell back to "Hi {name}, thank you for connecting with Sharyx AI!" | The campaign counts as failed and a task is created | code path in the campaign loop (no dedicated check) |
+
+For pricing/details requests the business's **own template text** is now sent (before, an LLM text replaced it). For meeting confirmations the LLM text is still used; Phase 2 reworks that.
+
+### Still open in this file (owner phase in brackets)
+The welcome e-mail and the e-mail wrappers still say "Sharyx AI Team" (Phase 6); fixed English labels such as "Outcome / Call Summary" (Phase 2); the outcome path still posts to Meta itself instead of through the central sender (Phase 1.5); **no 24-hour or opt-out check** in this path (Phase 1.5/5).
+
+### The "human task" (no new table yet)
+A human task is a `lead_activity` row of type `TASK` on the lead, plus the WhatsApp conversation set to `needs_human` (never overwriting `human_takeover`, `opted_out`, `closed`). If the number has no lead and no conversation, only a warning is logged. A real tasks/notifications table needs a migration; I propose it for Phase 1.5.
+
+---
+
+## 16. Phase 1 — data foundation (DONE, migration **not** applied to the remote DB)
+
+### 16.1 Migration `1731200000000-WhatsAppFoundation.sql` (+ `.down.sql`)
+
+Additive and idempotent. The backend does **not** map the new columns, so it behaves the same before and after.
+
+| Table | Added |
+| :-- | :-- |
+| `wa_message` | `campaign_id` (FK → `wa_campaign`, SET NULL), `outcome`, `channel`, `topic`, `source_event`; indexes by tenant |
+| `wa_conversation` | `detected_intent`, `intent_confidence` (0–1 check), `topic` |
+| `contact_memory` (new) | unique `(tenant_id, contact_phone)`; unique e-mail-only contacts; index `(tenant_id, contact_email)`; `summary`, jsonb `facts` (object) / `open_tasks` (array), `version`, `last_channel`, `last_interaction_at`; needs a phone or an e-mail |
+| `wa_opt_outs` (new) | unique `(tenant_id, contact_phone)`, `is_opted_out`, `keyword`, `source`, timestamps |
+| `wa_outcome_mapping` (new) | `source_channel`, `outcome_name`, `campaign_id`, `template_id`, **`email_template_id`**, `send_email_confirmation`, `language`; one **active** rule per (tenant, channel, outcome) |
+| `email_event_template` (new) | unique `(tenant_id, event, language)` |
+| `email_delivery_log` | `event`, `source_event`, `booking_ref`, `mailbox`, `provider`, `provider_message_id`, `sent_at`, `next_retry_at`, `dedupe_key` (unique per tenant) |
+
+`whatsapp_config` health columns were **not** added: Module 2's `tenant_integration_status` already stores status, `last_checked_at`, `last_success_at`, `error_code`, `error_message` per tenant (your "if Module 2 has not added them" condition).
+
+Backup first: `pg_dump -Fc … -f backup.dump` (today's read-only dump: `backups/assistant_sharyx_2026-11-05_pre-module3-phase1.dump`, git-ignored). Apply: `psql -v ON_ERROR_STOP=1 -f migrations/1731200000000-WhatsAppFoundation.sql`. Rollback: `…WhatsAppFoundation.down.sql` — it deletes data stored in the new tables/columns after the migration (take a backup first); existing business rows are kept.
+
+### 16.2 Tests (scratch copy of a fresh read-only dump of the remote DB)
+
+| Test | Result |
+| :-- | :-- |
+| `phase1-migration.cjs`: apply, apply twice, constraints, two tenants with the same phone/e-mail, campaign delete, rollback = identical schema, rollback twice, up→down→up | **21/21, three runs in a row** |
+| `phase1-phone.cjs`: E.164 for India, US, UK, UAE, Singapore, junk, no built-in country | **17/17** |
+| Two-tenant, same phone + e-mail (Phase 0 suite) **before** the migration (new code, old schema) | **14/14** |
+| Same suite **after** the migration, same server, not restarted | **14/14** |
+| `tsc --noEmit` on the whole backend | clean |
+
+One of my own checks failed at first ("rollback restores identical schema"). The listed differences were empty: the test compared two JSON strings whose table order differed. I fixed the test (sorted) and it then passed three times. The schema was never different.
+
+### 16.3 One E.164 helper — `Helper/Phone.ts`
+`toE164(raw, defaultCountry)`, `samePhone`, `toMetaDigits`, `phoneLookupVariants`. **No built-in country**: "98765 43210" is accepted only with the tenant's country (IN), and `4155552671` becomes `+1…` for a US tenant. Numbers that carry their country (`+91…`, `0091…`, Meta-style `919876543210`) are accepted as they are; anything else returns `null` instead of a guess. The helper is delivered and tested; the call sites switch to it inside the central sender (Phase 1.5) so existing conversation keys are not changed twice. `Helper/SchemaFeatures.ts` (`hasColumn` / `hasTable`, cached 60 s) lets later code use the new columns only when they exist.
+
+### 16.4 Not done / not tested in this phase
+- **Migration on the remote DB: not applied** (your rule).
+- **Browser check / UX score:** no page changed → not applicable.
+- **REC/SAL cases with a real LLM key:** **Not tested** (no AERIX document yet, no real key).
+- **Per-tenant default-country setting:** the helper takes the country as a parameter; the stored setting is part of Phase 1.5, as you wrote it.
+
+### 16.5 ⚠ Finding about the remote database (needs your decision)
+A read-only check of the remote DB today shows that **neither `auth_otp` nor `tenant_integration_status` exists there**. My earlier notes say the Module 1 migration was applied on your "run it"; the database does not show that. Either it was not applied, or `backend/.env` points to a different database than the one I changed. I did not touch the remote. Effect: sign-up there still answers "database upgrade pending".
+
+### 16.6 Updated phase list (as you asked)
+Phase 0 ✅ · **0.5 ✅ hotfix** · **1 ✅ foundation** · 1.5 central sender (next, waits for your "continue") · 2 · 3 · 4 · 5 · 5B · 5C · 6 · 7 · 8 (design only).
