@@ -355,7 +355,7 @@ let AuditLogService = class AuditLogService {
             console.error("Error in Insert method:", e);
         }
     }
-    async LazyLoadList(AuditLogLazyLoadData) {
+    async LazyLoadList(AuditLogLazyLoadData, allowedUserIds = null) {
         var _a, _b, _c;
         let WhereCondition = [];
         let searchKey = ((_a = AuditLogLazyLoadData.keyword) === null || _a === void 0 ? void 0 : _a.length) || 0 > 0
@@ -365,8 +365,14 @@ let AuditLogService = class AuditLogService {
             $gte: AuditLogLazyLoadData.start_date,
             $lt: AuditLogLazyLoadData.end_date,
         };
+        if (allowedUserIds) {
+            const ids = allowedUserIds.map((i) => String(i).replace(/[^A-Za-z0-9-]/g, ""));
+            const set = ids.length ? ids.map((i) => `"${i}"`).join(", ") : `"__none__"`;
+            WhereCondition.push(`|> filter(fn: (r) => contains(value: r["performed_by_id"], set: [${set}]))`);
+        }
         if (AuditLogLazyLoadData.user_id > "0") {
-            WhereCondition.push(`|> filter(fn: (r) => r["performed_by_id"] == "${AuditLogLazyLoadData.user_id}")`);
+            const safeUserId = String(AuditLogLazyLoadData.user_id).replace(/[^A-Za-z0-9-]/g, "");
+            WhereCondition.push(`|> filter(fn: (r) => r["performed_by_id"] == "${safeUserId}")`);
         }
         if (((_b = AuditLogLazyLoadData.action) === null || _b === void 0 ? void 0 : _b.length) > 0) {
             WhereCondition.push(`|> filter(fn: (r) => r["performed_action"] == "${AuditLogLazyLoadData.action}")`);

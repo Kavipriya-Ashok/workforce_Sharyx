@@ -25,24 +25,24 @@ let UserController = class UserController extends JWTAuth_controller_1.JWTAuthCo
         super();
         this._UserService = _UserService;
     }
-    async List() {
-        const UserListData = await this._UserService.GetAllExpectSuperAdmin();
+    async List(tenantId) {
+        const UserListData = await this._UserService.GetAllExpectSuperAdmin(tenantId);
         return this.SendResponseData(UserListData);
     }
-    async ById(Id) {
-        const UserData = await this._UserService.GetById(Id);
+    async ById(Id, tenantId) {
+        const UserData = await this._UserService.GetById(Id, tenantId);
         return this.SendResponseData(UserData);
     }
-    async Insert(UserData, UserId) {
-        const ResultData = await this._UserService.Insert(UserData, UserId);
+    async Insert(UserData, UserId, tenantId) {
+        const ResultData = await this._UserService.Insert(UserData, UserId, tenantId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Created, ResultData.id);
     }
-    async Update(Id, UserData, UserId) {
-        await this._UserService.Update(Id, UserData, UserId);
+    async Update(Id, UserData, UserId, tenantId) {
+        await this._UserService.Update(Id, UserData, UserId, tenantId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Updated);
     }
-    async SuspendOrActivate(id, UserId) {
-        const UserData = await this._UserService.SuspendOrActivate(id, UserId);
+    async SuspendOrActivate(id, UserId, tenantId) {
+        const UserData = await this._UserService.SuspendOrActivate(id, UserId, tenantId);
         if (UserData.status == true) {
             return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Activated);
         }
@@ -54,31 +54,34 @@ let UserController = class UserController extends JWTAuth_controller_1.JWTAuthCo
         await this._UserService.ChangePassword(UserId, ChangePasswordData);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, "Password changed successfully");
     }
-    async ResetPassword(Id, UserData, UserId) {
-        await this._UserService.UserResetPassword(Id, UserData, UserId);
+    async ResetPassword(Id, UserData, UserId, tenantId) {
+        await this._UserService.UserResetPassword(Id, UserData, UserId, tenantId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Reset);
     }
 };
 exports.UserController = UserController;
 __decorate([
     (0, common_1.Get)('List'),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "List", null);
 __decorate([
     (0, common_1.Get)('ById/:Id'),
     __param(0, (0, common_1.Param)('Id')),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "ById", null);
 __decorate([
     (0, common_1.Post)('Insert'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [User_model_1.UserModel, String]),
+    __metadata("design:paramtypes", [User_model_1.UserModel, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "Insert", null);
 __decorate([
@@ -86,16 +89,18 @@ __decorate([
     __param(0, (0, common_1.Param)('Id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, User_model_1.UserModel, String]),
+    __metadata("design:paramtypes", [String, User_model_1.UserModel, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "Update", null);
 __decorate([
     (0, common_1.Patch)('SuspendOrActivate/:Id'),
     __param(0, (0, common_1.Param)('Id')),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "SuspendOrActivate", null);
 __decorate([
@@ -108,11 +113,12 @@ __decorate([
 ], UserController.prototype, "ChangePassword", null);
 __decorate([
     (0, common_1.Put)('ResetPassword/:Id'),
-    __param(0, (0, common_1.Param)('UserId')),
+    __param(0, (0, common_1.Param)('Id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, User_model_1.UserModel, String]),
+    __metadata("design:paramtypes", [String, User_model_1.UserModel, String, String]),
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "ResetPassword", null);
 exports.UserController = UserController = __decorate([

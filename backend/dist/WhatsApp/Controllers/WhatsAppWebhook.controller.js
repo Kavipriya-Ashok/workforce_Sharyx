@@ -31,8 +31,15 @@ let WhatsAppWebhookController = class WhatsAppWebhookController {
         this.logger.warn(`❌ [HANDSHAKE] Meta Webhook verification failed. Expected token mismatch.`);
         return res.status(common_1.HttpStatus.FORBIDDEN).send("Verification failed");
     }
-    async handleIncomingMessage(body) {
+    async handleIncomingMessage(body, req, signature) {
         this.logger.log(`📥 [WEBHOOK HIT] Incoming event from Meta received!`);
+        const sig = await this.webhookService.checkSignature(req === null || req === void 0 ? void 0 : req.rawBody, signature, body);
+        if (!sig.ok) {
+            const enforce = (process.env.WA_SIGNATURE_MODE || "log").toLowerCase() === "enforce";
+            this.logger.warn(`[WEBHOOK SIGNATURE] ${sig.reason} - ${enforce ? "REJECTED (enforce)" : "accepted (log mode)"}`);
+            if (enforce)
+                throw new common_1.UnauthorizedException("Invalid webhook signature");
+        }
         setImmediate(() => {
             this.webhookService.processIncomingWebhook(body).catch((err) => {
                 this.logger.error(`Background webhook error: ${(err === null || err === void 0 ? void 0 : err.message) || err}`);
@@ -56,8 +63,10 @@ __decorate([
     (0, common_1.Post)(),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Req)()),
+    __param(2, (0, common_1.Headers)("x-hub-signature-256")),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object, String]),
     __metadata("design:returntype", Promise)
 ], WhatsAppWebhookController.prototype, "handleIncomingMessage", null);
 exports.WhatsAppWebhookController = WhatsAppWebhookController = __decorate([

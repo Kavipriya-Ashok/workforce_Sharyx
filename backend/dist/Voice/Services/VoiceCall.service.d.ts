@@ -51,7 +51,7 @@ export declare class VoiceCallService {
     syncCallLogsFromVapi(tenantId?: string, force?: boolean): Promise<number>;
     syncCallLogsFromSaas(tenantId?: string): Promise<number>;
     streamCallAudio(callId?: string, providerCallId?: string, tenantId?: string, res?: any): Promise<any>;
-    getCallStats(tenantId?: string): Promise<{
+    getCallStats(tenantId: string): Promise<{
         totalCalls: number;
         completedCalls: number;
         avgDurationSeconds: number;

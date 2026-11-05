@@ -11,6 +11,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var AgentLlmService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AgentLlmService = void 0;
+const LlmEndpoints_1 = require("../../Helper/LlmEndpoints");
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 let AgentLlmService = AgentLlmService_1 = class AgentLlmService {
@@ -46,7 +47,7 @@ let AgentLlmService = AgentLlmService_1 = class AgentLlmService {
         try {
             if (provider === "openai") {
                 const model = cfg.model && !cfg.model.startsWith("gemini") ? cfg.model : "gpt-4o-mini";
-                const res = await axios_1.default.post("https://api.openai.com/v1/chat/completions", {
+                const res = await axios_1.default.post((0, LlmEndpoints_1.openAiChatUrl)(), {
                     model,
                     temperature,
                     max_tokens: 700,
@@ -79,7 +80,7 @@ let AgentLlmService = AgentLlmService_1 = class AgentLlmService {
             };
             for (const m of [model, "gemini-flash-latest"]) {
                 try {
-                    const res = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`, body, { timeout: 20000 });
+                    const res = await axios_1.default.post((0, LlmEndpoints_1.geminiGenerateUrl)(m, geminiKey), body, { timeout: 20000 });
                     const parsed = this.parse((_l = (_k = (_j = (_h = (_g = (_f = res.data) === null || _f === void 0 ? void 0 : _f.candidates) === null || _g === void 0 ? void 0 : _g[0]) === null || _h === void 0 ? void 0 : _h.content) === null || _j === void 0 ? void 0 : _j.parts) === null || _k === void 0 ? void 0 : _k[0]) === null || _l === void 0 ? void 0 : _l.text);
                     if (parsed)
                         return parsed;

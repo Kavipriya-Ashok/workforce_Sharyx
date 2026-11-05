@@ -83,6 +83,26 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], company.prototype, "invoice_footer", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "boolean", default: false }),
+    __metadata("design:type", Boolean)
+], company.prototype, "onboarding_completed", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "int", default: 1 }),
+    __metadata("design:type", Number)
+], company.prototype, "onboarding_step", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "jsonb", nullable: true }),
+    __metadata("design:type", Object)
+], company.prototype, "onboarding_data", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], company.prototype, "industry", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], company.prototype, "company_size", void 0);
 exports.company = company = __decorate([
     (0, typeorm_1.Entity)()
 ], company);

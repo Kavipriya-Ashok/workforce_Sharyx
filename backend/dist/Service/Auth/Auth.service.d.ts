@@ -1,34 +1,35 @@
 import { JwtService } from '@nestjs/jwt';
+import { DataSource } from 'typeorm';
+import { VerifySignupOtpDto } from '@Model/Auth/Auth.model';
 import { EncryptionService } from '../Encryption.service';
+import { AuthOtpService } from './AuthOtp.service';
 export declare class AuthService {
     private _JwtService;
     private _EncryptionService;
+    private _DataSource;
+    private _AuthOtp;
     private readonly logger;
-    private signupOtps;
-    constructor(_JwtService: JwtService, _EncryptionService: EncryptionService);
+    private loginAttempts;
+    private dummyHash;
+    constructor(_JwtService: JwtService, _EncryptionService: EncryptionService, _DataSource: DataSource, _AuthOtp: AuthOtpService);
+    private assertNotLockedOut;
+    private recordLoginFailure;
+    private pruneLoginAttempts;
+    private clearLoginFailures;
     ValidateUser(username: string, password: string): Promise<any>;
+    logout(userId: string): Promise<void>;
+    private debugOtpEnabled;
     sendSignupOtp(email: string, name?: string): Promise<{
         ok: boolean;
         message: string;
-        debugOtp?: string;
     }>;
-    verifySignupOtp(dto: {
-        email: string;
-        otp: string;
-        first_name?: string;
-        last_name?: string;
-        username?: string;
-        password?: string;
-        mobile?: string;
-        company_name?: string;
-    }): Promise<any>;
-    googleAuth(dto: {
-        code?: string;
-        redirect_uri?: string;
-        credential?: string;
-        email?: string;
-        name?: string;
-        picture?: string;
-    }): Promise<any>;
-    private sendOtpEmail;
+    resendSignupOtp(email: string): Promise<{
+        ok: boolean;
+        message: string;
+    }>;
+    verifySignupOtp(dto: VerifySignupOtpDto): Promise<any>;
+    private otpHtml;
+    private accountExistsHtml;
+    private deliver;
+    private dispatchEmail;
 }

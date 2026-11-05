@@ -81,25 +81,25 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
     }
     async getLead(state) {
         if (state.lead_id) {
-            const l = await lead_1.lead.findOne({ where: { id: state.lead_id } });
+            const l = await lead_1.lead.findOne({ where: { id: state.lead_id, tenant_id: state.tenant_id } });
             if (l)
                 return l;
         }
         if (state.customer_phone) {
             const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
             const withPlus = "+" + cleanPhone;
-            let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone } });
+            let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone, tenant_id: state.tenant_id } });
             if (!l)
-                l = await lead_1.lead.findOne({ where: { phone: withPlus } });
+                l = await lead_1.lead.findOne({ where: { phone: withPlus, tenant_id: state.tenant_id } });
             if (!l)
-                l = await lead_1.lead.findOne({ where: { phone: cleanPhone } });
+                l = await lead_1.lead.findOne({ where: { phone: cleanPhone, tenant_id: state.tenant_id } });
             if (l) {
                 state.lead_id = l.id;
                 return l;
             }
         }
         if (state.customer_email) {
-            const l = await lead_1.lead.findOne({ where: { email: state.customer_email } });
+            const l = await lead_1.lead.findOne({ where: { email: state.customer_email, tenant_id: state.tenant_id } });
             if (l) {
                 state.lead_id = l.id;
                 return l;
@@ -383,7 +383,7 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
         const meeting = { slot, type: isInterview ? "interview" : type, mode: inputs.mode || "ONLINE", meet_url: meet.meetUrl, booked_at: new Date().toISOString() };
         state.collected_slots = Object.assign(Object.assign({}, (state.collected_slots || {})), { appointment: meeting });
         if (state.channel === "whatsapp" && state.conversation_ref) {
-            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
             if (conv) {
                 conv.meeting_info = { slot, meet_url: meet.meetUrl, scheduled_at: meeting.booked_at };
                 await conv.save();
@@ -561,7 +561,7 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
         delete slots.appointment;
         state.collected_slots = slots;
         if (state.channel === "whatsapp" && state.conversation_ref) {
-            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
             if (conv) {
                 conv.meeting_info = null;
                 await conv.save();
@@ -587,7 +587,7 @@ let AgentToolsService = AgentToolsService_1 = class AgentToolsService {
     async transferToHuman(inputs, state, agentName) {
         state.human_takeover = true;
         if (state.channel === "whatsapp" && state.conversation_ref) {
-            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
             if (conv) {
                 conv.conversation_status = "waiting_human";
                 await conv.save();

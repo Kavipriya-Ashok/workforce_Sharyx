@@ -16,6 +16,8 @@ exports.DashboardTelemetryController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const DashboardTelemetry_service_1 = require("../../Service/Admin/DashboardTelemetry.service");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let DashboardTelemetryController = class DashboardTelemetryController {
     constructor(telemetryService) {
         this.telemetryService = telemetryService;
@@ -60,6 +62,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], DashboardTelemetryController.prototype, "syncNow", null);
 exports.DashboardTelemetryController = DashboardTelemetryController = __decorate([
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)({ path: "Admin/Dashboard", version: "1" }),
     (0, swagger_1.ApiTags)("Dashboard Telemetry"),
     __metadata("design:paramtypes", [DashboardTelemetry_service_1.DashboardTelemetryService])

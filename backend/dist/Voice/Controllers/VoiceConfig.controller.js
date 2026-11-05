@@ -15,6 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoiceConfigController = void 0;
 const common_1 = require("@nestjs/common");
 const VoiceConfig_service_1 = require("../Services/VoiceConfig.service");
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let VoiceConfigController = class VoiceConfigController {
     constructor(configService) {
         this.configService = configService;
@@ -81,6 +84,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VoiceConfigController.prototype, "testConnection", null);
 exports.VoiceConfigController = VoiceConfigController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Voice/Config", version: "1" }),
     __metadata("design:paramtypes", [VoiceConfig_service_1.VoiceConfigService])
 ], VoiceConfigController);

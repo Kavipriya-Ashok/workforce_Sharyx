@@ -1,8 +1,8 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { AiAgentService } from "../Services/AiAgent.service";
 import { AgentOrchestratorService } from "../Services/AgentOrchestrator.service";
-export declare class AiAgentController extends AuthBaseController {
+export declare class AiAgentController extends JWTAuthController {
     private readonly agentService;
     private readonly orchestrator;
     constructor(agentService: AiAgentService, orchestrator: AgentOrchestratorService);

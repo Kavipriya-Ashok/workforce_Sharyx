@@ -1,5 +1,6 @@
 import "reflect-metadata";
 export declare const CurrentUser: (...dataOrPipes: any[]) => ParameterDecorator;
+export declare const isSuperAdminUser: (user: any) => boolean;
 export declare const CurrentTenant: (...dataOrPipes: any[]) => ParameterDecorator;
 export declare const RandomValue: (min: any, max: any) => number;
 export declare const DateFormatForDB: (SourceDate: Date | null) => string;

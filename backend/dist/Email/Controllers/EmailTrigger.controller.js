@@ -15,10 +15,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailTriggerController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const OutcomeTrigger_service_1 = require("../../Service/OutcomeTrigger.service");
-let EmailTriggerController = class EmailTriggerController extends AuthBase_controller_1.AuthBaseController {
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
+let EmailTriggerController = class EmailTriggerController extends JWTAuth_controller_1.JWTAuthController {
     constructor(triggerService) {
         super();
         this.triggerService = triggerService;
@@ -37,6 +40,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EmailTriggerController.prototype, "executeTrigger", null);
 exports.EmailTriggerController = EmailTriggerController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Email/Trigger", version: "1" }),
     (0, swagger_1.ApiTags)("Email Outcome Trigger"),
     __metadata("design:paramtypes", [OutcomeTrigger_service_1.OutcomeTriggerService])

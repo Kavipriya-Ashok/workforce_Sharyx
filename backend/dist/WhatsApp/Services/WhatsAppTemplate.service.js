@@ -20,13 +20,13 @@ let WhatsAppTemplateService = WhatsAppTemplateService_1 = class WhatsAppTemplate
         this.logger = new common_1.Logger(WhatsAppTemplateService_1.name);
         this.graphApiVersion = "v18.0";
     }
-    async getTemplates(tenantId = "default") {
+    async getTemplates(tenantId) {
         return await WhatsAppTemplate_entity_1.WhatsAppTemplate.find({
             where: { tenant_id: tenantId, status: true },
             order: { created_on: "DESC" },
         });
     }
-    async createTemplate(data, tenantId = "default") {
+    async createTemplate(data, tenantId) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         const sanitizedName = (data.name || "template")
             .toLowerCase()
@@ -122,7 +122,7 @@ let WhatsAppTemplateService = WhatsAppTemplateService_1 = class WhatsAppTemplate
         }
         return saved;
     }
-    async syncMetaTemplates(tenantId = "default") {
+    async syncMetaTemplates(tenantId) {
         var _a, _b, _c, _d, _e, _f, _g;
         const config = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({
             where: { tenant_id: tenantId, status: true },
@@ -167,8 +167,8 @@ let WhatsAppTemplateService = WhatsAppTemplateService_1 = class WhatsAppTemplate
         }
         return await this.getTemplates(tenantId);
     }
-    async updateTemplate(id, data) {
-        const tpl = await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({ where: { id, status: true } });
+    async updateTemplate(id, data, tenantId) {
+        const tpl = await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({ where: { id, tenant_id: tenantId, status: true } });
         if (!tpl)
             throw new common_1.NotFoundException("Template not found");
         if (data.name) {
@@ -191,9 +191,9 @@ let WhatsAppTemplateService = WhatsAppTemplateService_1 = class WhatsAppTemplate
         tpl.updated_on = new Date();
         return await tpl.save();
     }
-    async deleteTemplate(id, tenantId = "default") {
+    async deleteTemplate(id, tenantId) {
         var _a, _b, _c;
-        const tpl = await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({ where: { id } });
+        const tpl = await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({ where: { id, tenant_id: tenantId } });
         if (!tpl)
             throw new common_1.NotFoundException("Template not found");
         const templateName = tpl.name;
@@ -216,7 +216,7 @@ let WhatsAppTemplateService = WhatsAppTemplateService_1 = class WhatsAppTemplate
         }
         return true;
     }
-    async sendTemplateMessage(phone, templateName, parameters = [], tenantId = "default") {
+    async sendTemplateMessage(phone, templateName, parameters = [], tenantId) {
         const config = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({
             where: { tenant_id: tenantId, status: true },
         });

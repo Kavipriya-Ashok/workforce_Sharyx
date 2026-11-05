@@ -14,6 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ErrorLogController = void 0;
 const common_1 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const SuperAdmin_guard_1 = require("../../Service/Auth/SuperAdmin.guard");
+const common_2 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const ErrorLog_service_1 = require("../../Service/Admin/ErrorLog.service");
 const JWTAuth_controller_1 = require("../JWTAuth.controller");
@@ -36,21 +39,22 @@ let ErrorLogController = class ErrorLogController extends JWTAuth_controller_1.J
 };
 exports.ErrorLogController = ErrorLogController;
 __decorate([
-    (0, common_1.Post)('LazyLoadList'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_2.Post)('LazyLoadList'),
+    __param(0, (0, common_2.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [ErrorLog_model_1.ErrorLogLazyLoadModel]),
     __metadata("design:returntype", Promise)
 ], ErrorLogController.prototype, "LazyLoadList", null);
 __decorate([
-    (0, common_1.Post)('DeleteByAsOfDate'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_2.Post)('DeleteByAsOfDate'),
+    __param(0, (0, common_2.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [ErrorLog_model_1.ErrorLogDeleteModel]),
     __metadata("design:returntype", Promise)
 ], ErrorLogController.prototype, "DeleteByAsOfDate", null);
 exports.ErrorLogController = ErrorLogController = __decorate([
-    (0, common_1.Controller)({ path: "ErrorLog", version: '1' }),
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, SuperAdmin_guard_1.SuperAdminGuard),
+    (0, common_2.Controller)({ path: "ErrorLog", version: '1' }),
     (0, swagger_1.ApiTags)("Error Log"),
     __metadata("design:paramtypes", [ErrorLog_service_1.ErrorLogService])
 ], ErrorLogController);

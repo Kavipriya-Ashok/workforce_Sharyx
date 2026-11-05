@@ -15,10 +15,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailTemplateController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const EmailTemplate_service_1 = require("../Services/EmailTemplate.service");
-let EmailTemplateController = class EmailTemplateController extends AuthBase_controller_1.AuthBaseController {
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
+let EmailTemplateController = class EmailTemplateController extends JWTAuth_controller_1.JWTAuthController {
     constructor(templateService) {
         super();
         this.templateService = templateService;
@@ -82,6 +85,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EmailTemplateController.prototype, "previewTemplate", null);
 exports.EmailTemplateController = EmailTemplateController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Email/Templates", version: "1" }),
     (0, swagger_1.ApiTags)("Email Templates"),
     __metadata("design:paramtypes", [EmailTemplate_service_1.EmailTemplateService])

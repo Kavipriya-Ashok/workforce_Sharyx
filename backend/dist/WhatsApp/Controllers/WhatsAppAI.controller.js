@@ -14,39 +14,43 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppAIController = void 0;
 const common_1 = require("@nestjs/common");
+const StrictValidation_1 = require("../../Helper/StrictValidation");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const WhatsAppAI_service_1 = require("../Services/WhatsAppAI.service");
 const WhatsAppAIConfig_model_1 = require("../Models/WhatsAppAIConfig.model");
-let WhatsAppAIController = class WhatsAppAIController extends AuthBase_controller_1.AuthBaseController {
+let WhatsAppAIController = class WhatsAppAIController extends JWTAuth_controller_1.JWTAuthController {
     constructor(aiService) {
         super();
         this.aiService = aiService;
     }
-    async getConfig() {
-        const config = await this.aiService.getConfig();
-        return this.SendResponseData(config);
+    async getConfig(tenantId) {
+        const config = await this.aiService.getConfig(tenantId);
+        return this.SendResponseData(config ? Object.assign(Object.assign({}, config), { api_key: undefined, has_api_key: !!config.api_key, followup_scheduler_active: process.env.WA_FOLLOWUP_SCHEDULER === "true" }) : config);
     }
-    async saveConfig(body, userId) {
-        const config = await this.aiService.saveConfig(body, userId);
-        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, config);
+    async saveConfig(body, userId, tenantId) {
+        const config = await this.aiService.saveConfig(body, userId, tenantId);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, Object.assign(Object.assign({}, config), { api_key: undefined, has_api_key: !!config.api_key }));
     }
 };
 exports.WhatsAppAIController = WhatsAppAIController;
 __decorate([
     (0, common_1.Get)("Config"),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], WhatsAppAIController.prototype, "getConfig", null);
 __decorate([
     (0, common_1.Post)("Config"),
+    (0, common_1.UsePipes)(...(0, StrictValidation_1.strictPipes)()),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [WhatsAppAIConfig_model_1.WhatsAppAIConfigModel, String]),
+    __metadata("design:paramtypes", [WhatsAppAIConfig_model_1.WhatsAppAIConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], WhatsAppAIController.prototype, "saveConfig", null);
 exports.WhatsAppAIController = WhatsAppAIController = __decorate([

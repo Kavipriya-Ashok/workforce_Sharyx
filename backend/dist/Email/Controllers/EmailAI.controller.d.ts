@@ -1,12 +1,12 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { EmailAIService } from "../Services/EmailAI.service";
 import { EmailAIConfigModel, GenerateEmailAIDraftModel } from "../Models/EmailAIConfig.model";
-export declare class EmailAIController extends AuthBaseController {
+export declare class EmailAIController extends JWTAuthController {
     private readonly emailAiService;
     constructor(emailAiService: EmailAIService);
-    getConfig(): Promise<any>;
-    saveConfig(body: EmailAIConfigModel, userId: string): Promise<{
+    getConfig(tenantId: string): Promise<any>;
+    saveConfig(body: EmailAIConfigModel, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -15,5 +15,5 @@ export declare class EmailAIController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    generateDraft(body: GenerateEmailAIDraftModel): Promise<any>;
+    generateDraft(body: GenerateEmailAIDraftModel, tenantId: string): Promise<any>;
 }

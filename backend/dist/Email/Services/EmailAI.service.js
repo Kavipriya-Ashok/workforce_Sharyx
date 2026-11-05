@@ -44,6 +44,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var EmailAIService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailAIService = void 0;
+const LlmEndpoints_1 = require("../../Helper/LlmEndpoints");
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const EmailAIConfig_entity_1 = require("../../Database/Table/Email/EmailAIConfig.entity");
@@ -54,9 +55,6 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
     }
     async getConfig(tenantId = "default") {
         let config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
-        if (!config && tenantId !== "default") {
-            config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: "default", status: true } });
-        }
         if (!config) {
             config = new EmailAIConfig_entity_1.EmailAIConfig();
             config.tenant_id = tenantId;
@@ -76,12 +74,13 @@ let EmailAIService = EmailAIService_1 = class EmailAIService {
         }
         return config;
     }
-    async saveConfig(data, userId) {
+    async saveConfig(data, userId, tenantId) {
         var _a;
-        let config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: data.tenant_id || "default" } });
+        const tid = tenantId && tenantId !== "all" ? tenantId : data.tenant_id || "default";
+        let config = await EmailAIConfig_entity_1.EmailAIConfig.findOne({ where: { tenant_id: tid } });
         if (!config) {
             config = new EmailAIConfig_entity_1.EmailAIConfig();
-            config.tenant_id = data.tenant_id || "default";
+            config.tenant_id = tid;
             config.created_by_id = userId || "system";
             config.created_on = new Date();
         }
@@ -184,7 +183,7 @@ GENERAL MEMORY & FORMATTING:
 - Incoming Message: ${dto.incoming_body || ""}${threadSection}`;
         if (openAiKey) {
             try {
-                const response = await axios_1.default.post("https://api.openai.com/v1/chat/completions", {
+                const response = await axios_1.default.post((0, LlmEndpoints_1.openAiChatUrl)(), {
                     model: (config === null || config === void 0 ? void 0 : config.llm_model) || "gpt-4o-mini",
                     messages: [
                         { role: "system", content: systemPrompt },
@@ -214,7 +213,7 @@ GENERAL MEMORY & FORMATTING:
             const uniqueModels = modelsToTry.filter((v, i, a) => a.indexOf(v) === i);
             for (const model of uniqueModels) {
                 try {
-                    const response = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+                    const response = await axios_1.default.post((0, LlmEndpoints_1.geminiGenerateUrl)(model, geminiKey), {
                         systemInstruction: { parts: [{ text: systemPrompt }] },
                         contents: [{ parts: [{ text: userPromptContent }] }],
                     }, { timeout: 15000 });
@@ -264,7 +263,10 @@ GENERAL MEMORY & FORMATTING:
     }
     async generateLeadFollowupDraft(leadId, customPrompt, intent, tenantId = "default") {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
-        const foundLead = await lead_1.lead.findOne({ where: { id: leadId } });
+        const foundLead = await lead_1.lead.findOne({
+            where: tenantId && tenantId !== "all" ? { id: leadId, tenant_id: tenantId } : { id: leadId },
+        });
+        const aiCfg = await this.getConfig(tenantId);
         const leadName = foundLead ? foundLead.name || `${foundLead.first_name || ""} ${foundLead.last_name || ""}`.trim() : "Valued Client";
         const company = (foundLead === null || foundLead === void 0 ? void 0 : foundLead.company_name) || "your company";
         const status = (foundLead === null || foundLead === void 0 ? void 0 : foundLead.lead_status) || "Active";
@@ -285,13 +287,13 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
   "body_html": "<p>Hi ${leadName},</p><p>Message content...</p><p>Best regards,<br/>Team</p>"
 }
     `.trim();
-        const openAiKey = process.env.OPENAI_API_KEY;
-        const geminiKey = process.env.GEMINI_API_KEY;
+        const openAiKey = (aiCfg === null || aiCfg === void 0 ? void 0 : aiCfg.api_key) && (aiCfg === null || aiCfg === void 0 ? void 0 : aiCfg.llm_provider) === "openai" ? aiCfg.api_key : process.env.OPENAI_API_KEY;
+        const geminiKey = (aiCfg === null || aiCfg === void 0 ? void 0 : aiCfg.api_key) && (aiCfg === null || aiCfg === void 0 ? void 0 : aiCfg.llm_provider) === "gemini" ? aiCfg.api_key : process.env.GEMINI_API_KEY;
         if (geminiKey) {
             const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
             for (const model of modelsToTry) {
                 try {
-                    const response = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+                    const response = await axios_1.default.post((0, LlmEndpoints_1.geminiGenerateUrl)(model, geminiKey), {
                         contents: [{ parts: [{ text: promptText }] }],
                     }, { timeout: 15000 });
                     let rawText = ((_g = (_f = (_e = (_d = (_c = (_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.candidates) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.content) === null || _d === void 0 ? void 0 : _d.parts) === null || _e === void 0 ? void 0 : _e[0]) === null || _f === void 0 ? void 0 : _f.text) === null || _g === void 0 ? void 0 : _g.trim()) || "";
@@ -316,7 +318,7 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
         }
         if (openAiKey) {
             try {
-                const response = await axios_1.default.post("https://api.openai.com/v1/chat/completions", {
+                const response = await axios_1.default.post((0, LlmEndpoints_1.openAiChatUrl)(), {
                     model: "gpt-4o-mini",
                     messages: [{ role: "user", content: promptText }],
                     temperature: 0.7,

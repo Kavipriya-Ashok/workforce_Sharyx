@@ -16,13 +16,15 @@ const WhatsAppAIConfig_entity_1 = require("../../Database/Table/WhatsApp/WhatsAp
 const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
 const PromptEngine_service_1 = require("./PromptEngine.service");
 const AgentOrchestrator_service_1 = require("../../AgentOrchestrator/Services/AgentOrchestrator.service");
+const company_1 = require("../../Database/Table/Admin/company");
+const MessageTemplate_1 = require("../../Helper/MessageTemplate");
 let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
     constructor(promptEngineService, orchestrator) {
         this.promptEngineService = promptEngineService;
         this.orchestrator = orchestrator;
         this.logger = new common_1.Logger(WhatsAppAIService_1.name);
     }
-    async getConfig(tenantId = "default") {
+    async getConfig(tenantId) {
         let config = await WhatsAppAIConfig_entity_1.WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
         if (!config) {
             config = await WhatsAppAIConfig_entity_1.WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId } });
@@ -34,11 +36,11 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
             config.ai_mode = "hybrid";
             config.llm_provider = "gemini";
             config.llm_model = "gemini-2.5-flash";
-            config.api_key = process.env.GEMINI_API_KEY || null;
+            config.api_key = null;
             config.system_prompt =
                 "You are Sharyx AI, an intelligent workforce copilot. Be warm, professional, helpful, and concise (1-3 sentences). Respond naturally in the customer language (Tamil, English, or Tanglish).";
-            config.welcome_message = "Hello! How can I help you today?";
-            config.fallback_message = "Thank you for reaching out! A representative will connect with you shortly.";
+            config.welcome_message = null;
+            config.fallback_message = null;
             config.created_by_id = "system";
             config.created_on = new Date();
             config.status = true;
@@ -46,12 +48,12 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         }
         return config;
     }
-    async saveConfig(data, userId) {
+    async saveConfig(data, userId, tenantId) {
         var _a, _b;
-        let config = await WhatsAppAIConfig_entity_1.WhatsAppAIConfig.findOne({ where: { tenant_id: data.tenant_id || "default" } });
+        let config = await WhatsAppAIConfig_entity_1.WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId } });
         if (!config) {
             config = new WhatsAppAIConfig_entity_1.WhatsAppAIConfig();
-            config.tenant_id = data.tenant_id || "default";
+            config.tenant_id = tenantId;
             config.status = true;
             config.created_by_id = userId || "system";
             config.created_on = new Date();
@@ -70,19 +72,19 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         config.auto_followup_enabled = (_b = data.auto_followup_enabled) !== null && _b !== void 0 ? _b : true;
         config.followup_delay_minutes = data.followup_delay_minutes || 60;
         config.followup_message = data.followup_message || null;
-        config.stop_words = data.stop_words || ["STOP", "UNSUBSCRIBE"];
+        config.stop_words = (data.stop_words && data.stop_words.length ? data.stop_words : MessageTemplate_1.DEFAULT_STOP_WORDS).map((w) => String(w).trim()).filter(Boolean);
         config.updated_by_id = userId || "system";
         config.updated_on = new Date();
         return await config.save();
     }
     async generateResponse(customerMessage, customerPhone, tenantId = "default", conversationId, extras) {
+        var _a;
         const config = await this.getConfig(tenantId);
         if (!config || !config.is_ai_enabled) {
             return null;
         }
-        const upperMsg = customerMessage.trim().toUpperCase();
-        if (config.stop_words && config.stop_words.some((w) => upperMsg.includes(w.toUpperCase()))) {
-            return "You have successfully unsubscribed. Reply START anytime to re-enable messages.";
+        if ((0, MessageTemplate_1.matchesKeyword)(customerMessage, ((_a = config.stop_words) === null || _a === void 0 ? void 0 : _a.length) ? config.stop_words : MessageTemplate_1.DEFAULT_STOP_WORDS)) {
+            return null;
         }
         if (conversationId) {
             try {
@@ -110,9 +112,32 @@ let WhatsAppAIService = WhatsAppAIService_1 = class WhatsAppAIService {
         catch (err) {
             this.logger.error("Base LLM Engine error:", err.message);
         }
-        return (config.fallback_message ||
-            config.welcome_message ||
-            "Thank you for contacting Sharyx! A team member will assist you shortly.");
+        return config.fallback_message || null;
+    }
+    renderFirstMessage(config, vars) {
+        const raw = ((config === null || config === void 0 ? void 0 : config.welcome_message) || '').trim();
+        if (!raw || raw === MessageTemplate_1.LEGACY_DEFAULT_WELCOME)
+            return '';
+        return (0, MessageTemplate_1.renderMessage)(raw, vars);
+    }
+    renderFollowup(config, vars) {
+        return (0, MessageTemplate_1.renderMessage)(config === null || config === void 0 ? void 0 : config.followup_message, vars);
+    }
+    isStopWord(config, text) {
+        var _a;
+        return (0, MessageTemplate_1.matchesKeyword)(text, ((_a = config === null || config === void 0 ? void 0 : config.stop_words) === null || _a === void 0 ? void 0 : _a.length) ? config.stop_words : MessageTemplate_1.DEFAULT_STOP_WORDS);
+    }
+    isStartWord(text) {
+        return (0, MessageTemplate_1.matchesKeyword)(text, MessageTemplate_1.START_WORDS);
+    }
+    async companyName(tenantId) {
+        var _a;
+        try {
+            return ((_a = (await company_1.company.findOne({ where: { id: tenantId } }))) === null || _a === void 0 ? void 0 : _a.name) || '';
+        }
+        catch (_b) {
+            return '';
+        }
     }
 };
 exports.WhatsAppAIService = WhatsAppAIService;

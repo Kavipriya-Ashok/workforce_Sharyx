@@ -19,16 +19,16 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         this.whatsAppService = whatsAppService;
         this.logger = new common_1.Logger(WhatsAppCampaignService_1.name);
     }
-    async listCampaigns(tenantId = "default") {
+    async listCampaigns(tenantId) {
         return await WhatsAppCampaign_entity_1.WhatsAppCampaign.find({
             where: { tenant_id: tenantId, status: true },
             order: { created_on: "DESC" },
         });
     }
-    async createCampaign(dto, userId) {
+    async createCampaign(dto, userId, tenantId) {
         var _a, _b, _c;
         const campaign = new WhatsAppCampaign_entity_1.WhatsAppCampaign();
-        campaign.tenant_id = "default";
+        campaign.tenant_id = tenantId;
         campaign.name = dto.name;
         campaign.description = dto.description || null;
         campaign.trigger_event = dto.trigger_event || "after_call_ends";
@@ -42,16 +42,16 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         campaign.total_recipients = ((_b = dto.recipients) === null || _b === void 0 ? void 0 : _b.length) || 0;
         campaign.campaign_status = "active";
         campaign.scheduled_at = dto.scheduled_at || null;
-        campaign.created_by_id = userId || "system";
+        campaign.created_by_id = userId || undefined;
         campaign.created_on = new Date();
         await campaign.save();
         if (!dto.scheduled_at && ((_c = dto.recipients) === null || _c === void 0 ? void 0 : _c.length)) {
-            this.executeCampaign(campaign.id, dto.recipients, dto.template_name);
+            this.executeCampaign(campaign.id, dto.recipients, dto.template_name, tenantId);
         }
         return campaign;
     }
-    async updateCampaign(id, data) {
-        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id, status: true } });
+    async updateCampaign(id, data, tenantId) {
+        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId, status: true } });
         if (!campaign)
             throw new common_1.NotFoundException("Campaign not found");
         if (data.name)
@@ -79,8 +79,8 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         campaign.updated_on = new Date();
         return await campaign.save();
     }
-    async toggleCampaign(id, is_active) {
-        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id, status: true } });
+    async toggleCampaign(id, is_active, tenantId) {
+        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId, status: true } });
         if (!campaign)
             throw new common_1.NotFoundException("Campaign not found");
         campaign.is_active = is_active;
@@ -88,8 +88,8 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         campaign.updated_on = new Date();
         return await campaign.save();
     }
-    async deleteCampaign(id) {
-        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id } });
+    async deleteCampaign(id, tenantId) {
+        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId } });
         if (!campaign)
             throw new common_1.NotFoundException("Campaign not found");
         campaign.status = false;
@@ -97,8 +97,8 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
         await campaign.save();
         return true;
     }
-    async executeCampaign(campaignId, recipients, templateName) {
-        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id: campaignId } });
+    async executeCampaign(campaignId, recipients, templateName, tenantId) {
+        const campaign = await WhatsAppCampaign_entity_1.WhatsAppCampaign.findOne({ where: { id: campaignId, tenant_id: tenantId } });
         if (!campaign)
             return;
         campaign.campaign_status = "running";
@@ -111,7 +111,7 @@ let WhatsAppCampaignService = WhatsAppCampaignService_1 = class WhatsAppCampaign
                     text: `Template: ${templateName}`,
                     message_type: "template",
                     template_name: templateName,
-                });
+                }, undefined, false, tenantId);
                 sent++;
             }
             catch (err) {

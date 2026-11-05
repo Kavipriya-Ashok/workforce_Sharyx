@@ -5,9 +5,9 @@ import { JWTAuthController } from '@Controller/JWTAuth.controller';
 export declare class UserController extends JWTAuthController {
     private _UserService;
     constructor(_UserService: UserService);
-    List(): Promise<any>;
-    ById(Id: string): Promise<any>;
-    Insert(UserData: UserModel, UserId: string): Promise<{
+    List(tenantId: string | null): Promise<any>;
+    ById(Id: string, tenantId: string | null): Promise<any>;
+    Insert(UserData: UserModel, UserId: string, tenantId: string | null): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -16,7 +16,7 @@ export declare class UserController extends JWTAuthController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    Update(Id: string, UserData: UserModel, UserId: string): Promise<{
+    Update(Id: string, UserData: UserModel, UserId: string, tenantId: string | null): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -25,7 +25,7 @@ export declare class UserController extends JWTAuthController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    SuspendOrActivate(id: string, UserId: string): Promise<{
+    SuspendOrActivate(id: string, UserId: string, tenantId: string | null): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -43,7 +43,7 @@ export declare class UserController extends JWTAuthController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    ResetPassword(Id: string, UserData: UserModel, UserId: string): Promise<{
+    ResetPassword(Id: string, UserData: UserModel, UserId: string, tenantId: string | null): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;

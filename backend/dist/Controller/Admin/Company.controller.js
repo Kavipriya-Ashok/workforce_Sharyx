@@ -20,20 +20,39 @@ const swagger_1 = require("@nestjs/swagger");
 const Company_service_1 = require("../../Service/Admin/Company.service");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const JWTAuth_controller_1 = require("../JWTAuth.controller");
+const company_1 = require("../../Database/Table/Admin/company");
 let CompanyController = class CompanyController extends JWTAuth_controller_1.JWTAuthController {
     constructor(_CompanyService) {
         super();
         this._CompanyService = _CompanyService;
     }
-    async Get() {
-        const EmailData = await this._CompanyService.Get();
-        return EmailData;
+    async Get(req) {
+        var _a, _b;
+        const tenantId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant_id) || ((_b = req.user) === null || _b === void 0 ? void 0 : _b.company_id);
+        if (!tenantId)
+            throw new common_1.ForbiddenException('No tenant is associated with this account');
+        return await company_1.company.findOne({ where: { id: tenantId }, relations: ['currency', 'country'] });
     }
-    async List() {
-        const list = await this._CompanyService.GetAll();
-        return this.SendResponseData(list);
+    async List(req) {
+        var _a, _b;
+        if ((0, Common_helper_1.isSuperAdminUser)(req.user)) {
+            return this.SendResponseData(await this._CompanyService.GetAll());
+        }
+        const tenantId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant_id) || ((_b = req.user) === null || _b === void 0 ? void 0 : _b.company_id);
+        if (!tenantId)
+            throw new common_1.ForbiddenException('No tenant is associated with this account');
+        const own = await company_1.company.findOne({ where: { id: tenantId }, relations: ['currency', 'country'] });
+        return this.SendResponseData(own ? [own] : []);
     }
-    async Update(CompanyData, UserId) {
+    async Update(CompanyData, UserId, req) {
+        var _a, _b;
+        const isSuper = (0, Common_helper_1.isSuperAdminUser)(req.user);
+        if (!isSuper) {
+            const tenantId = ((_a = req.user) === null || _a === void 0 ? void 0 : _a.tenant_id) || ((_b = req.user) === null || _b === void 0 ? void 0 : _b.company_id);
+            if (!tenantId)
+                throw new common_1.ForbiddenException('No tenant is associated with this account');
+            CompanyData.id = tenantId;
+        }
         if (CompanyData.id > "0") {
             await this._CompanyService.Update(CompanyData.id, CompanyData, UserId);
         }
@@ -46,22 +65,25 @@ let CompanyController = class CompanyController extends JWTAuth_controller_1.JWT
 exports.CompanyController = CompanyController;
 __decorate([
     (0, common_1.Get)('Get'),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CompanyController.prototype, "Get", null);
 __decorate([
     (0, common_1.Get)('List'),
+    __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CompanyController.prototype, "List", null);
 __decorate([
     (0, common_1.Patch)('Update'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Company_model_1.CompanyModel, String]),
+    __metadata("design:paramtypes", [Company_model_1.CompanyModel, String, Object]),
     __metadata("design:returntype", Promise)
 ], CompanyController.prototype, "Update", null);
 exports.CompanyController = CompanyController = __decorate([

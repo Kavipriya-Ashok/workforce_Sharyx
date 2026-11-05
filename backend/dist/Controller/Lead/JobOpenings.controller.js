@@ -16,6 +16,8 @@ exports.JobOpeningsController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const JobOpenings_service_1 = require("../../Service/Lead/JobOpenings.service");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let JobOpeningsController = class JobOpeningsController {
     constructor(openingsService) {
         this.openingsService = openingsService;
@@ -103,6 +105,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], JobOpeningsController.prototype, "deleteOpening", null);
 exports.JobOpeningsController = JobOpeningsController = __decorate([
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)({
         path: ["openings", "Lead/Openings"],
         version: ["1", common_1.VERSION_NEUTRAL],

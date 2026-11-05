@@ -11,7 +11,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var WhatsAppWebhookService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppWebhookService = void 0;
+const MessageTemplate_1 = require("../../Helper/MessageTemplate");
 const common_1 = require("@nestjs/common");
+const IntegrationStatus_1 = require("../../Service/Integrations/IntegrationStatus");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const WhatsAppConversation_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppConversation.entity");
 const lead_1 = require("../../Database/Table/Lead/lead");
@@ -19,6 +21,7 @@ const lead_activity_1 = require("../../Database/Table/Lead/lead_activity");
 const WhatsAppMessage_entity_1 = require("../../Database/Table/WhatsApp/WhatsAppMessage.entity");
 const WhatsAppAI_service_1 = require("./WhatsAppAI.service");
 const WhatsApp_service_1 = require("./WhatsApp.service");
+const crypto_1 = require("crypto");
 let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookService {
     constructor(whatsAppService, aiService, events) {
         this.whatsAppService = whatsAppService;
@@ -27,12 +30,42 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
         this.logger = new common_1.Logger(WhatsAppWebhookService_1.name);
     }
     async verifyHandshake(mode, token, challenge) {
-        const config = await this.whatsAppService.getConfig();
-        const expectedToken = (config === null || config === void 0 ? void 0 : config.verify_token) || process.env.META_WA_VERIFY_TOKEN || "sharyx_verify_token_secure";
-        if (mode === "subscribe" && token === expectedToken) {
+        if (mode !== "subscribe" || !token)
+            return null;
+        const tenantConfig = await this.whatsAppService.getConfigByVerifyToken(token);
+        if (tenantConfig) {
+            void (0, IntegrationStatus_1.noteSuccess)(tenantConfig.tenant_id, "whatsapp_webhook", "Meta webhook verified");
             return challenge;
         }
+        const platformToken = process.env.META_WA_VERIFY_TOKEN;
+        if (platformToken && token === platformToken)
+            return challenge;
         return null;
+    }
+    async checkSignature(rawBody, header, body) {
+        var _a, _b, _c, _d, _e, _f;
+        const phoneNumberId = (_f = (_e = (_d = (_c = (_b = (_a = body === null || body === void 0 ? void 0 : body.entry) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.changes) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.value) === null || _e === void 0 ? void 0 : _e.metadata) === null || _f === void 0 ? void 0 : _f.phone_number_id;
+        const cfg = phoneNumberId ? await this.whatsAppService.getConfigByPhoneNumberId(phoneNumberId) : null;
+        const secret = ((cfg === null || cfg === void 0 ? void 0 : cfg.app_secret) || process.env.META_APP_SECRET || "").trim();
+        if (!secret) {
+            if (cfg)
+                void (0, IntegrationStatus_1.markDegraded)(cfg.tenant_id, "whatsapp_webhook", "WEBHOOK_NO_SECRET", "Messages arrive, but they cannot be verified because no Meta App Secret is saved. Add it so fake messages are rejected.");
+            return { ok: false, reason: "no app secret configured for this number" };
+        }
+        if (!header || !header.startsWith("sha256="))
+            return { ok: false, reason: "missing X-Hub-Signature-256 header" };
+        if (!rawBody)
+            return { ok: false, reason: "raw body unavailable" };
+        const expected = Buffer.from("sha256=" + (0, crypto_1.createHmac)("sha256", secret).update(rawBody).digest("hex"));
+        const got = Buffer.from(header);
+        const ok = expected.length === got.length && (0, crypto_1.timingSafeEqual)(expected, got);
+        if (cfg) {
+            if (ok)
+                void (0, IntegrationStatus_1.noteSuccess)(cfg.tenant_id, "whatsapp_webhook", "Receiving messages from Meta");
+            else
+                void (0, IntegrationStatus_1.markFailed)(cfg.tenant_id, "whatsapp_webhook", "WEBHOOK_SIGNATURE", "Messages from Meta failed the signature check. The App Secret saved here is probably wrong; copy it again from your Meta app.");
+        }
+        return ok ? { ok: true } : { ok: false, reason: "signature mismatch" };
     }
     async processIncomingWebhook(body) {
         var _a, _b, _c, _d;
@@ -43,12 +76,18 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             const message = (_c = value === null || value === void 0 ? void 0 : value.messages) === null || _c === void 0 ? void 0 : _c[0];
             const metadata = value === null || value === void 0 ? void 0 : value.metadata;
             const myPhoneNumber = (metadata === null || metadata === void 0 ? void 0 : metadata.display_phone_number) || "system";
+            const tenantConfig = await this.whatsAppService.getConfigByPhoneNumberId(metadata === null || metadata === void 0 ? void 0 : metadata.phone_number_id);
+            if (!tenantConfig) {
+                this.logger.warn(`Ignoring WhatsApp event for unregistered phone_number_id=${metadata === null || metadata === void 0 ? void 0 : metadata.phone_number_id}`);
+                return { status: "unknown_phone_number_id" };
+            }
+            const tenantId = tenantConfig.tenant_id;
             if ((value === null || value === void 0 ? void 0 : value.statuses) && value.statuses.length > 0) {
                 const statusEvent = value.statuses[0];
                 const metaMsgId = statusEvent.id;
                 const newStatus = statusEvent.status;
                 const existingMsg = await WhatsAppMessage_entity_1.WhatsAppMessage.findOne({
-                    where: { meta_message_id: metaMsgId },
+                    where: { meta_message_id: metaMsgId, tenant_id: tenantId },
                 });
                 if (existingMsg) {
                     existingMsg.delivery_status = newStatus;
@@ -92,7 +131,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                     }
                 }
             }
-            const cleanPhoneKey = (senderPhone || "unknown").replace(/\D/g, "").slice(-10) || senderPhone;
+            const cleanPhoneKey = `${tenantId}:${(senderPhone || "unknown").replace(/\D/g, "").slice(-10) || senderPhone}`;
             const previousTask = WhatsAppWebhookService_1.phoneQueues.get(cleanPhoneKey) || Promise.resolve();
             const nextTask = previousTask
                 .catch(() => { })
@@ -104,6 +143,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                 messageType,
                 messageText,
                 metaMessageId,
+                tenantId,
             }));
             WhatsAppWebhookService_1.phoneQueues.set(cleanPhoneKey, nextTask);
             try {
@@ -122,7 +162,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
     }
     async processSingleCandidateMessage(params) {
         var _a, _b, _c;
-        const { value, message, senderPhone, myPhoneNumber, messageType, metaMessageId } = params;
+        const { value, message, senderPhone, myPhoneNumber, messageType, metaMessageId, tenantId } = params;
         let { messageText } = params;
         try {
             let isPdfAttachment = false;
@@ -149,7 +189,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             let existingLead = null;
             try {
                 existingLead = await lead_1.lead.findOne({
-                    where: { phone: senderPhone, status: true },
+                    where: { phone: senderPhone, status: true, tenant_id: tenantId },
                 });
                 if (!existingLead) {
                     existingLead = new lead_1.lead();
@@ -163,7 +203,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                     }
                     existingLead.score = 65;
                     existingLead.notes = `Inquired on WhatsApp: "${messageText}"`;
-                    existingLead.tenant_id = "default";
+                    existingLead.tenant_id = tenantId;
                     existingLead.created_by_id = "whatsapp_webhook";
                     existingLead.created_on = new Date();
                     await existingLead.save();
@@ -173,7 +213,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                     act.title = isCandidateInquiry ? "Placement / Candidate WhatsApp Inquiry" : "WhatsApp Inbound Inquiry";
                     act.description = messageText;
                     act.performer_name = customerProfileName;
-                    act.tenant_id = "default";
+                    act.tenant_id = tenantId;
                     act.created_by_id = "webhook";
                     act.created_on = new Date();
                     await act.save();
@@ -239,7 +279,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                     act.title = "WhatsApp Message";
                     act.description = messageText;
                     act.performer_name = customerProfileName;
-                    act.tenant_id = existingLead.tenant_id || "default";
+                    act.tenant_id = tenantId;
                     act.created_by_id = "webhook";
                     act.created_on = new Date();
                     await act.save();
@@ -249,11 +289,13 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                 this.logger.warn(`Could not auto-link lead: ${leadErr.message}`);
             }
             let conversation = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
-                where: { customer_phone: senderPhone },
+                where: { customer_phone: senderPhone, tenant_id: tenantId },
             });
+            let isNewConversation = false;
             if (!conversation) {
+                isNewConversation = true;
                 conversation = new WhatsAppConversation_entity_1.WhatsAppConversation();
-                conversation.tenant_id = "default";
+                conversation.tenant_id = tenantId;
                 conversation.customer_phone = senderPhone;
                 conversation.customer_name = customerProfileName;
                 conversation.lead_id = (existingLead === null || existingLead === void 0 ? void 0 : existingLead.id) || null;
@@ -271,7 +313,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             await conversation.save();
             const inboundMsg = new WhatsAppMessage_entity_1.WhatsAppMessage();
             inboundMsg.conversation_id = conversation.id;
-            inboundMsg.tenant_id = "default";
+            inboundMsg.tenant_id = tenantId;
             inboundMsg.sender_phone = senderPhone;
             inboundMsg.recipient_phone = myPhoneNumber;
             inboundMsg.direction = "inbound";
@@ -283,20 +325,48 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
             inboundMsg.created_by_id = "webhook";
             inboundMsg.created_on = new Date();
             await inboundMsg.save();
+            const aiCfg = await this.aiService.getConfig(tenantId);
+            if (conversation.conversation_status === "opted_out") {
+                if (this.aiService.isStartWord(messageText)) {
+                    conversation.conversation_status = "open";
+                    await conversation.save();
+                    return { status: "opted_in" };
+                }
+                return { status: "opted_out_silent" };
+            }
+            if (this.aiService.isStopWord(aiCfg, messageText)) {
+                conversation.conversation_status = "opted_out";
+                conversation.updated_on = new Date();
+                await conversation.save();
+                this.logger.log(`🔕 [OPT-OUT] tenant=${tenantId} conversation=${conversation.id} opted out; bot and follow-ups stay silent`);
+                return { status: "opted_out" };
+            }
             if (conversation.conversation_status === "human_takeover") {
                 this.logger.log(`🛑 [HUMAN TAKEOVER] Conversation ${conversation.id} (${senderPhone}) is currently handled by a human agent. Bot auto-reply suppressed.`);
                 return { status: "human_takeover_active" };
             }
+            if (!aiCfg || aiCfg.is_ai_enabled === false || aiCfg.ai_mode === "manual") {
+                return { status: "bot_silent" };
+            }
             if (messageType === "text" || messageType === "document" || messageType === "image") {
+                const firstMessage = isNewConversation
+                    ? this.aiService.renderFirstMessage(aiCfg, { name: customerProfileName, company: await this.aiService.companyName(tenantId) })
+                    : "";
+                const onlyGreeted = !!firstMessage && messageType === "text" && (0, MessageTemplate_1.isBareGreeting)(messageText);
                 this.logger.log(`🧠 [AI ENGINE] Processing 7-layer context for ${senderPhone}...`);
-                const res = await this.aiService.generateResponse(messageText, senderPhone, "default", conversation.id, {
-                    customerName: customerProfileName,
-                    leadId: existingLead === null || existingLead === void 0 ? void 0 : existingLead.id,
-                });
+                const res = onlyGreeted
+                    ? null
+                    : await this.aiService.generateResponse(messageText, senderPhone, tenantId, conversation.id, {
+                        customerName: customerProfileName,
+                        leadId: existingLead === null || existingLead === void 0 ? void 0 : existingLead.id,
+                    });
                 const announcement = typeof res === "object" ? res === null || res === void 0 ? void 0 : res.announcement : null;
                 let aiReply = typeof res === "object" ? res === null || res === void 0 ? void 0 : res.reply : (typeof res === "string" ? res : null);
                 if (!aiReply && announcement) {
                     aiReply = announcement;
+                }
+                if (firstMessage) {
+                    aiReply = aiReply ? `${firstMessage}\n\n${aiReply}` : firstMessage;
                 }
                 if (aiReply) {
                     this.logger.log(`🤖 [AI AUTO-REPLY] Replying to ${senderPhone}: "${aiReply}"`);
@@ -305,7 +375,7 @@ let WhatsAppWebhookService = WhatsAppWebhookService_1 = class WhatsAppWebhookSer
                             to: senderPhone,
                             text: aiReply,
                             conversation_id: conversation.id,
-                        }, "ai_copilot", true);
+                        }, "ai_copilot", true, tenantId);
                         this.logger.log(`✅ [AI AUTO-REPLY DISPATCHED] Successfully sent WhatsApp reply to ${senderPhone}`);
                     }
                     catch (sendErr) {

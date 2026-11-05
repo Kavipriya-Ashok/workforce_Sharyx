@@ -15,12 +15,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AiAgentController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const AiAgent_service_1 = require("../Services/AiAgent.service");
 const AgentOrchestrator_service_1 = require("../Services/AgentOrchestrator.service");
-let AiAgentController = class AiAgentController extends AuthBase_controller_1.AuthBaseController {
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
+let AiAgentController = class AiAgentController extends JWTAuth_controller_1.JWTAuthController {
     constructor(agentService, orchestrator) {
         super();
         this.agentService = agentService;
@@ -127,6 +130,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AiAgentController.prototype, "simulate", null);
 exports.AiAgentController = AiAgentController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "AiAgents", version: "1" }),
     (0, swagger_1.ApiTags)("AI Multi-Agent"),
     __metadata("design:paramtypes", [AiAgent_service_1.AiAgentService,

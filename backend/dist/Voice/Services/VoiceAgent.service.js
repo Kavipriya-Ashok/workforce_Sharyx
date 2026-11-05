@@ -21,13 +21,12 @@ let VoiceAgentService = VoiceAgentService_1 = class VoiceAgentService {
         this.factory = factory;
         this.logger = new common_1.Logger(VoiceAgentService_1.name);
     }
-    async list(tenantId = "default") {
+    async list(tenantId) {
         const isAll = tenantId === "all" || !tenantId;
-        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
         const activeConfigs = await VoiceProviderConfig_entity_1.VoiceProviderConfig.find({
             where: isAll
                 ? { is_active: true }
-                : { tenant_id: (0, typeorm_1.In)([tenantId, "default", "646b4abe-e6de-401b-ba33-46884bf3f6e6"]), is_active: true },
+                : { tenant_id: tenantId, is_active: true },
         });
         const activeProviders = activeConfigs
             .filter((c) => c.provider === "saas_fallback" || (c.api_key && c.api_key.trim().length > 0))
@@ -49,9 +48,7 @@ let VoiceAgentService = VoiceAgentService_1 = class VoiceAgentService {
             provider: (0, typeorm_1.In)(activeProviders),
         };
         if (!isAll) {
-            agentWhere.tenant_id = isDefaultOrSharyx
-                ? (0, typeorm_1.In)(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"])
-                : tenantId;
+            agentWhere.tenant_id = tenantId;
         }
         const agents = await VoiceAgent_entity_1.VoiceAgent.find({
             where: agentWhere,

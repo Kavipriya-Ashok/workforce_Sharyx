@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoggingInterceptor = void 0;
 const common_1 = require("@nestjs/common");
 const operators_1 = require("rxjs/operators");
+const Redact_1 = require("./Redact");
 let LoggingInterceptor = LoggingInterceptor_1 = class LoggingInterceptor {
     constructor() {
         this.logger = new common_1.Logger(LoggingInterceptor_1.name);
@@ -20,11 +21,11 @@ let LoggingInterceptor = LoggingInterceptor_1 = class LoggingInterceptor {
     intercept(context, next) {
         const now = Date.now();
         const request = context.switchToHttp().getRequest();
-        this.logger.log(request.url + " - Called");
+        this.logger.log((0, Redact_1.redactUrl)(request.url) + " - Called");
         return next
             .handle()
             .pipe((0, operators_1.tap)((data) => {
-            this.logger.log(request.url + " - finished - " + `${Date.now() - now}ms`);
+            this.logger.log((0, Redact_1.redactUrl)(request.url) + " - finished - " + `${Date.now() - now}ms`);
         }));
     }
 };

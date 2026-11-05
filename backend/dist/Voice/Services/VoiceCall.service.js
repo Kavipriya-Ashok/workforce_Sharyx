@@ -54,12 +54,13 @@ let VoiceCallService = VoiceCallService_1 = class VoiceCallService {
         const tenantId = event.tenantId || "default";
         const cleanPhone = (event.phone || "").replace(/\D/g, "").slice(-10);
         const now = Date.now();
-        const lastDispatched = this.recentCallDispatches.get(cleanPhone);
+        const dispatchKey = `${tenantId}:${cleanPhone}`;
+        const lastDispatched = this.recentCallDispatches.get(dispatchKey);
         if (lastDispatched && now - lastDispatched < 90000) {
             this.logger.warn(`⏳ [DUPLICATE CALL SUPPRESSED] Call to ${event.phone} already dispatched ${Math.round((now - lastDispatched) / 1000)}s ago. Skipping duplicate request.`);
             return;
         }
-        this.recentCallDispatches.set(cleanPhone, now);
+        this.recentCallDispatches.set(dispatchKey, now);
         this.logger.log(`📞 [EVENT TRIGGERED CALL] Call to ${event.phone} (Tenant: ${tenantId}, Type: ${event.scheduledType || "auto"}, Target: ${event.agentKey || "sales"})`);
         const activeConfig = await VoiceProviderConfig_entity_1.VoiceProviderConfig.findOne({
             where: { tenant_id: tenantId, is_active: true },
@@ -186,7 +187,7 @@ let VoiceCallService = VoiceCallService_1 = class VoiceCallService {
         try {
             if (cleanPhone) {
                 const stateRec = await ConversationAgentState_entity_1.ConversationAgentState.findOne({
-                    where: [{ customer_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`) }],
+                    where: [{ customer_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`), tenant_id: tenantId }],
                     order: { updated_on: "DESC" },
                 });
                 if (stateRec) {
@@ -197,11 +198,11 @@ let VoiceCallService = VoiceCallService_1 = class VoiceCallService {
                         customerEmail = stateRec.customer_email;
                 }
                 if (event.leadId) {
-                    matchedLead = await lead_1.lead.findOne({ where: { id: event.leadId } });
+                    matchedLead = await lead_1.lead.findOne({ where: { id: event.leadId, tenant_id: tenantId } });
                 }
                 if (!matchedLead) {
                     matchedLead = await lead_1.lead.findOne({
-                        where: [{ phone: (0, typeorm_1.Like)(`%${cleanPhone}%`) }],
+                        where: [{ phone: (0, typeorm_1.Like)(`%${cleanPhone}%`), tenant_id: tenantId }],
                         order: { created_on: "DESC" },
                     });
                 }
@@ -262,8 +263,8 @@ let VoiceCallService = VoiceCallService_1 = class VoiceCallService {
             if (cleanPhone) {
                 const recentMsgs = await WhatsAppMessage_entity_1.WhatsAppMessage.find({
                     where: [
-                        { sender_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`) },
-                        { recipient_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`) },
+                        { sender_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`), tenant_id: tenantId },
+                        { recipient_phone: (0, typeorm_1.Like)(`%${cleanPhone}%`), tenant_id: tenantId },
                     ],
                     order: { created_on: "DESC" },
                     take: 8,
@@ -278,9 +279,9 @@ let VoiceCallService = VoiceCallService_1 = class VoiceCallService {
             if (customerEmail || (matchedLead === null || matchedLead === void 0 ? void 0 : matchedLead.id)) {
                 const emailWhere = [];
                 if (customerEmail)
-                    emailWhere.push({ from_email: customerEmail }, { to_email: customerEmail });
+                    emailWhere.push({ from_email: customerEmail, tenant_id: tenantId }, { to_email: customerEmail, tenant_id: tenantId });
                 if (matchedLead === null || matchedLead === void 0 ? void 0 : matchedLead.id)
-                    emailWhere.push({ lead_id: matchedLead.id });
+                    emailWhere.push({ lead_id: matchedLead.id, tenant_id: tenantId });
                 const recentEmails = await EmailLog_entity_1.EmailLog.find({
                     where: emailWhere,
                     order: { created_on: "DESC" },
@@ -493,11 +494,11 @@ Recent Email:
         const config = await VoiceProviderConfig_entity_1.VoiceProviderConfig.findOne({
             where: { tenant_id: tenantId, provider: agent.provider, is_active: true },
         });
-        let leadRec = dto.lead_id ? await lead_1.lead.findOne({ where: { id: dto.lead_id } }) : null;
+        let leadRec = dto.lead_id ? await lead_1.lead.findOne({ where: { id: dto.lead_id, tenant_id: tenantId } }) : null;
         const cleanPhoneForLead = (dto.phone_number || "").replace(/\D/g, "").slice(-10);
         if (!leadRec && cleanPhoneForLead.length >= 8) {
             leadRec = await lead_1.lead.findOne({
-                where: { phone: (0, typeorm_1.Like)(`%${cleanPhoneForLead}`) },
+                where: { phone: (0, typeorm_1.Like)(`%${cleanPhoneForLead}`), tenant_id: tenantId },
                 order: { created_on: "DESC" },
             });
             if (!leadRec) {
@@ -841,11 +842,11 @@ Recent Email:
         let matchedLead = null;
         try {
             if (callLog.lead_id) {
-                matchedLead = await lead_1.lead.findOne({ where: { id: callLog.lead_id } });
+                matchedLead = await lead_1.lead.findOne({ where: { id: callLog.lead_id, tenant_id: callLog.tenant_id } });
             }
             if (!matchedLead && cleanPhone.length >= 8) {
                 matchedLead = await lead_1.lead.findOne({
-                    where: { phone: (0, typeorm_1.Like)(`%${cleanPhone}`) },
+                    where: { phone: (0, typeorm_1.Like)(`%${cleanPhone}`), tenant_id: callLog.tenant_id },
                     order: { created_on: "DESC" },
                 });
             }
@@ -1067,7 +1068,6 @@ Recent Email:
             this.syncCallLogsFromVapi(tenantId).catch((e) => this.logger.warn(`Auto-sync call logs from Vapi failed: ${e.message}`));
         }
         const isAll = tenantId === "all" || !tenantId;
-        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
         const qb = VoiceCallLog_entity_1.VoiceCallLog.createQueryBuilder("log")
             .select([
             "log.id",
@@ -1092,14 +1092,7 @@ Recent Email:
             "log.extracted_slots",
         ]);
         if (!isAll) {
-            if (isDefaultOrSharyx) {
-                qb.where("log.tenant_id IN (:...tenantIds)", {
-                    tenantIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"],
-                });
-            }
-            else {
-                qb.where("log.tenant_id = :tenantId", { tenantId });
-            }
+            qb.where("log.tenant_id = :tenantId", { tenantId });
         }
         if (agentId) {
             const agent = await VoiceAgent_entity_1.VoiceAgent.findOne({ where: { id: agentId } });
@@ -1385,18 +1378,22 @@ Recent Email:
         this.logger.log(`✅ [SAAS CALL SYNC] Synced ${synced} call logs from SaaS platform`);
         return synced;
     }
-    async streamCallAudio(callId, providerCallId, tenantId = "default", res) {
+    async streamCallAudio(callId, providerCallId, tenantId, res) {
         var _a, _b, _c, _d, _e;
         try {
             let callLog = null;
+            const tenantFilter = tenantId && tenantId !== "all" ? { tenant_id: tenantId } : {};
             if (callId) {
-                callLog = await VoiceCallLog_entity_1.VoiceCallLog.findOne({ where: { id: callId } });
+                callLog = await VoiceCallLog_entity_1.VoiceCallLog.findOne({ where: Object.assign({ id: callId }, tenantFilter) });
             }
             if (!callLog && providerCallId) {
-                callLog = await VoiceCallLog_entity_1.VoiceCallLog.findOne({ where: { provider_call_id: providerCallId } });
+                callLog = await VoiceCallLog_entity_1.VoiceCallLog.findOne({ where: Object.assign({ provider_call_id: providerCallId }, tenantFilter) });
             }
-            const pCallId = providerCallId || (callLog === null || callLog === void 0 ? void 0 : callLog.provider_call_id);
-            const vapiConfig = await VoiceProviderConfig_entity_1.VoiceProviderConfig.findOne({ where: { provider: "vapi", status: true } });
+            if (!callLog) {
+                return res === null || res === void 0 ? void 0 : res.status(404).send("Call not found");
+            }
+            const pCallId = callLog.provider_call_id;
+            const vapiConfig = await VoiceProviderConfig_entity_1.VoiceProviderConfig.findOne({ where: Object.assign({ provider: "vapi", status: true }, tenantFilter) });
             const vapiKey = (vapiConfig === null || vapiConfig === void 0 ? void 0 : vapiConfig.api_key) || process.env.VAPI_API_KEY;
             let streamUrl = callLog === null || callLog === void 0 ? void 0 : callLog.recording_url;
             if (pCallId && vapiKey) {
@@ -1437,17 +1434,11 @@ Recent Email:
             return res === null || res === void 0 ? void 0 : res.status(502).send("Could not stream audio recording");
         }
     }
-    async getCallStats(tenantId = "default") {
+    async getCallStats(tenantId) {
         const isAll = tenantId === "all" || !tenantId;
-        const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
         let logs;
         if (isAll) {
             logs = await VoiceCallLog_entity_1.VoiceCallLog.find();
-        }
-        else if (isDefaultOrSharyx) {
-            logs = await VoiceCallLog_entity_1.VoiceCallLog.find({
-                where: { tenant_id: (0, typeorm_1.In)(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"]) },
-            });
         }
         else {
             logs = await VoiceCallLog_entity_1.VoiceCallLog.find({ where: { tenant_id: tenantId } });

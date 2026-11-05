@@ -61,6 +61,12 @@ const agent_orchestrator_module_1 = require("./AgentOrchestrator/agent-orchestra
 const voice_module_1 = require("./Voice/voice.module");
 const DashboardTelemetry_controller_1 = require("./Controller/Admin/DashboardTelemetry.controller");
 const DashboardTelemetry_service_1 = require("./Service/Admin/DashboardTelemetry.service");
+const Onboarding_controller_1 = require("./Controller/Onboarding/Onboarding.controller");
+const Onboarding_service_1 = require("./Service/Onboarding/Onboarding.service");
+const GoogleAuth_service_1 = require("./Service/Auth/GoogleAuth.service");
+const AuthOtp_service_1 = require("./Service/Auth/AuthOtp.service");
+const throttler_1 = require("@nestjs/throttler");
+const Integrations_module_1 = require("./Module/Integrations.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -68,8 +74,15 @@ exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
             schedule_1.ScheduleModule.forRoot(),
+            throttler_1.ThrottlerModule.forRoot([
+                {
+                    ttl: Number(process.env.AUTH_THROTTLE_TTL_MS) > 0 ? Number(process.env.AUTH_THROTTLE_TTL_MS) : 60000,
+                    limit: Number(process.env.AUTH_THROTTLE_LIMIT) > 0 ? Number(process.env.AUTH_THROTTLE_LIMIT) : 30,
+                },
+            ]),
             voice_module_1.VoiceModule,
             agent_orchestrator_module_1.AgentOrchestratorModule,
+            Integrations_module_1.IntegrationsModule,
             whatsapp_module_1.WhatsAppModule,
             email_module_1.EmailModule,
             Lead_module_1.LeadModule,
@@ -115,10 +128,16 @@ exports.AppModule = AppModule = __decorate([
             }),
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
-                useFactory: (_ConfigService) => ({
-                    secret: _ConfigService.get("JWT.SecertToken") || "sharyx_jwt_secret_token_secure_key_2026",
-                    signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") || "7d" },
-                }),
+                useFactory: (_ConfigService) => {
+                    const secret = _ConfigService.get("JWT.SecertToken");
+                    if (!secret) {
+                        throw new Error("TOKEN_SECRET is not configured. Refusing to start without a JWT signing secret.");
+                    }
+                    return {
+                        secret,
+                        signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") || "7d" },
+                    };
+                },
                 inject: [config_1.ConfigService],
             }),
         ],
@@ -134,9 +153,13 @@ exports.AppModule = AppModule = __decorate([
             AuditLog_controller_1.AuditLogController,
             AutoNumber_controller_1.AutoNumberController,
             DashboardTelemetry_controller_1.DashboardTelemetryController,
+            Onboarding_controller_1.OnboardingController,
         ],
         providers: [
             DashboardTelemetry_service_1.DashboardTelemetryService,
+            Onboarding_service_1.OnboardingService,
+            GoogleAuth_service_1.GoogleAuthService,
+            AuthOtp_service_1.AuthOtpService,
             Auth_service_1.AuthService,
             User_service_1.UserService,
             UserRole_service_1.UserRoleService,

@@ -44,6 +44,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var LeadService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LeadService = void 0;
@@ -61,14 +72,29 @@ let LeadService = LeadService_1 = class LeadService {
         this.events = events;
         this.logger = new common_1.Logger(LeadService_1.name);
     }
+    ctxTenant(ctx) {
+        var _a, _b;
+        if (!ctx)
+            return undefined;
+        return (_b = (_a = ctx.tenant_id) !== null && _a !== void 0 ? _a : ctx.active_tenant_id) !== null && _b !== void 0 ? _b : null;
+    }
+    requireCtxTenant(ctx) {
+        const t = this.ctxTenant(ctx);
+        if (!t)
+            throw new common_1.BadRequestException("A specific tenant is required to create records.");
+        return t;
+    }
+    owned(id, tenantId, extra = {}) {
+        return tenantId ? Object.assign({ id, tenant_id: tenantId }, extra) : Object.assign({ id }, extra);
+    }
     async getAll(filter, userContext) {
         const take = parseInt((filter === null || filter === void 0 ? void 0 : filter.take) || "50", 10);
         const skip = parseInt((filter === null || filter === void 0 ? void 0 : filter.skip) || "0", 10);
-        const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || "default";
+        const tenantId = this.ctxTenant(userContext);
         const query = this.leadRepo.createQueryBuilder("l")
             .where("l.status = :active", { active: true });
-        if (tenantId && tenantId !== "default") {
-            query.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+        if (tenantId) {
+            query.andWhere("l.tenant_id = :tenantId", { tenantId });
         }
         if ((filter === null || filter === void 0 ? void 0 : filter.is_candidate) !== undefined && (filter === null || filter === void 0 ? void 0 : filter.is_candidate) !== "undefined") {
             const isCand = filter.is_candidate === "true" || filter.is_candidate === true;
@@ -97,10 +123,10 @@ let LeadService = LeadService_1 = class LeadService {
         return { items, total, take, skip };
     }
     async getStats(userContext, isCandidate) {
-        const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id);
+        const tenantId = this.ctxTenant(userContext);
         const qb = this.leadRepo.createQueryBuilder("l").where("l.status = true");
-        if (tenantId && tenantId !== "default") {
-            qb.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+        if (tenantId) {
+            qb.andWhere("l.tenant_id = :tenantId", { tenantId });
         }
         if (isCandidate !== undefined) {
             if (isCandidate) {
@@ -136,7 +162,7 @@ let LeadService = LeadService_1 = class LeadService {
         };
     }
     async getById(id, userContext) {
-        const foundLead = await this.leadRepo.findOne({ where: { id, status: true } });
+        const foundLead = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext), { status: true }) });
         if (!foundLead)
             throw new common_1.NotFoundException("Lead not found");
         const activities = await this.activityRepo.find({
@@ -207,6 +233,9 @@ let LeadService = LeadService_1 = class LeadService {
         const qb = this.leadRepo.createQueryBuilder("l")
             .where("l.status = true")
             .andWhere("l.phone LIKE :phone", { phone: `%${cleaned}` });
+        const dupTenant = this.ctxTenant(userContext);
+        if (dupTenant)
+            qb.andWhere("l.tenant_id = :dupTenant", { dupTenant });
         if (excludeId)
             qb.andWhere("l.id != :excludeId", { excludeId });
         const existing = await qb.getOne();
@@ -215,12 +244,15 @@ let LeadService = LeadService_1 = class LeadService {
             existing_lead: existing ? { id: existing.id, name: existing.name, phone: existing.phone, lead_status: existing.lead_status } : null
         };
     }
-    async checkDuplicateEmail(email, excludeId) {
+    async checkDuplicateEmail(email, excludeId, userContext) {
         if (!email || !email.includes("@"))
             return { is_duplicate: false };
         const qb = this.leadRepo.createQueryBuilder("l")
             .where("l.status = true")
             .andWhere("LOWER(l.email) = :email", { email: email.toLowerCase().trim() });
+        const dupTenant = this.ctxTenant(userContext);
+        if (dupTenant)
+            qb.andWhere("l.tenant_id = :dupTenant", { dupTenant });
         if (excludeId)
             qb.andWhere("l.id != :excludeId", { excludeId });
         const existing = await qb.getOne();
@@ -248,7 +280,7 @@ let LeadService = LeadService_1 = class LeadService {
             sanitizedData.total_experience !== null ||
             sanitizedData.expected_ctc !== null ||
             /\b(placement|candidate|interview|resume|fresher|internship|vacancy|hiring|recruitment|career|job opening)\b/i.test(`${sanitizedData.notes || ""} ${sanitizedData.agentKey || ""}`);
-        const leadEntity = this.leadRepo.create(Object.assign(Object.assign({}, sanitizedData), { is_candidate: isPlacementOrCandidate, name: sanitizedData.name || `${sanitizedData.first_name || ""} ${sanitizedData.last_name || ""}`.trim() || sanitizedData.phone, tenant_id: (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || "default", assigned_to_id: sanitizedData.assigned_to_id || userId || undefined, created_by_id: resolvedCreatedById, created_on: new Date(), candidate_stage: isPlacementOrCandidate ? (sanitizedData.candidate_stage || lead_1.CandidateStage.NEW) : undefined }));
+        const leadEntity = this.leadRepo.create(Object.assign(Object.assign({}, sanitizedData), { is_candidate: isPlacementOrCandidate, name: sanitizedData.name || `${sanitizedData.first_name || ""} ${sanitizedData.last_name || ""}`.trim() || sanitizedData.phone, tenant_id: this.requireCtxTenant(userContext), assigned_to_id: sanitizedData.assigned_to_id || userId || undefined, created_by_id: resolvedCreatedById, created_on: new Date(), candidate_stage: isPlacementOrCandidate ? (sanitizedData.candidate_stage || lead_1.CandidateStage.NEW) : undefined }));
         const saved = (await this.leadRepo.save(leadEntity));
         const activity = this.activityRepo.create({
             lead_id: saved.id,
@@ -283,12 +315,13 @@ let LeadService = LeadService_1 = class LeadService {
         }
         return saved;
     }
-    async update(id, data, userId) {
-        const target = await this.leadRepo.findOne({ where: { id } });
+    async update(id, data, userId, tenantId) {
+        const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
         if (!target)
             throw new common_1.NotFoundException("Lead not found");
         const oldStatus = (target.lead_status || "").toUpperCase().trim();
-        Object.assign(target, data);
+        const _a = data || {}, { id: _ignoreId, tenant_id: _ignoreTenant } = _a, safeData = __rest(_a, ["id", "tenant_id"]);
+        Object.assign(target, safeData);
         if (data.lead_status) {
             target.lead_status = data.lead_status.toUpperCase().trim();
         }
@@ -305,8 +338,8 @@ let LeadService = LeadService_1 = class LeadService {
         }
         return saved;
     }
-    async updateStatus(id, newStatus, userId) {
-        const target = await this.leadRepo.findOne({ where: { id } });
+    async updateStatus(id, newStatus, userId, tenantId) {
+        const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
         if (!target)
             throw new common_1.NotFoundException("Lead not found");
         const oldStatus = (target.lead_status || "").toUpperCase().trim();
@@ -332,8 +365,8 @@ let LeadService = LeadService_1 = class LeadService {
         }
         return updated;
     }
-    async updateCandidateStage(id, candidate_stage, userId) {
-        const target = await this.leadRepo.findOne({ where: { id } });
+    async updateCandidateStage(id, candidate_stage, userId, tenantId) {
+        const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
         if (!target)
             throw new common_1.NotFoundException("Candidate not found");
         const oldStage = target.candidate_stage;
@@ -348,20 +381,24 @@ let LeadService = LeadService_1 = class LeadService {
         }));
         return updated;
     }
-    async delete(id) {
-        await this.leadRepo.update(id, { status: false });
+    async delete(id, tenantId) {
+        const res = await this.leadRepo.update(this.owned(id, tenantId), { status: false });
+        if (!res.affected)
+            throw new common_1.NotFoundException("Lead not found");
         return { success: true };
     }
-    async bulkDelete(ids) {
-        await this.leadRepo.update({ id: (0, typeorm_2.In)(ids) }, { status: false });
-        return { success: true, count: ids.length };
+    async bulkDelete(ids, tenantId) {
+        const where = tenantId ? { id: (0, typeorm_2.In)(ids), tenant_id: tenantId } : { id: (0, typeorm_2.In)(ids) };
+        const res = await this.leadRepo.update(where, { status: false });
+        return { success: true, count: res.affected || 0 };
     }
-    async bulkUpdateStatus(ids, lead_status, userId) {
+    async bulkUpdateStatus(ids, lead_status, userId, tenantId) {
         const normalized = (lead_status || "").toUpperCase().trim();
-        await this.leadRepo.update({ id: (0, typeorm_2.In)(ids) }, { lead_status: normalized });
+        const bulkWhere = tenantId ? { id: (0, typeorm_2.In)(ids), tenant_id: tenantId } : { id: (0, typeorm_2.In)(ids) };
+        await this.leadRepo.update(bulkWhere, { lead_status: normalized });
         if (normalized === "WON" || normalized === lead_1.LeadStatus.WON) {
             for (const id of ids) {
-                const l = await this.leadRepo.findOne({ where: { id } });
+                const l = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
                 if (l) {
                     this.logger.log(`🏆 Bulk update: Lead ${l.name} (${id}) transitioned to WON! Emitting lead.stage.won...`);
                     this.events.emit("lead.stage.won", {
@@ -375,14 +412,17 @@ let LeadService = LeadService_1 = class LeadService {
         }
         return { success: true, count: ids.length };
     }
-    async addActivity(body, userId) {
+    async addActivity(body, userId, tenantId) {
+        const parent = await this.leadRepo.findOne({ where: this.owned(body.lead_id, tenantId) });
+        if (!parent)
+            throw new common_1.NotFoundException("Lead not found");
         const act = this.activityRepo.create({
             lead_id: body.lead_id,
             activity_type: body.activity_type || "NOTE",
             title: body.title || "Manual Note",
             description: body.description || "",
             performer_name: body.performer_name || "Admin",
-            tenant_id: body.tenant_id || "default",
+            tenant_id: parent.tenant_id,
             metadata: body.metadata || {}
         });
         return await this.activityRepo.save(act);
@@ -398,7 +438,7 @@ let LeadService = LeadService_1 = class LeadService {
                 continue;
             const cleanPhone = (r.phone || "").replace(/\D/g, "").slice(-10);
             if (cleanPhone && strategy !== "allow") {
-                const dup = await this.checkDuplicatePhone(cleanPhone);
+                const dup = await this.checkDuplicatePhone(cleanPhone, undefined, userContext);
                 if (dup.is_duplicate) {
                     if (strategy === "skip") {
                         skipped++;
@@ -417,7 +457,7 @@ let LeadService = LeadService_1 = class LeadService {
         return { success: true, imported, skipped, total: rows.length };
     }
     async approveCandidateInterview(id, body, userContext) {
-        const l = await this.leadRepo.findOne({ where: { id } });
+        const l = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext)) });
         if (!l)
             throw new common_1.NotFoundException("Candidate not found");
         const interviewDateStr = body.interview_date;
@@ -461,7 +501,7 @@ let LeadService = LeadService_1 = class LeadService {
     }
     async triggerVoiceCall(id, body = {}, userContext) {
         var _a, _b, _c, _d, _e;
-        const l = await this.leadRepo.findOne({ where: { id } });
+        const l = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext)) });
         if (!l)
             throw new common_1.NotFoundException("Lead not found");
         if (!l.phone)
@@ -474,7 +514,7 @@ let LeadService = LeadService_1 = class LeadService {
         const meetUrl = body.meetUrl || l.interview_link || ((_e = (_d = l.custom_fields) === null || _d === void 0 ? void 0 : _d.interview) === null || _e === void 0 ? void 0 : _e.gmeet_link) || "";
         const reason = body.reason || "Outbound AI Voice Call";
         this.events.emit("voice.call.requested", {
-            tenantId: l.tenant_id || (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || "default",
+            tenantId: l.tenant_id,
             phone: l.phone,
             customerName: l.name,
             scheduledType,

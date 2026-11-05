@@ -6,6 +6,6 @@ export declare class EmailCampaignService {
     private readonly logger;
     constructor(emailService: EmailService);
     listCampaigns(tenantId?: string): Promise<EmailCampaign[]>;
-    createCampaign(dto: EmailCampaignModel, userId?: string): Promise<EmailCampaign>;
-    executeCampaign(campaignId: string, recipients: string[], subject: string, html: string, userId?: string): Promise<void>;
+    createCampaign(dto: EmailCampaignModel, userId?: string, tenantId?: string): Promise<EmailCampaign>;
+    executeCampaign(campaignId: string, recipients: string[], subject: string, html: string, userId?: string, tenantId?: string): Promise<void>;
 }

@@ -11,6 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var CustomerService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CustomerService = void 0;
@@ -29,15 +40,14 @@ let CustomerService = CustomerService_1 = class CustomerService {
         this.leadRepo = leadRepo;
         this.logger = new common_1.Logger(CustomerService_1.name);
     }
-    async list(query, userContext) {
+    async list(query, tenantId) {
         const page = Math.max(1, parseInt(query.page || "1", 10));
         const limit = Math.min(100, Math.max(1, parseInt(query.limit || "10", 10)));
         const skip = (page - 1) * limit;
-        const tenantId = (userContext === null || userContext === void 0 ? void 0 : userContext.active_tenant_id) || (userContext === null || userContext === void 0 ? void 0 : userContext.tenant_id) || query.tenant_id || "default";
         const qb = this.customerRepo.createQueryBuilder("c")
             .where("c.status = true");
-        if (tenantId && tenantId !== "default") {
-            qb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+        if (tenantId) {
+            qb.andWhere("c.tenant_id = :tenantId", { tenantId });
         }
         if (query.search && query.search.trim()) {
             const term = `%${query.search.trim()}%`;
@@ -52,8 +62,8 @@ let CustomerService = CustomerService_1 = class CustomerService {
         qb.orderBy("c.created_on", "DESC").skip(skip).take(limit);
         const [items, total] = await qb.getManyAndCount();
         const allCustQb = this.customerRepo.createQueryBuilder("c").where("c.status = true");
-        if (tenantId && tenantId !== "default") {
-            allCustQb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+        if (tenantId) {
+            allCustQb.andWhere("c.tenant_id = :tenantId", { tenantId });
         }
         const allCustomers = await allCustQb.getMany();
         const totalCustomers = allCustomers.length;
@@ -76,8 +86,8 @@ let CustomerService = CustomerService_1 = class CustomerService {
             },
         };
     }
-    async getById(id) {
-        const customer = await this.customerRepo.findOne({ where: { id, status: true } });
+    async getById(id, tenantId) {
+        const customer = await this.customerRepo.findOne({ where: tenantId ? { id, status: true, tenant_id: tenantId } : { id, status: true } });
         if (!customer)
             throw new common_1.NotFoundException(`Customer ${id} not found`);
         const interactions = await this.interactionRepo.find({
@@ -96,25 +106,31 @@ let CustomerService = CustomerService_1 = class CustomerService {
             deals,
             originalLead });
     }
-    async insert(data, userId) {
-        const cust = this.customerRepo.create(Object.assign(Object.assign({}, data), { created_by_id: userId || "system", created_on: new Date(), status: true }));
+    async insert(data, userId, tenantId) {
+        if (!tenantId)
+            throw new common_1.NotFoundException("A tenant is required to create a customer");
+        const cust = this.customerRepo.create(Object.assign(Object.assign({}, data), { tenant_id: tenantId, created_by_id: userId || "system", created_on: new Date(), status: true }));
         return await this.customerRepo.save(cust);
     }
-    async update(id, data, userId) {
-        const cust = await this.customerRepo.findOne({ where: { id } });
+    async update(id, data, userId, tenantId) {
+        const cust = await this.customerRepo.findOne({ where: tenantId ? { id, tenant_id: tenantId } : { id } });
         if (!cust)
             throw new common_1.NotFoundException(`Customer ${id} not found`);
-        Object.assign(cust, data, { updated_by_id: userId || "system", updated_on: new Date() });
+        const _a = data, { tenant_id: _ignored } = _a, safeData = __rest(_a, ["tenant_id"]);
+        Object.assign(cust, safeData, { updated_by_id: userId || "system", updated_on: new Date() });
         return await this.customerRepo.save(cust);
     }
-    async delete(id) {
+    async delete(id, tenantId) {
+        const cust = await this.customerRepo.findOne({ where: tenantId ? { id, tenant_id: tenantId } : { id } });
+        if (!cust)
+            throw new common_1.NotFoundException(`Customer ${id} not found`);
         await this.customerRepo.update(id, { status: false });
         return { success: true };
     }
-    async listDeals(tenantId = "default") {
+    async listDeals(tenantId) {
         const dealsQb = this.dealRepo.createQueryBuilder("d").where("d.status = true");
-        if (tenantId && tenantId !== "default") {
-            dealsQb.andWhere("(d.tenant_id = :tenantId OR d.tenant_id = 'default' OR d.tenant_id IS NULL)", { tenantId });
+        if (tenantId) {
+            dealsQb.andWhere("d.tenant_id = :tenantId", { tenantId });
         }
         return await dealsQb.orderBy("d.created_on", "DESC").getMany();
     }

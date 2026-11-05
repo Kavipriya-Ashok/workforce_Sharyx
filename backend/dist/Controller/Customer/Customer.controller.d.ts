@@ -2,7 +2,7 @@ import { CustomerService } from "@Service/Customer/Customer.service";
 export declare class CustomerController {
     private readonly customerService;
     constructor(customerService: CustomerService);
-    list(query: any, req: any): Promise<{
+    list(query: any, tenantId: string | null): Promise<{
         items: import("../../Database/Table/Customer/customer").Customer[];
         total: number;
         page: number;
@@ -16,8 +16,8 @@ export declare class CustomerController {
             autoConversionRate: number;
         };
     }>;
-    listDeals(tenantId?: string): Promise<import("../../Database/Table/Customer/crm_deal").CrmDeal[]>;
-    getById(id: string): Promise<{
+    listDeals(tenantId: string | null): Promise<import("../../Database/Table/Customer/crm_deal").CrmDeal[]>;
+    getById(id: string, tenantId: string | null): Promise<{
         interactions: import("../../Database/Table/Customer/customer_interaction").CustomerInteraction[];
         deals: import("../../Database/Table/Customer/crm_deal").CrmDeal[];
         originalLead: import("../../Database/Table/Lead/lead").lead;
@@ -46,9 +46,9 @@ export declare class CustomerController {
         updated_by_id?: string;
         updated_on?: Date;
     }>;
-    insert(body: any, req: any): Promise<import("../../Database/Table/Customer/customer").Customer>;
-    update(id: string, body: any, req: any): Promise<import("../../Database/Table/Customer/customer").Customer>;
-    delete(id: string): Promise<{
+    insert(body: any, userId: string, tenantId: string | null): Promise<import("../../Database/Table/Customer/customer").Customer>;
+    update(id: string, body: any, userId: string, tenantId: string | null): Promise<import("../../Database/Table/Customer/customer").Customer>;
+    delete(id: string, tenantId: string | null): Promise<{
         success: boolean;
     }>;
 }

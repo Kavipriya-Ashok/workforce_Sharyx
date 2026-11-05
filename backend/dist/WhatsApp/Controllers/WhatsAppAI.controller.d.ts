@@ -1,12 +1,12 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { WhatsAppAIService } from "../Services/WhatsAppAI.service";
 import { WhatsAppAIConfigModel } from "../Models/WhatsAppAIConfig.model";
-export declare class WhatsAppAIController extends AuthBaseController {
+export declare class WhatsAppAIController extends JWTAuthController {
     private readonly aiService;
     constructor(aiService: WhatsAppAIService);
-    getConfig(): Promise<any>;
-    saveConfig(body: WhatsAppAIConfigModel, userId: string): Promise<{
+    getConfig(tenantId: string): Promise<any>;
+    saveConfig(body: WhatsAppAIConfigModel, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;

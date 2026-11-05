@@ -12,11 +12,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppConfig = void 0;
 const typeorm_1 = require("typeorm");
 const BaseTable_1 = require("../BaseTable");
+const SecretTransformer_1 = require("../../../Helper/SecretTransformer");
 let WhatsAppConfig = class WhatsAppConfig extends BaseTable_1.BaseTable {
 };
 exports.WhatsAppConfig = WhatsAppConfig;
 __decorate([
-    (0, typeorm_1.Column)({ default: "default" }),
+    (0, typeorm_1.Index)({ unique: true }),
+    (0, typeorm_1.Column)({ type: "varchar" }),
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "tenant_id", void 0);
 __decorate([
@@ -24,6 +26,7 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "phone_number", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({ length: 100 }),
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "phone_number_id", void 0);
@@ -32,11 +35,15 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "waba_id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "text" }),
+    (0, typeorm_1.Column)({ type: "text", transformer: SecretTransformer_1.EncryptedColumn }),
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "access_token", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ length: 100, default: "sharyx_verify_token_secure" }),
+    (0, typeorm_1.Column)({ type: "text", nullable: true, transformer: SecretTransformer_1.EncryptedColumn }),
+    __metadata("design:type", String)
+], WhatsAppConfig.prototype, "app_secret", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ length: 100, nullable: true }),
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "verify_token", void 0);
 __decorate([
@@ -48,7 +55,7 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "api_url", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    (0, typeorm_1.Column)({ type: "text", nullable: true, transformer: SecretTransformer_1.EncryptedColumn }),
     __metadata("design:type", String)
 ], WhatsAppConfig.prototype, "api_key", void 0);
 __decorate([

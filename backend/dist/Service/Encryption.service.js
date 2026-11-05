@@ -16,6 +16,7 @@ exports.EncryptionService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const crypto_js_1 = __importDefault(require("crypto-js"));
+const crypto_1 = require("crypto");
 let EncryptionService = class EncryptionService {
     constructor(_ConfigService) {
         this._ConfigService = _ConfigService;
@@ -29,6 +30,37 @@ let EncryptionService = class EncryptionService {
         const OriginalKey = crypto_js_1.default.AES.encrypt(text, String(this._ConfigService.get("Encryption.SecertKey"))).toString();
         const DuplicateKey = crypto_js_1.default.enc.Base64.parse(OriginalKey);
         return DuplicateKey.toString(crypto_js_1.default.enc.Hex);
+    }
+    HashPassword(plain) {
+        return new Promise((resolve, reject) => {
+            const salt = (0, crypto_1.randomBytes)(16);
+            (0, crypto_1.scrypt)(plain, salt, 64, (err, derived) => {
+                if (err)
+                    return reject(err);
+                resolve(`scrypt$${salt.toString("hex")}$${derived.toString("hex")}`);
+            });
+        });
+    }
+    async VerifyPassword(plain, stored) {
+        if (!stored || typeof plain !== "string")
+            return { valid: false, needsRehash: false };
+        if (stored.startsWith("scrypt$")) {
+            const [, saltHex, hashHex] = stored.split("$");
+            const expected = Buffer.from(hashHex, "hex");
+            const derived = await new Promise((resolve, reject) => (0, crypto_1.scrypt)(plain, Buffer.from(saltHex, "hex"), expected.length, (e, d) => (e ? reject(e) : resolve(d))));
+            return { valid: derived.length === expected.length && (0, crypto_1.timingSafeEqual)(derived, expected), needsRehash: false };
+        }
+        let legacy = "";
+        try {
+            legacy = this.Decrypt(stored);
+        }
+        catch (_a) {
+            legacy = "";
+        }
+        const a = Buffer.from(legacy);
+        const b = Buffer.from(plain);
+        const valid = legacy.length > 0 && a.length === b.length && (0, crypto_1.timingSafeEqual)(a, b);
+        return { valid, needsRehash: valid };
     }
 };
 exports.EncryptionService = EncryptionService;

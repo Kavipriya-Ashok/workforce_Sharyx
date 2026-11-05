@@ -11,15 +11,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppAIConfigModel = void 0;
 const swagger_1 = require("@nestjs/swagger");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const Base_model_1 = require("../../Model/Base.model");
+const trimStr = ({ value }) => (typeof value === "string" ? value.trim() : value);
 class WhatsAppAIConfigModel extends Base_model_1.BaseModel {
 }
 exports.WhatsAppAIConfigModel = WhatsAppAIConfigModel;
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "default" }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(64),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "tenant_id", void 0);
 __decorate([
@@ -31,43 +33,50 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ example: "hybrid", enum: ["fully_automated", "hybrid", "manual"] }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsIn)(["fully_automated", "hybrid", "manual"], { message: "AI mode must be fully_automated, hybrid or manual" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "ai_mode", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "You are a professional customer support assistant for Sharyx." }),
+    (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(8000, { message: "The AI instructions can be at most 8000 characters" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "system_prompt", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "Hello! Thank you for reaching out to us. How can we help you?" }),
+    (0, swagger_1.ApiProperty)({ required: false, example: "Hi {name}, welcome to {company}! How can we help you today?" }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(trimStr),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000, { message: "The first message can be at most 1000 characters" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "welcome_message", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "One of our team members will connect with you shortly." }),
+    (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(trimStr),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000, { message: "The fallback message can be at most 1000 characters" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "fallback_message", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "openai", default: "openai" }),
+    (0, swagger_1.ApiProperty)({ example: "gemini", required: false }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsIn)(["gemini", "openai"], { message: "AI provider must be gemini or openai" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "llm_provider", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "gpt-4o-mini", default: "gpt-4o-mini" }),
+    (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "llm_model", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "sk-... or AIzaSy...", required: false }),
+    (0, swagger_1.ApiProperty)({ required: false }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(512, { message: "API key is too long" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "api_key", void 0);
 __decorate([
@@ -79,18 +88,26 @@ __decorate([
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 60 }),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)({ message: "Follow-up delay must be a whole number of minutes" }),
+    (0, class_validator_1.Min)(1, { message: "Follow-up delay must be at least 1 minute" }),
+    (0, class_validator_1.Max)(1380, { message: "Follow-up delay must be under 23 hours (WhatsApp only allows free text inside 24 hours)" }),
     __metadata("design:type", Number)
 ], WhatsAppAIConfigModel.prototype, "followup_delay_minutes", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: "Hi! Just checking if you received our response and need further assistance." }),
+    (0, swagger_1.ApiProperty)({ required: false, example: "Hi {name}, just checking if you still need help." }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(trimStr),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(1000, { message: "The follow-up message can be at most 1000 characters" }),
     __metadata("design:type", String)
 ], WhatsAppAIConfigModel.prototype, "followup_message", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: ["STOP", "UNSUBSCRIBE"], type: [String], required: false }),
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ArrayMaxSize)(10, { message: "At most 10 opt-out words" }),
+    (0, class_validator_1.IsString)({ each: true }),
+    (0, class_validator_1.MaxLength)(30, { each: true, message: "An opt-out word can be at most 30 characters" }),
     __metadata("design:type", Array)
 ], WhatsAppAIConfigModel.prototype, "stop_words", void 0);
 //# sourceMappingURL=WhatsAppAIConfig.model.js.map

@@ -15,52 +15,59 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailAIController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const EmailAI_service_1 = require("../Services/EmailAI.service");
 const EmailAIConfig_model_1 = require("../Models/EmailAIConfig.model");
-let EmailAIController = class EmailAIController extends AuthBase_controller_1.AuthBaseController {
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
+let EmailAIController = class EmailAIController extends JWTAuth_controller_1.JWTAuthController {
     constructor(emailAiService) {
         super();
         this.emailAiService = emailAiService;
     }
-    async getConfig() {
-        const config = await this.emailAiService.getConfig();
-        return this.SendResponseData(config);
+    async getConfig(tenantId) {
+        const config = await this.emailAiService.getConfig(tenantId);
+        return this.SendResponseData(config ? Object.assign(Object.assign({}, config), { api_key: undefined, has_api_key: !!config.api_key }) : config);
     }
-    async saveConfig(body, userId) {
-        const config = await this.emailAiService.saveConfig(body, userId);
-        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, config);
+    async saveConfig(body, userId, tenantId) {
+        const config = await this.emailAiService.saveConfig(body, userId, tenantId);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, Object.assign(Object.assign({}, config), { api_key: undefined, has_api_key: !!config.api_key }));
     }
-    async generateDraft(body) {
-        const draft = await this.emailAiService.generateDraft(body);
+    async generateDraft(body, tenantId) {
+        const draft = await this.emailAiService.generateDraft(body, tenantId);
         return this.SendResponseData(draft);
     }
 };
 exports.EmailAIController = EmailAIController;
 __decorate([
     (0, common_1.Get)("Config"),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmailAIController.prototype, "getConfig", null);
 __decorate([
     (0, common_1.Post)("Config"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [EmailAIConfig_model_1.EmailAIConfigModel, String]),
+    __metadata("design:paramtypes", [EmailAIConfig_model_1.EmailAIConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailAIController.prototype, "saveConfig", null);
 __decorate([
     (0, common_1.Post)("Draft"),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [EmailAIConfig_model_1.GenerateEmailAIDraftModel]),
+    __metadata("design:paramtypes", [EmailAIConfig_model_1.GenerateEmailAIDraftModel, String]),
     __metadata("design:returntype", Promise)
 ], EmailAIController.prototype, "generateDraft", null);
 exports.EmailAIController = EmailAIController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Email/AI", version: "1" }),
     (0, swagger_1.ApiTags)("Email AI"),
     __metadata("design:paramtypes", [EmailAI_service_1.EmailAIService])

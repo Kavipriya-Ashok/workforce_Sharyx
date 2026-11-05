@@ -23,6 +23,9 @@ export interface ConversationContext {
         servicesList?: string;
         address?: string;
         businessEmail?: string;
+        industry?: string;
+        goals?: string[];
+        apps?: string[];
     };
     omnichannelLogs?: {
         lastCallSummary?: string;

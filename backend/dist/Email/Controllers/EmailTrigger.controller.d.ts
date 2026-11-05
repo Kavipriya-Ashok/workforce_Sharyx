@@ -1,7 +1,7 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { OutcomeTriggerService, TriggerContext } from "@Service/OutcomeTrigger.service";
-export declare class EmailTriggerController extends AuthBaseController {
+export declare class EmailTriggerController extends JWTAuthController {
     private readonly triggerService;
     constructor(triggerService: OutcomeTriggerService);
     executeTrigger(body: {

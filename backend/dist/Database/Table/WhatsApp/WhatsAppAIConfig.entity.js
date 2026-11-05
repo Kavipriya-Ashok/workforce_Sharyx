@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppAIConfig = void 0;
 const typeorm_1 = require("typeorm");
 const BaseTable_1 = require("../BaseTable");
+const SecretTransformer_1 = require("../../../Helper/SecretTransformer");
 let WhatsAppAIConfig = class WhatsAppAIConfig extends BaseTable_1.BaseTable {
 };
 exports.WhatsAppAIConfig = WhatsAppAIConfig;
@@ -48,7 +49,7 @@ __decorate([
     __metadata("design:type", String)
 ], WhatsAppAIConfig.prototype, "llm_model", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: "text", nullable: true }),
+    (0, typeorm_1.Column)({ type: "text", nullable: true, transformer: SecretTransformer_1.EncryptedColumn }),
     __metadata("design:type", String)
 ], WhatsAppAIConfig.prototype, "api_key", void 0);
 __decorate([

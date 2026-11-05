@@ -14,11 +14,11 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LeadController = void 0;
 const common_1 = require("@nestjs/common");
-const AuthBase_controller_1 = require("../AuthBase.controller");
+const JWTAuth_controller_1 = require("../JWTAuth.controller");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const Lead_service_1 = require("../../Service/Lead/Lead.service");
 const swagger_1 = require("@nestjs/swagger");
-let LeadController = class LeadController extends AuthBase_controller_1.AuthBaseController {
+let LeadController = class LeadController extends JWTAuth_controller_1.JWTAuthController {
     constructor(leadService) {
         super();
         this.leadService = leadService;
@@ -36,56 +36,56 @@ let LeadController = class LeadController extends AuthBase_controller_1.AuthBase
         const lead = await this.leadService.getById(id, { userId, tenant_id: tenantId, active_tenant_id: tenantId });
         return this.SendResponseData(lead);
     }
-    async checkDuplicate(phone, excludeId, userId) {
-        const res = await this.leadService.checkDuplicatePhone(phone, excludeId, { userId });
+    async checkDuplicate(phone, excludeId, userId, tenantId) {
+        const res = await this.leadService.checkDuplicatePhone(phone, excludeId, { userId, tenant_id: tenantId });
         return this.SendResponseData(res);
     }
-    async checkDuplicateEmail(email, excludeId) {
-        const res = await this.leadService.checkDuplicateEmail(email, excludeId);
+    async checkDuplicateEmail(email, excludeId, tenantId) {
+        const res = await this.leadService.checkDuplicateEmail(email, excludeId, { tenant_id: tenantId });
         return this.SendResponseData(res);
     }
-    async insert(data, userId) {
-        const saved = await this.leadService.insert(data, userId, { userId });
+    async insert(data, userId, tenantId) {
+        const saved = await this.leadService.insert(data, userId, { userId, tenant_id: tenantId });
         return this.SendResponseData(saved);
     }
-    async update(id, data, userId) {
-        const updated = await this.leadService.update(id, data, userId);
+    async update(id, data, userId, tenantId) {
+        const updated = await this.leadService.update(id, data, userId, tenantId);
         return this.SendResponseData(updated);
     }
-    async updateStatus(id, newStatus, userId) {
-        const updated = await this.leadService.updateStatus(id, newStatus, userId);
+    async updateStatus(id, newStatus, userId, tenantId) {
+        const updated = await this.leadService.updateStatus(id, newStatus, userId, tenantId);
         return this.SendResponseData(updated);
     }
-    async updateCandidateStage(id, stage, userId) {
-        const updated = await this.leadService.updateCandidateStage(id, stage, userId);
+    async updateCandidateStage(id, stage, userId, tenantId) {
+        const updated = await this.leadService.updateCandidateStage(id, stage, userId, tenantId);
         return this.SendResponseData(updated);
     }
-    async delete(id) {
-        const res = await this.leadService.delete(id);
+    async delete(id, tenantId) {
+        const res = await this.leadService.delete(id, tenantId);
         return this.SendResponseData(res);
     }
-    async bulkDelete(ids) {
-        const res = await this.leadService.bulkDelete(ids);
+    async bulkDelete(ids, tenantId) {
+        const res = await this.leadService.bulkDelete(ids, tenantId);
         return this.SendResponseData(res);
     }
-    async bulkUpdateStatus(body, userId) {
-        const res = await this.leadService.bulkUpdateStatus(body.ids, body.lead_status, userId);
+    async bulkUpdateStatus(body, userId, tenantId) {
+        const res = await this.leadService.bulkUpdateStatus(body.ids, body.lead_status, userId, tenantId);
         return this.SendResponseData(res);
     }
-    async addActivity(body, userId) {
-        const act = await this.leadService.addActivity(body, userId);
+    async addActivity(body, userId, tenantId) {
+        const act = await this.leadService.addActivity(body, userId, tenantId);
         return this.SendResponseData(act);
     }
-    async importLeads(model, userId) {
-        const res = await this.leadService.importLeads(model, userId, { userId });
+    async importLeads(model, userId, tenantId) {
+        const res = await this.leadService.importLeads(model, userId, { userId, tenant_id: tenantId });
         return this.SendResponseData(res);
     }
-    async approveInterview(id, body, userId) {
-        const res = await this.leadService.approveCandidateInterview(id, body, { userId });
+    async approveInterview(id, body, userId, tenantId) {
+        const res = await this.leadService.approveCandidateInterview(id, body, { userId, tenant_id: tenantId });
         return this.SendResponseData(res);
     }
-    async triggerVoiceCall(id, body, userId) {
-        const res = await this.leadService.triggerVoiceCall(id, body, { userId });
+    async triggerVoiceCall(id, body, userId, tenantId) {
+        const res = await this.leadService.triggerVoiceCall(id, body, { userId, tenant_id: tenantId });
         return this.SendResponseData(res);
     }
 };
@@ -122,24 +122,27 @@ __decorate([
     __param(0, (0, common_1.Query)("phone")),
     __param(1, (0, common_1.Query)("exclude_id")),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "checkDuplicate", null);
 __decorate([
     (0, common_1.Get)("CheckDuplicateEmail"),
     __param(0, (0, common_1.Query)("email")),
     __param(1, (0, common_1.Query)("exclude_id")),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "checkDuplicateEmail", null);
 __decorate([
     (0, common_1.Post)("Insert"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "insert", null);
 __decorate([
@@ -147,8 +150,9 @@ __decorate([
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "update", null);
 __decorate([
@@ -156,8 +160,9 @@ __decorate([
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Body)("lead_status")),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "updateStatus", null);
 __decorate([
@@ -165,46 +170,52 @@ __decorate([
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Body)("candidate_stage")),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "updateCandidateStage", null);
 __decorate([
     (0, common_1.Delete)("Delete/:id"),
     __param(0, (0, common_1.Param)("id")),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "delete", null);
 __decorate([
     (0, common_1.Post)("BulkDelete"),
     __param(0, (0, common_1.Body)("ids")),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array]),
+    __metadata("design:paramtypes", [Array, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "bulkDelete", null);
 __decorate([
     (0, common_1.Post)("BulkUpdateStatus"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "bulkUpdateStatus", null);
 __decorate([
     (0, common_1.Post)("Activity"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "addActivity", null);
 __decorate([
     (0, common_1.Post)("Import"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "importLeads", null);
 __decorate([
@@ -212,8 +223,9 @@ __decorate([
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "approveInterview", null);
 __decorate([
@@ -221,8 +233,9 @@ __decorate([
     __param(0, (0, common_1.Param)("id")),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
+    __param(3, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, String]),
+    __metadata("design:paramtypes", [String, Object, String, String]),
     __metadata("design:returntype", Promise)
 ], LeadController.prototype, "triggerVoiceCall", null);
 exports.LeadController = LeadController = __decorate([

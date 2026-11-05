@@ -34,7 +34,7 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
         this.agentService = agentService;
         this.openingsService = openingsService;
         this.logger = new common_1.Logger(AgentOrchestratorService_1.name);
-        this.bizCache = null;
+        this.bizCache = new Map();
     }
     async handle(input) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
@@ -206,7 +206,7 @@ let AgentOrchestratorService = AgentOrchestratorService_1 = class AgentOrchestra
     }
     async buildPrompt(agent, agents, state, input, justHandedOff) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
-        const biz = await this.getBusiness();
+        const biz = await this.getBusiness(state.tenant_id);
         const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" });
         const leadRec = await this.findLead(state);
         const isSupport = agent.agent_key === "support";
@@ -338,7 +338,7 @@ RULES:
         try {
             const phone = state.customer_phone || (leadRec === null || leadRec === void 0 ? void 0 : leadRec.phone);
             if (phone) {
-                const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: phone } });
+                const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: phone, tenant_id: state.tenant_id } });
                 if (conv) {
                     const msgs = await WhatsAppMessage_entity_1.WhatsAppMessage.find({ where: { conversation_id: conv.id }, order: { created_on: "DESC" }, take: 15 });
                     if (msgs.length) {
@@ -969,22 +969,22 @@ RULES:
     async findLead(state) {
         try {
             if (state.lead_id)
-                return await lead_1.lead.findOne({ where: { id: state.lead_id } });
+                return await lead_1.lead.findOne({ where: { id: state.lead_id, tenant_id: state.tenant_id } });
             if (state.customer_phone) {
                 const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
                 const withPlus = "+" + cleanPhone;
-                let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone } });
+                let l = await lead_1.lead.findOne({ where: { phone: state.customer_phone, tenant_id: state.tenant_id } });
                 if (!l)
-                    l = await lead_1.lead.findOne({ where: { phone: withPlus } });
+                    l = await lead_1.lead.findOne({ where: { phone: withPlus, tenant_id: state.tenant_id } });
                 if (!l)
-                    l = await lead_1.lead.findOne({ where: { phone: cleanPhone } });
+                    l = await lead_1.lead.findOne({ where: { phone: cleanPhone, tenant_id: state.tenant_id } });
                 if (l) {
                     state.lead_id = l.id;
                     return l;
                 }
             }
             if (state.customer_email) {
-                const l = await lead_1.lead.findOne({ where: { email: state.customer_email } });
+                const l = await lead_1.lead.findOne({ where: { email: state.customer_email, tenant_id: state.tenant_id } });
                 if (l) {
                     state.lead_id = l.id;
                     return l;
@@ -999,24 +999,26 @@ RULES:
         if (state.channel !== "whatsapp")
             return null;
         try {
-            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+            const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
             return ((_a = conv === null || conv === void 0 ? void 0 : conv.meeting_info) === null || _a === void 0 ? void 0 : _a.meet_url) ? { slot: conv.meeting_info.slot, meet_url: conv.meeting_info.meet_url } : null;
         }
         catch (_b) {
             return null;
         }
     }
-    async getBusiness() {
-        if (this.bizCache)
-            return this.bizCache;
+    async getBusiness(tenantId) {
+        const cached = this.bizCache.get(tenantId);
+        if (cached)
+            return cached;
+        let biz = { name: "the business" };
         try {
-            const c = await company_1.company.findOne({ where: {} });
-            this.bizCache = { name: (c === null || c === void 0 ? void 0 : c.name) || "Sharyx", email: c === null || c === void 0 ? void 0 : c.email, address: c === null || c === void 0 ? void 0 : c.address };
+            const c = tenantId ? await company_1.company.findOne({ where: { id: tenantId } }) : null;
+            if (c)
+                biz = { name: c.name || "the business", email: c.email, address: c.address };
         }
-        catch (_a) {
-            this.bizCache = { name: "Sharyx" };
-        }
-        return this.bizCache;
+        catch (_a) { }
+        this.bizCache.set(tenantId, biz);
+        return biz;
     }
 };
 exports.AgentOrchestratorService = AgentOrchestratorService;

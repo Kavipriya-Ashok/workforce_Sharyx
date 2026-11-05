@@ -14,6 +14,8 @@ import { Customers } from '@/pages/customer/Customers';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { OmnichannelInboxPage } from '@/pages/omnichannel/OmnichannelInboxPage';
+// ❌ OLD (small 't'):
+import { ProductTourModal } from '@/components/Tour/ProductTourModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LayoutDashboard,
@@ -76,7 +78,18 @@ export const AdminLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // below the md breakpoint the sidebar is an off-canvas drawer opened from the top bar
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
+  useEffect(() => {
+    // Automatically trigger tour on first signup / login
+    const tourSeen = localStorage.getItem('sharyx_tour_seen');
+    if (!tourSeen) {
+      const timer = setTimeout(() => {
+        setTourOpen(true);
+      }, 1000); // 1-second delay so dashboard loads first
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const getPageFromLocation = (loc: string): AdminPage => {
     const path = loc.split('?')[0].replace(/^\/admin\/?/, '').toLowerCase().trim();
 
@@ -193,7 +206,7 @@ export const AdminLayout: React.FC = () => {
           setDynamicVoiceAgents(res);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const SIDEBAR_AGENTS = [
@@ -217,9 +230,8 @@ export const AdminLayout: React.FC = () => {
       )}
       <aside
         data-testid="sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs w-64 ${
-          sidebarCollapsed ? 'md:w-20' : 'md:w-64'
-        } ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs w-64 ${sidebarCollapsed ? 'md:w-20' : 'md:w-64'
+          } ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
         {/* Brand */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -247,40 +259,37 @@ export const AdminLayout: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-3 space-y-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           <button
             onClick={() => navigateToPage('dashboard')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'dashboard'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'dashboard'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <LayoutDashboard className={`h-4 w-4 shrink-0 ${activePage === 'dashboard' ? 'text-white' : 'text-blue-400'}`} />
             {!sidebarCollapsed && <span>Overview & KPIs</span>}
           </button>
 
-                    <button
+          <button
             onClick={() => navigateToPage('omnichannel')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'omnichannel'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'omnichannel'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <Inbox className={`h-4 w-4 shrink-0 ${activePage === 'omnichannel' ? 'text-white' : 'text-indigo-500'}`} />
             {!sidebarCollapsed && (
               <div className="flex items-center justify-between flex-1">
                 <span>Omnichannel Inbox</span>
-                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded ${
-                  activePage === 'omnichannel'
-                    ? 'bg-white/20 text-white'
-                    : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
-                }`}>
+                <span className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded ${activePage === 'omnichannel'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
+                  }`}>
                   Unified
                 </span>
               </div>
             )}
           </button>
 
-{/* WHATSAPP AUTOMATION & SUB-PAGES */}
+          {/* WHATSAPP AUTOMATION & SUB-PAGES */}
           <div className="space-y-1">
             <button
               onClick={() => {
@@ -289,9 +298,8 @@ export const AdminLayout: React.FC = () => {
                   navigateToPage('whatsapp_chat');
                 }
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage.startsWith('whatsapp') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
-              }`}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage.startsWith('whatsapp') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <MessageSquare className={`h-4 w-4 shrink-0 ${activePage.startsWith('whatsapp') ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-500'}`} />
@@ -299,9 +307,8 @@ export const AdminLayout: React.FC = () => {
               </div>
               {!sidebarCollapsed && (
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    whatsappSubmenuOpen ? 'rotate-180' : ''
-                  }`}
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${whatsappSubmenuOpen ? 'rotate-180' : ''
+                    }`}
                 />
               )}
             </button>
@@ -311,11 +318,10 @@ export const AdminLayout: React.FC = () => {
               <div className="pl-3 pr-1 py-1 space-y-1 border-l border-slate-200 dark:border-slate-800 ml-5 my-1">
                 <button
                   onClick={() => navigateToPage('whatsapp_chat')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_chat'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'whatsapp_chat'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <MessageSquare className="h-3 w-3 text-emerald-400 shrink-0" />
                   <span>Live Chat Inbox</span>
@@ -323,11 +329,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('whatsapp_campaigns')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_campaigns'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'whatsapp_campaigns'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Megaphone className="h-3 w-3 text-indigo-400 shrink-0" />
                   <span>Campaigns & Broadcast</span>
@@ -335,11 +340,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('whatsapp_templates')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_templates'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'whatsapp_templates'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-amber-400 shrink-0" />
                   <span>Meta Templates</span>
@@ -347,11 +351,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('whatsapp_brain')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_brain'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'whatsapp_brain'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
                   <span>AI Brain & Copilot</span>
@@ -359,11 +362,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('whatsapp_analytics')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'whatsapp_analytics'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'whatsapp_analytics'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <BarChart3 className="h-3 w-3 text-sky-400 shrink-0" />
                   <span>Telemetry & SLAs</span>
@@ -379,9 +381,8 @@ export const AdminLayout: React.FC = () => {
                 navigateToPage('email_inbox');
                 setEmailSubmenuOpen(!emailSubmenuOpen);
               }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                activePage.startsWith('email') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
-              }`}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage.startsWith('email') ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer'
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Mail className={`h-4 w-4 shrink-0 ${activePage.startsWith('email') ? 'text-blue-600 dark:text-blue-400' : 'text-indigo-500'}`} />
@@ -389,9 +390,8 @@ export const AdminLayout: React.FC = () => {
               </div>
               {!sidebarCollapsed && (
                 <ChevronDown
-                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    emailSubmenuOpen ? 'rotate-180' : ''
-                  }`}
+                  className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${emailSubmenuOpen ? 'rotate-180' : ''
+                    }`}
                 />
               )}
             </button>
@@ -400,11 +400,10 @@ export const AdminLayout: React.FC = () => {
               <div className="pl-3 pr-1 py-1 space-y-1 border-l border-slate-200 dark:border-slate-800 ml-5 my-1">
                 <button
                   onClick={() => navigateToPage('email_inbox')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'email_inbox' || activePage === 'email'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'email_inbox' || activePage === 'email'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Inbox className="h-3 w-3 text-indigo-400 shrink-0" />
                   <span>Two-Way Inbox</span>
@@ -412,11 +411,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('email_templates')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'email_templates'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'email_templates'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <LayoutTemplate className="h-3 w-3 text-blue-400 shrink-0" />
                   <span>Email Templates</span>
@@ -424,11 +422,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('email_ai')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'email_ai'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'email_ai'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Bot className="h-3 w-3 text-purple-400 shrink-0" />
                   <span>AI Auto-Reply</span>
@@ -436,11 +433,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('email_campaigns')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'email_campaigns'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'email_campaigns'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Send className="h-3 w-3 text-emerald-400 shrink-0" />
                   <span>Sequences & Broadcast</span>
@@ -448,11 +444,10 @@ export const AdminLayout: React.FC = () => {
 
                 <button
                   onClick={() => navigateToPage('email_settings')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
-                    activePage === 'email_settings'
-                      ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activePage === 'email_settings'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer font-medium'
+                    }`}
                 >
                   <Key className="h-3 w-3 text-amber-400 shrink-0" />
                   <span>Mailbox & SMTP Setup</span>
@@ -463,11 +458,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('voice')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'voice'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'voice'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <PhoneCall className={`h-4 w-4 shrink-0 ${activePage === 'voice' ? 'text-white' : 'text-cyan-400'}`} />
             {!sidebarCollapsed && <span>Voice AI & Phone Calls</span>}
@@ -475,11 +469,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('voice_logs')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'voice_logs'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'voice_logs'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-semibold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <FileText className={`h-4 w-4 shrink-0 ${activePage === 'voice_logs' ? 'text-white' : 'text-blue-400'}`} />
             {!sidebarCollapsed && (
@@ -502,11 +495,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('leads')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'leads'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'leads'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <Users className={`h-4 w-4 shrink-0 ${activePage === 'leads' ? 'text-white' : 'text-blue-400'}`} />
             {!sidebarCollapsed && <span>Leads & Contacts</span>}
@@ -514,11 +506,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('candidates')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'candidates'
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-purple-600/30 font-bold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'candidates'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-purple-600/30 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <GraduationCap className={`h-4 w-4 shrink-0 ${activePage === 'candidates' ? 'text-white' : 'text-amber-400'}`} />
             {!sidebarCollapsed && <span>Candidates & Interviews</span>}
@@ -526,11 +517,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('customers')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'customers'
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'customers'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <UserCheck className={`h-4 w-4 shrink-0 ${activePage === 'customers' ? 'text-white' : 'text-emerald-400'}`} />
             {!sidebarCollapsed && (
@@ -546,11 +536,10 @@ export const AdminLayout: React.FC = () => {
           <button
             onClick={() => navigateToPage('profile')}
             data-testid="nav-profile"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'profile'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'profile'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <Building2 className={`h-4 w-4 shrink-0 ${activePage === 'profile' ? 'text-white' : 'text-indigo-500'}`} />
             {!sidebarCollapsed && <span>Company Profile &amp; Integrations</span>}
@@ -558,11 +547,10 @@ export const AdminLayout: React.FC = () => {
 
           <button
             onClick={() => navigateToPage('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-              activePage === 'settings'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
-            }`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${activePage === 'settings'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+              }`}
           >
             <Key className={`h-4 w-4 shrink-0 ${activePage === 'settings' ? 'text-white' : 'text-amber-400'}`} />
             {!sidebarCollapsed && <span>API Credentials & Settings</span>}
@@ -598,9 +586,8 @@ export const AdminLayout: React.FC = () => {
 
       {/* MAIN VIEW AREA */}
       <div
-        className={`flex-1 flex flex-col h-screen min-w-0 overflow-hidden transition-all duration-300 pl-0 ${
-          sidebarCollapsed ? 'md:pl-20' : 'md:pl-64'
-        }`}
+        className={`flex-1 flex flex-col h-screen min-w-0 overflow-hidden transition-all duration-300 pl-0 ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-64'
+          }`}
       >
         {/* TOPBAR */}
         <header className="sticky top-0 z-30 h-16 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 shadow-2xs transition-colors duration-200">
@@ -620,11 +607,10 @@ export const AdminLayout: React.FC = () => {
                 <>
                   <button
                     onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${
-                      isImpersonating
-                        ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
-                        : 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/60 hover:bg-blue-100/80 dark:hover:bg-blue-900/40 text-blue-950 dark:text-blue-200'
-                    }`}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shadow-xs ${isImpersonating
+                      ? 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+                      : 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-800/60 hover:bg-blue-100/80 dark:hover:bg-blue-900/40 text-blue-950 dark:text-blue-200'
+                      }`}
                   >
                     {isImpersonating ? (
                       <Building2 className="h-3.5 w-3.5 text-amber-600" />
@@ -664,11 +650,10 @@ export const AdminLayout: React.FC = () => {
                           setTenantDropdownOpen(false);
                           setTenantSearch('');
                         }}
-                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                          selectedTenant === null
-                            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
+                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${selectedTenant === null
+                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <Globe className="h-3.5 w-3.5 text-blue-600" />
@@ -697,11 +682,10 @@ export const AdminLayout: React.FC = () => {
                                   setTenantDropdownOpen(false);
                                   setTenantSearch('');
                                 }}
-                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/60'
-                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${isSelected
+                                  ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/60'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                  }`}
                               >
                                 <div className="truncate">
                                   <div className="font-medium truncate">{t.name}</div>
@@ -756,6 +740,15 @@ export const AdminLayout: React.FC = () => {
             </div>
           </div>
 
+          {/* Platform Quick Tour Button */}
+          <button
+            onClick={() => setTourOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800 text-xs font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all cursor-pointer shadow-2xs"
+            title="Take Platform Tour"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <span className="hidden sm:inline">Tour</span>
+          </button>
           {/* Search Bar & Actions */}
           <div className="flex items-center gap-3">
             <div className="relative hidden sm:block w-64">
@@ -814,10 +807,10 @@ export const AdminLayout: React.FC = () => {
               key={activePage}
               initialTab={
                 activePage === 'whatsapp_campaigns' ? 'campaigns' :
-                activePage === 'whatsapp_templates' ? 'templates' :
-                activePage === 'whatsapp_brain' ? 'ai_brain' :
-                activePage === 'whatsapp_analytics' ? 'analytics' :
-                'live_chat'
+                  activePage === 'whatsapp_templates' ? 'templates' :
+                    activePage === 'whatsapp_brain' ? 'ai_brain' :
+                      activePage === 'whatsapp_analytics' ? 'analytics' :
+                        'live_chat'
               }
               onTabChange={(tab) => {
                 const pageMap: Record<string, AdminPage> = {
@@ -836,10 +829,10 @@ export const AdminLayout: React.FC = () => {
               key={activePage}
               initialTab={
                 activePage === 'email_templates' ? 'templates' :
-                activePage === 'email_ai' ? 'ai_settings' :
-                activePage === 'email_campaigns' ? 'campaigns' :
-                activePage === 'email_settings' ? 'settings' :
-                'inbox'
+                  activePage === 'email_ai' ? 'ai_settings' :
+                    activePage === 'email_campaigns' ? 'campaigns' :
+                      activePage === 'email_settings' ? 'settings' :
+                        'inbox'
               }
               onTabChange={(tab) => {
                 const pageMap: Record<string, AdminPage> = {
@@ -869,6 +862,8 @@ export const AdminLayout: React.FC = () => {
           {activePage === 'settings' && <SettingsPage />}
         </main>
       </div>
+      <ProductTourModal open={tourOpen} onOpenChange={setTourOpen} />
     </div>
   );
 };
+

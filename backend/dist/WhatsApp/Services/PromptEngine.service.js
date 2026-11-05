@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var PromptEngineService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromptEngineService = void 0;
+const LlmEndpoints_1 = require("../../Helper/LlmEndpoints");
 const common_1 = require("@nestjs/common");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const axios_1 = __importDefault(require("axios"));
@@ -75,6 +76,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         ];
     }
     buildSystemPrompt(ctx, customPersona) {
+        var _a, _b;
         let prompt = "";
         const masterPrompt = (customPersona || "").trim();
         if (masterPrompt) {
@@ -89,6 +91,12 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
             prompt += `You represent "${b.companyName || "Sharyx Enterprise"}".\n`;
             if (b.servicesList)
                 prompt += `- Core Solutions: ${b.servicesList}\n`;
+            if (b.industry)
+                prompt += `- Industry: ${b.industry}\n`;
+            if ((_a = b.goals) === null || _a === void 0 ? void 0 : _a.length)
+                prompt += `- What this business wants you to achieve for its customers: ${b.goals.join("; ")}\n`;
+            if ((_b = b.apps) === null || _b === void 0 ? void 0 : _b.length)
+                prompt += `- Tools the team already works in (mention only if a customer asks about integrations): ${b.apps.join(", ")}\n`;
             if (b.address)
                 prompt += `- Address: ${b.address}\n`;
             if (b.businessEmail)
@@ -157,15 +165,27 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
     }
     async buildAutoContext(tenantId, senderPhone, senderName, messageText, conversationId) {
         var _a;
+        if (!tenantId || tenantId === "default" || tenantId === "all") {
+            throw new Error("tenant context is required to build the conversation context");
+        }
         let companyContext = null;
         try {
-            const comp = await company_1.company.findOne({ where: {} });
+            const comp = await company_1.company.findOne({ where: { id: tenantId } });
             if (comp) {
+                const od = comp.onboarding_data || {};
+                const clean = (v) => String(v !== null && v !== void 0 ? v : "").replace(/[\r\n]+/g, " ").trim().slice(0, 120);
+                const list = (v) => (Array.isArray(v) ? v.map(clean).filter(Boolean).slice(0, 12) : []);
+                const services = list(od.selected_services);
                 companyContext = {
                     companyName: comp.name || "Sharyx",
-                    servicesList: "AI Autonomous Workforce, WhatsApp Cloud Automation, Email AI Copilot, Voice Telephony, CRM Integration",
+                    servicesList: services.length
+                        ? services.join(", ")
+                        : "AI Autonomous Workforce, WhatsApp Cloud Automation, Email AI Copilot, Voice Telephony, CRM Integration",
                     address: comp.address || "Singapore / India",
                     businessEmail: comp.email || "support@sharyx.ai",
+                    industry: clean(comp.industry || od.industry) || undefined,
+                    goals: list(od.goals),
+                    apps: list(od.apps),
                 };
             }
         }
@@ -193,7 +213,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         }
         let leadInfo = undefined;
         try {
-            const ld = await lead_1.lead.findOne({ where: { phone: senderPhone } });
+            const ld = await lead_1.lead.findOne({ where: { phone: senderPhone, tenant_id: tenantId } });
             if (ld) {
                 leadInfo = {
                     name: ld.name,
@@ -211,7 +231,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
         let activeAppointment = undefined;
         try {
             const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
-                where: { customer_phone: senderPhone },
+                where: { customer_phone: senderPhone, tenant_id: tenantId },
             });
             if (conv === null || conv === void 0 ? void 0 : conv.last_message_text) {
                 lastWhatsAppMsg = conv.last_message_text;
@@ -301,7 +321,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                 let response;
                 for (const m of candidateModels) {
                     try {
-                        response = await axios_1.default.post(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`, {
+                        response = await axios_1.default.post((0, LlmEndpoints_1.geminiGenerateUrl)(m, geminiKey), {
                             systemInstruction: {
                                 parts: [{ text: systemPrompt }],
                             },
@@ -342,7 +362,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                     })),
                     { role: "user", content: ctx.messageText },
                 ];
-                const response = await axios_1.default.post("https://api.openai.com/v1/chat/completions", {
+                const response = await axios_1.default.post((0, LlmEndpoints_1.openAiChatUrl)(), {
                     model,
                     messages,
                     temperature: 0.3,
@@ -367,8 +387,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
             }
         }
         return {
-            replyText: (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.welcome_message) ||
-                "Hello! Thank you for reaching out to Sharyx. Our team has received your message and will assist you shortly.",
+            replyText: (aiConfig === null || aiConfig === void 0 ? void 0 : aiConfig.fallback_message) || "",
         };
     }
     parseToolCall(rawText) {
@@ -402,6 +421,10 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
     }
     async getToolConfirmation(tool, ctx) {
         var _a, _b, _c, _d;
+        const tid = ctx === null || ctx === void 0 ? void 0 : ctx.tenantId;
+        if (!tid || tid === "default" || tid === "all") {
+            throw new Error("tenant context is required for tool execution");
+        }
         switch (tool.toolName) {
             case "book_appointment": {
                 const slot = ((_a = tool.inputs) === null || _a === void 0 ? void 0 : _a.slot) || "Tomorrow at 11:00 AM";
@@ -411,7 +434,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                 try {
                     if (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) {
                         const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
-                            where: { customer_phone: ctx.senderPhone },
+                            where: { customer_phone: ctx.senderPhone, tenant_id: tid },
                         });
                         if (conv) {
                             conv.meeting_info = {
@@ -421,7 +444,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                             };
                             await conv.save();
                         }
-                        const ld = await lead_1.lead.findOne({ where: { phone: ctx.senderPhone } });
+                        const ld = await lead_1.lead.findOne({ where: { phone: ctx.senderPhone, tenant_id: tid } });
                         if (ld) {
                             ld.preferred_interview_slot = slot;
                             ld.interview_link = meetRoom.meetUrl;
@@ -430,11 +453,11 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                                 ld.lead_status = "INTERVIEW_SCHEDULED";
                             }
                             await ld.save();
-                            if (ld.email) {
+                            {
                                 this.events.emit("agent.outcome", {
-                                    tenantId: (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId) || "default",
+                                    tenantId: tid,
                                     phone: ctx.senderPhone,
-                                    email: ld.email,
+                                    email: ld.email || undefined,
                                     leadName: ld.name || (ctx === null || ctx === void 0 ? void 0 : ctx.senderName) || "Candidate",
                                     outcome: isInterview ? "Interview Scheduled" : "Demo Booked",
                                     event: isInterview ? "interview_booked" : "demo_booked",
@@ -448,7 +471,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                                         meet_url: meetRoom.meetUrl,
                                     },
                                 });
-                                this.logger.log(`📧 [EMAIL CONFIRMATION TRIGGERED] Sent meet link to ${ld.email}`);
+                                this.logger.log(`📧 [EMAIL CONFIRMATION TRIGGERED] outcome raised for tenant ${tid} (email on file: ${ld.email ? "yes" : "no"})`);
                             }
                         }
                     }
@@ -458,7 +481,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                 }
                 if (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) {
                     this.events.emit("voice.call.requested", {
-                        tenantId: ctx.tenantId || "default",
+                        tenantId: tid,
                         phone: ctx.senderPhone,
                         customerName: ctx.senderName,
                         scheduledType: isInterview ? "interview" : "demo",
@@ -474,13 +497,13 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                 const { name, email, phone, company: compName, role, preferred_location, relocation } = tool.inputs || {};
                 try {
                     const targetPhone = phone || (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone);
-                    let ld = targetPhone ? await lead_1.lead.findOne({ where: { phone: targetPhone } }) : null;
+                    let ld = targetPhone ? await lead_1.lead.findOne({ where: { phone: targetPhone, tenant_id: tid } }) : null;
                     if (!ld && (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone)) {
-                        ld = await lead_1.lead.findOne({ where: { phone: ctx.senderPhone } });
+                        ld = await lead_1.lead.findOne({ where: { phone: ctx.senderPhone, tenant_id: tid } });
                     }
                     if (!ld) {
                         ld = new lead_1.lead();
-                        ld.tenant_id = (ctx === null || ctx === void 0 ? void 0 : ctx.tenantId) || "default";
+                        ld.tenant_id = tid;
                         ld.phone = targetPhone || (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) || "unknown";
                         ld.source = lead_1.LeadSource.WHATSAPP;
                         ld.lead_status = lead_1.LeadStatus.NEW;
@@ -498,7 +521,7 @@ let PromptEngineService = PromptEngineService_1 = class PromptEngineService {
                     ld.last_contacted_at = new Date();
                     await ld.save();
                     if (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) {
-                        const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone } });
+                        const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone, tenant_id: tid } });
                         if (conv) {
                             if (name)
                                 conv.customer_name = name;
@@ -545,7 +568,7 @@ Whenever you're ready, we can also schedule a quick Google Meet interview round!
             case "transfer_to_human": {
                 try {
                     if (ctx === null || ctx === void 0 ? void 0 : ctx.senderPhone) {
-                        const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone } });
+                        const conv = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({ where: { customer_phone: ctx.senderPhone, tenant_id: tid } });
                         if (conv) {
                             conv.conversation_status = "human_takeover";
                             await conv.save();

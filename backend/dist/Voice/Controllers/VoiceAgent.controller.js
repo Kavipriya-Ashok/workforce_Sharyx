@@ -16,6 +16,9 @@ exports.VoiceAgentController = void 0;
 const common_1 = require("@nestjs/common");
 const VoiceAgent_service_1 = require("../Services/VoiceAgent.service");
 const VoiceFactory_service_1 = require("../Services/VoiceFactory.service");
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let VoiceAgentController = class VoiceAgentController {
     constructor(agentService, factory) {
         this.agentService = agentService;
@@ -197,6 +200,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VoiceAgentController.prototype, "remove", null);
 exports.VoiceAgentController = VoiceAgentController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Voice/Agents", version: "1" }),
     __metadata("design:paramtypes", [VoiceAgent_service_1.VoiceAgentService,
         VoiceFactory_service_1.VoiceFactoryService])

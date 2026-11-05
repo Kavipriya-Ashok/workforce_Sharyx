@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 var OutcomeTriggerService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OutcomeTriggerService = void 0;
+exports.isRealMeetingLink = isRealMeetingLink;
 const common_1 = require("@nestjs/common");
 const EmailCampaign_entity_1 = require("../Database/Table/Email/EmailCampaign.entity");
 const EmailLog_entity_1 = require("../Database/Table/Email/EmailLog.entity");
@@ -25,6 +26,7 @@ const WhatsAppConversation_entity_1 = require("../Database/Table/WhatsApp/WhatsA
 const WhatsAppMessage_entity_1 = require("../Database/Table/WhatsApp/WhatsAppMessage.entity");
 const PdfGenerator_service_1 = require("./PdfGenerator.service");
 const typeorm_1 = require("typeorm");
+const HumanTask_1 = require("../Helper/HumanTask");
 const axios_1 = __importDefault(require("axios"));
 const Email_service_1 = require("../Email/Services/Email.service");
 const AgentLlm_service_1 = require("../AgentOrchestrator/Services/AgentLlm.service");
@@ -32,10 +34,16 @@ function isMeetingOutcome(event, outcome) {
     return (["appointment_booked", "demo_booked", "interview_booked", "meeting_scheduled"].includes(event) ||
         /appointment|demo|interview|schedule|placement|booked/i.test(outcome || ""));
 }
-function generateMeetSlug() {
-    const r = (n) => Math.random().toString(36).replace(/[^a-z]/g, "").padEnd(n, "x").slice(0, n);
-    return `https://meet.google.com/${r(3)}-${r(4)}-${r(3)}`;
+function isRealMeetingLink(url) {
+    if (!url || !/^https:\/\/[^\s]+$/i.test(url))
+        return false;
+    if (/shx-demo-room/i.test(url))
+        return false;
+    if (/^https:\/\/meet\.google\.com\//i.test(url))
+        return /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(\?.*)?$/i.test(url);
+    return true;
 }
+const LINK_COMING_SOON = "Your meeting link will be shared with you shortly.";
 function buildCalendarUrl(title, details, meetUrl) {
     const start = new Date();
     start.setDate(start.getDate() + 1);
@@ -107,15 +115,15 @@ function substitutePlaceholders(text, ctx, leadRecord) {
         .replace(/\{\{currency\}\}/gi, currency)
         .replace(/\{\{call_summary\}\}|\{\{summary\}\}/gi, ctx.callSummary || "")
         .replace(/\{\{outcome\}\}/gi, ctx.outcome || "")
-        .replace(/\{\{agent_name\}\}|\{\{agent\}\}/gi, ctx.agentName || "Sharyx AI")
-        .replace(/\{\{meet_url\}\}|\{\{meeting_url\}\}|\{\{link\}\}/gi, ctx.meetUrl || "https://meet.google.com")
+        .replace(/\{\{agent_name\}\}|\{\{agent\}\}/gi, ctx.agentName || "")
+        .replace(/\{\{meet_url\}\}|\{\{meeting_url\}\}|\{\{link\}\}/gi, isRealMeetingLink(ctx.meetUrl) ? ctx.meetUrl : "(link will be shared shortly)")
         .replace(/\{\{calendar_url\}\}/gi, ctx.calendarUrl || "")
         .replace(/\{\{llm_message\}\}|\{\{ai_message\}\}/gi, ctx.llmEmailParagraph || ctx.llmWhatsApp || ctx.callSummary || "")
         .replace(/\{\{date\}\}/gi, date)
-        .replace(/\{\{dashboard_url\}\}/gi, ctx.dashboardUrl || "https://app.sharyx.com")
+        .replace(/\{\{dashboard_url\}\}/gi, ctx.dashboardUrl || "")
         .replace(/\{\{1\}\}/g, name)
         .replace(/\{\{2\}\}/g, ctx.callSummary || ctx.outcome || "")
-        .replace(/\{\{3\}\}/g, ctx.meetUrl || "");
+        .replace(/\{\{3\}\}/g, isRealMeetingLink(ctx.meetUrl) ? ctx.meetUrl : "");
 }
 async function resolveLeadByPhone(phone, tenantId) {
     if (!phone)
@@ -139,20 +147,21 @@ let OutcomeTriggerService = OutcomeTriggerService_1 = class OutcomeTriggerServic
     async generateLlmFollowup(ctx) {
         if (!this.llm.isAvailable())
             return { whatsapp: null, email: null };
-        const systemPrompt = `You are a warm, professional client concierge for Sharyx AI (AI Voice, WhatsApp & Email automation).
-A phone call with a customer just ended. Write follow-up messages based ONLY on the facts given.
+        const systemPrompt = `You are a warm, professional client concierge for ${ctx.company ? ctx.company : "the business that is contacting the customer"}.
+A conversation with a customer just ended. Write follow-up messages based ONLY on the facts given.
 Rules:
 - Greet the customer by first name.
 - Acknowledge what they asked / agreed on the call (use the summary).
 - If a Google Meet link is given, include it exactly once, verbatim. If a calendar link is given, include it in the email only.
-- If pricing/details were requested, mention: Starter AI Plan ₹15,000/month, Growth Omnichannel Plan ₹18,000/month.
+- NEVER state a price, plan, amount, date, time or link that is not written in the facts below. If the customer asked for pricing or details, say the team will share them; do not invent any.
+- If no meeting link is given, say the link will be shared shortly. Never write a link yourself.
 - If it is a placement / interview, ask them to keep their resume ready.
 - WhatsApp: under 80 words, friendly, at most 2 emojis, use *bold* sparingly, no placeholders.
 - Email paragraph: 2-4 plain sentences, no greeting line, no signature, no HTML.
 Return JSON: {"whatsapp": "...", "email": "..."}`;
         const facts = [
             `Customer name: ${ctx.leadName || "Customer"}`,
-            `Agent: ${ctx.agentName || "Sharyx AI"}`,
+            ctx.agentName ? `Agent: ${ctx.agentName}` : "",
             `Call outcome: ${ctx.outcome || "Interested"}`,
             `Call summary: ${ctx.callSummary || "N/A"}`,
             ctx.jobTitle ? `Role: ${ctx.jobTitle}` : "",
@@ -180,7 +189,7 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
             /not interested|busy|no-answer|failed/i.test(ctx.outcome || "")) {
             return { sent: 0, failed: 0, details: [] };
         }
-        const key = `${(ctx.phone || ctx.email || "").replace(/\D/g, "").slice(-10)}:${event}`;
+        const key = `${ctx.tenantId}:${(ctx.phone || ctx.email || "").replace(/\D/g, "").slice(-10)}:${event}`;
         const now = Date.now();
         const lastSent = this.recentDispatches.get(key);
         if (key.length > 3 && lastSent && now - lastSent < 180000) {
@@ -194,11 +203,10 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
         let sent = 0;
         let failed = 0;
         if (isMeetingOutcome(event, ctx.outcome)) {
-            if (!ctx.meetUrl || !/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i.test(ctx.meetUrl)) {
-                ctx.meetUrl = generateMeetSlug();
-            }
+            if (!isRealMeetingLink(ctx.meetUrl))
+                ctx.meetUrl = undefined;
             const isInterview = /interview|placement/i.test(`${event} ${ctx.outcome}`);
-            ctx.calendarUrl = buildCalendarUrl(`${isInterview ? "Interview" : "Demo / Meeting"} with Sharyx AI — ${ctx.leadName || "Customer"}`, ctx.callSummary || ctx.outcome || "Scheduled session", ctx.meetUrl);
+            ctx.calendarUrl = buildCalendarUrl(`${isInterview ? "Interview" : "Demo / Meeting"}${ctx.company ? " with " + ctx.company : ""} — ${ctx.leadName || "Customer"}`, ctx.callSummary || ctx.outcome || "Scheduled session", ctx.meetUrl);
         }
         const llmMsg = await this.generateLlmFollowup(ctx);
         ctx.llmWhatsApp = llmMsg.whatsapp || undefined;
@@ -221,7 +229,7 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
         return { sent, failed, details: results };
     }
     async executeWhatsAppTrigger(event, ctx) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e;
         const sent = [];
         const failed = [];
         try {
@@ -255,8 +263,7 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 this.logger.warn("[WA Trigger] No phone available — aborting WA send");
                 return { sent: 0, failed: 1, details: ["No lead phone number available"] };
             }
-            const waConfig = (await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } })) ||
-                (await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { status: true } }));
+            const waConfig = await WhatsAppConfig_entity_1.WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } });
             if (!(waConfig === null || waConfig === void 0 ? void 0 : waConfig.access_token) || !(waConfig === null || waConfig === void 0 ? void 0 : waConfig.phone_number_id)) {
                 this.logger.warn("[WA Trigger] WhatsApp not configured for tenant");
                 return { sent: 0, failed: 1, details: ["WhatsApp not configured"] };
@@ -278,20 +285,39 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 outLower.includes("schedule") ||
                 outLower.includes("placement");
             const name = ctx.leadName || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || "Valued Customer";
-            const slug = `${Math.random().toString(36).slice(2, 5)}-${Math.random().toString(36).slice(2, 6)}-${Math.random().toString(36).slice(2, 5)}`;
-            const resolvedMeetUrl = isMeetingBooked
-                ? ctx.meetUrl || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.interview_link) || `https://meet.google.com/${slug}`
-                : ctx.meetUrl;
+            const resolvedMeetUrl = isRealMeetingLink(ctx.meetUrl)
+                ? ctx.meetUrl
+                : isMeetingBooked && isRealMeetingLink(leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.interview_link)
+                    ? leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.interview_link
+                    : undefined;
+            const needHuman = (title, reason) => (0, HumanTask_1.createHumanTask)({
+                tenantId: ctx.tenantId,
+                phone: recipientPhone,
+                leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                title,
+                reason,
+                source: "outcome_trigger",
+                metadata: { event, outcome: ctx.outcome },
+            });
+            const withMeetingLink = async (body) => {
+                if (!isMeetingBooked)
+                    return body;
+                if (resolvedMeetUrl)
+                    return body.includes(resolvedMeetUrl) ? body : `${body}\n\n🔗 *Google Meet Link*: ${resolvedMeetUrl}`;
+                await needHuman("Send the meeting link to the customer", `A ${ctx.outcome || "meeting"} was booked for ${name} but no real meeting link exists yet. The customer was told it will be shared shortly - please send it.`);
+                return `${body}\n\n${LINK_COMING_SOON}`;
+            };
+            const graphBase = process.env.WHATSAPP_GRAPH_URL || "https://graph.facebook.com/v21.0";
             const sendAndLogWhatsApp = async (msgBody, templateName, languageCode = "en_US") => {
-                var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
-                if (ctx.llmWhatsApp) {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+                if (ctx.llmWhatsApp && !isPricingOrDetailsRequest) {
                     msgBody = ctx.llmWhatsApp;
+                    if (isMeetingBooked)
+                        msgBody = await withMeetingLink(msgBody);
                 }
-                const url = `https://graph.facebook.com/v21.0/${waConfig.phone_number_id}/messages`;
-                const headers = {
-                    Authorization: `Bearer ${waConfig.access_token}`,
-                    "Content-Type": "application/json",
-                };
+                const url = `${graphBase}/${waConfig.phone_number_id}/messages`;
+                const headers = { Authorization: `Bearer ${waConfig.access_token}`, "Content-Type": "application/json" };
+                const metaReason = (e) => { var _a, _b, _c, _d, _e, _f; return `${((_c = (_b = (_a = e === null || e === void 0 ? void 0 : e.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.code) ? `Meta error ${e.response.data.error.code}: ` : ""}${((_f = (_e = (_d = e === null || e === void 0 ? void 0 : e.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error) === null || _f === void 0 ? void 0 : _f.message) || (e === null || e === void 0 ? void 0 : e.message) || "unknown error"}`; };
                 const templatePayload = {
                     messaging_product: "whatsapp",
                     recipient_type: "individual",
@@ -306,53 +332,55 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                                 parameters: [
                                     { type: "text", text: name },
                                     { type: "text", text: ctx.outcome || "Inquiry Details" },
-                                    { type: "text", text: resolvedMeetUrl || ctx.callSummary || "Sharyx AI" },
+                                    { type: "text", text: resolvedMeetUrl || "Details will be shared shortly" },
                                 ],
                             },
                         ],
                     },
                 };
-                let metaMessageId = `wa_${Date.now()}`;
-                let deliveryStatus = "sent";
+                let metaMessageId;
+                let sentAs = "text";
+                let textErr = null;
                 try {
-                    const textRes = await axios_1.default.post(url, {
-                        messaging_product: "whatsapp",
-                        recipient_type: "individual",
-                        to: recipientPhone,
-                        type: "text",
-                        text: { preview_url: true, body: msgBody },
-                    }, { headers, timeout: 10000 });
-                    metaMessageId = ((_c = (_b = (_a = textRes.data) === null || _a === void 0 ? void 0 : _a.messages) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.id) || metaMessageId;
+                    const textRes = await axios_1.default.post(url, { messaging_product: "whatsapp", recipient_type: "individual", to: recipientPhone, type: "text", text: { preview_url: true, body: msgBody } }, { headers, timeout: 10000 });
+                    metaMessageId = (_c = (_b = (_a = textRes.data) === null || _a === void 0 ? void 0 : _a.messages) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.id;
                 }
-                catch (textErr) {
-                    this.logger.warn(`[WA Trigger] Direct text send returned (${((_f = (_e = (_d = textErr === null || textErr === void 0 ? void 0 : textErr.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error) === null || _f === void 0 ? void 0 : _f.message) || textErr.message}), dispatching Meta Template payload "${templateName}"...`);
+                catch (e) {
+                    textErr = e;
+                }
+                if (textErr) {
+                    if (((_f = (_e = (_d = textErr === null || textErr === void 0 ? void 0 : textErr.response) === null || _d === void 0 ? void 0 : _d.data) === null || _e === void 0 ? void 0 : _e.error) === null || _f === void 0 ? void 0 : _f.code) === 190) {
+                        await needHuman("WhatsApp message was not delivered", `Meta rejected the access token. ${metaReason(textErr)}`);
+                        throw textErr;
+                    }
+                    this.logger.warn(`[WA Trigger] Free text not accepted (${metaReason(textErr)}); trying the tenant template "${templateName}"`);
                     try {
                         const tplRes = await axios_1.default.post(url, templatePayload, { headers, timeout: 10000 });
-                        metaMessageId = ((_j = (_h = (_g = tplRes.data) === null || _g === void 0 ? void 0 : _g.messages) === null || _h === void 0 ? void 0 : _h[0]) === null || _j === void 0 ? void 0 : _j.id) || metaMessageId;
+                        metaMessageId = (_j = (_h = (_g = tplRes.data) === null || _g === void 0 ? void 0 : _g.messages) === null || _h === void 0 ? void 0 : _h[0]) === null || _j === void 0 ? void 0 : _j.id;
+                        sentAs = "template";
                     }
-                    catch (_o) {
-                        try {
-                            const fallbackTplRes = await axios_1.default.post(url, {
-                                messaging_product: "whatsapp",
-                                to: recipientPhone,
-                                type: "template",
-                                template: { name: "hello_world", language: { code: "en_US" } },
-                            }, { headers, timeout: 10000 });
-                            metaMessageId = ((_m = (_l = (_k = fallbackTplRes.data) === null || _k === void 0 ? void 0 : _k.messages) === null || _l === void 0 ? void 0 : _l[0]) === null || _m === void 0 ? void 0 : _m.id) || metaMessageId;
-                        }
-                        catch (finalErr) {
-                            deliveryStatus = "failed";
-                            throw finalErr;
-                        }
+                    catch (tplErr) {
+                        const reason = `Free text: ${metaReason(textErr)} | Template "${templateName}": ${metaReason(tplErr)}`;
+                        await needHuman("WhatsApp message was not delivered", reason);
+                        throw new Error(`WhatsApp not delivered - ${reason}`);
+                    }
+                }
+                if (!metaMessageId) {
+                    if (process.env.NODE_ENV === "test")
+                        metaMessageId = `mock_${Date.now()}`;
+                    else {
+                        const reason = "Meta answered without a message id, so delivery cannot be confirmed.";
+                        await needHuman("WhatsApp message was not delivered", reason);
+                        throw new Error(`WhatsApp not delivered - ${reason}`);
                     }
                 }
                 try {
                     let conversation = await WhatsAppConversation_entity_1.WhatsAppConversation.findOne({
-                        where: { customer_phone: recipientPhone, tenant_id: waConfig.tenant_id || "default" },
+                        where: { customer_phone: recipientPhone, tenant_id: waConfig.tenant_id },
                     });
                     if (!conversation) {
                         conversation = new WhatsAppConversation_entity_1.WhatsAppConversation();
-                        conversation.tenant_id = waConfig.tenant_id || "default";
+                        conversation.tenant_id = waConfig.tenant_id;
                         conversation.customer_phone = recipientPhone;
                         conversation.customer_name = name;
                         conversation.conversation_status = "open";
@@ -365,15 +393,15 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                     await conversation.save();
                     const waMsg = new WhatsAppMessage_entity_1.WhatsAppMessage();
                     waMsg.conversation_id = conversation.id;
-                    waMsg.tenant_id = waConfig.tenant_id || "default";
-                    waMsg.sender_phone = waConfig.phone_number || "sharyx_ai";
+                    waMsg.tenant_id = waConfig.tenant_id;
+                    waMsg.sender_phone = waConfig.phone_number || "";
                     waMsg.recipient_phone = recipientPhone;
                     waMsg.direction = "outbound";
-                    waMsg.message_type = "template";
+                    waMsg.message_type = sentAs;
                     waMsg.message_text = msgBody;
-                    waMsg.template_name = templateName;
+                    waMsg.template_name = sentAs === "template" ? templateName : null;
                     waMsg.meta_message_id = metaMessageId;
-                    waMsg.delivery_status = deliveryStatus;
+                    waMsg.delivery_status = "sent";
                     waMsg.is_ai_generated = true;
                     waMsg.created_by_id = "outcome_trigger";
                     waMsg.created_on = new Date();
@@ -386,65 +414,43 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
             };
             if (matching.length === 0) {
                 const allActiveTemplates = await WhatsAppTemplate_entity_1.WhatsAppTemplate.find({
-                    where: { is_active: true, status: true },
+                    where: { tenant_id: ctx.tenantId, is_active: true, status: true },
                 });
-                const matchedTemplate = allActiveTemplates.find((t) => t.outcome_filter && t.outcome_filter !== "ALL" && isOutcomeMatch(t.outcome_filter, ctx.outcome || ""));
+                const matchedTemplate = allActiveTemplates.find((t) => t.outcome_filter && t.outcome_filter !== "ALL" && t.approval_status !== "REJECTED" && isOutcomeMatch(t.outcome_filter, ctx.outcome || ""));
                 if (matchedTemplate) {
                     const enrichedCtx = Object.assign(Object.assign({}, ctx), { meetUrl: resolvedMeetUrl });
-                    let tplBody = substitutePlaceholders(matchedTemplate.body_text, enrichedCtx, leadRecord);
-                    if (isMeetingBooked && resolvedMeetUrl && !tplBody.includes(resolvedMeetUrl)) {
-                        tplBody += `\n\n🔗 *Google Meet Link*: ${resolvedMeetUrl}`;
-                    }
+                    const tplBody = await withMeetingLink(substitutePlaceholders(matchedTemplate.body_text, enrichedCtx, leadRecord));
                     try {
                         await sendAndLogWhatsApp(tplBody, matchedTemplate.name, matchedTemplate.language || "en_US");
                         this.logger.log(`⚡ [WA Trigger] Direct template match "${matchedTemplate.name}" (filter="${matchedTemplate.outcome_filter}") sent to ${recipientPhone}`);
-                        return {
-                            sent: 1,
-                            failed: 0,
-                            details: [`WA template "${matchedTemplate.name}" sent to ${recipientPhone}`],
-                        };
+                        return { sent: 1, failed: 0, details: [`WA template "${matchedTemplate.name}" sent to ${recipientPhone}`] };
                     }
                     catch (tplErr) {
                         this.logger.warn(`[WA Trigger] Direct template send failed: ${tplErr.message}`);
+                        return { sent: 0, failed: 1, details: [tplErr.message] };
                     }
                 }
                 if (!isPricingOrDetailsRequest && !isMeetingBooked) {
                     return { sent: 0, failed: 0, details: [] };
                 }
-                let fallbackMsg = "";
-                let fallbackTplName = "quotation_dispatch";
-                if (isMeetingBooked) {
-                    fallbackTplName = outLower.includes("interview") || outLower.includes("placement")
-                        ? "interview_scheduled_confirmation"
-                        : "meeting_scheduled_confirmation";
-                    fallbackMsg = `Hello ${name}! 👋\n\nYour *${ctx.outcome || "Scheduled Session"}* with *${ctx.agentName || "Sharyx AI"}* is confirmed!\n\n📅 *Outcome*: ${ctx.outcome || "Meeting Scheduled"}\n🔗 *Google Meet Link*: ${resolvedMeetUrl}\n📝 *Summary*: ${ctx.callSummary || "Session scheduled via AI Voice Call."}\n\nPlease join using the Google Meet link above at your scheduled time. Reply here if you need to reschedule!`;
-                }
-                else {
-                    fallbackTplName = "quotation_dispatch";
-                    fallbackMsg = `Hello ${name}! 👋\n\nThank you for speaking with *${ctx.agentName || "Sharyx AI"}*. Here are the details you requested on WhatsApp:\n\n📋 *Inquiry Outcome*: ${ctx.outcome || "Details & Quotation Requested"}\n💼 *Solutions & Pricing Overview*:\n• *Starter AI Plan*: ₹15,000/month (WhatsApp AI Copilot + Email Automation + CRM)\n• *Growth Omnichannel Plan*: ₹18,000/month (Voice AI Telephony + WhatsApp + Email + Auto-Scheduling)\n• *Enterprise Custom*: Dedicated AI Workforce & Custom Integrations\n\n📝 *Call Summary*: ${ctx.callSummary || "Product & pricing details shared as requested."}\n\nReply directly to this WhatsApp message if you would like a live Google Meet walkthrough!`;
-                }
-                try {
-                    await sendAndLogWhatsApp(fallbackMsg, fallbackTplName);
-                    this.logger.log(`⚡ [WA Trigger] Template "${fallbackTplName}" sent to ${recipientPhone} for outcome "${ctx.outcome}"`);
-                    return { sent: 1, failed: 0, details: [`WA template "${fallbackTplName}" sent to ${recipientPhone}`] };
-                }
-                catch (waErr) {
-                    this.logger.warn(`[WA Trigger] Fallback WA send failed: ${((_e = (_d = (_c = waErr === null || waErr === void 0 ? void 0 : waErr.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || waErr.message}`);
-                    return { sent: 0, failed: 1, details: [waErr.message] };
-                }
+                await needHuman(isMeetingBooked ? "Confirm the booking with the customer" : "Send the requested details to the customer", `The customer asked (${ctx.outcome || event}) but no WhatsApp campaign or template is set up for this outcome, so nothing was sent automatically.`);
+                this.logger.warn(`[WA Trigger] No tenant content for "${ctx.outcome || event}" - nothing sent, human task created`);
+                return { sent: 0, failed: 0, details: ["nothing sent: no template or campaign is set up for this outcome (task created)"] };
             }
             for (const campaign of matching) {
                 try {
-                    const tpl = (await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({
+                    const tpl = await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({
                         where: { name: campaign.template_name, tenant_id: ctx.tenantId, status: true },
-                    })) ||
-                        (await WhatsAppTemplate_entity_1.WhatsAppTemplate.findOne({ where: { name: campaign.template_name, status: true } }));
+                    });
+                    if (!tpl) {
+                        await needHuman("WhatsApp campaign has no template", `Campaign "${campaign.name}" points to the template "${campaign.template_name}", which does not exist for this business, so nothing was sent.`);
+                        failed.push(`WA campaign "${campaign.name}": template "${campaign.template_name}" not found`);
+                        continue;
+                    }
                     const enrichedCtx = Object.assign(Object.assign({}, ctx), { meetUrl: resolvedMeetUrl });
-                    let msgBody = tpl
-                        ? substitutePlaceholders(tpl.body_text, enrichedCtx, leadRecord)
-                        : `Hi ${name}, thank you for connecting with ${ctx.agentName || "Sharyx AI"}!`;
-                    if (isMeetingBooked && resolvedMeetUrl && !msgBody.includes(resolvedMeetUrl)) {
-                        msgBody = `Hello ${name}! 👋\n\nYour *${ctx.outcome || "Scheduled Session"}* with *${ctx.agentName || "Sharyx AI"}* is confirmed!\n\n📅 *Outcome*: ${ctx.outcome}\n🔗 *Google Meet Link*: ${resolvedMeetUrl}\n📝 *Call Summary*: ${ctx.callSummary || "Session confirmed."}\n\nJoin via the Google Meet link above. Reply anytime to reschedule!`;
+                    let msgBody = substitutePlaceholders(tpl.body_text, enrichedCtx, leadRecord);
+                    if (isMeetingBooked) {
+                        msgBody = await withMeetingLink(msgBody);
                     }
                     else if (isPricingOrDetailsRequest && !msgBody.includes("Summary")) {
                         msgBody = `${msgBody}\n\n📋 *Outcome*: ${ctx.outcome || "Details Requested"}\n📝 *Call Summary*: ${ctx.callSummary || "Requested details shared on WhatsApp."}`;
@@ -471,10 +477,8 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                             this.logger.warn(`[WA Trigger] PDF generation skipped: ${pdfErr.message}`);
                         }
                     }
-                    const effectiveTemplateName = isMeetingBooked
-                        ? "meeting_scheduled_confirmation"
-                        : campaign.template_name || (tpl === null || tpl === void 0 ? void 0 : tpl.name) || "quotation_dispatch";
-                    await sendAndLogWhatsApp(msgBody, effectiveTemplateName, (tpl === null || tpl === void 0 ? void 0 : tpl.language) || "en_US");
+                    const effectiveTemplateName = tpl.name;
+                    await sendAndLogWhatsApp(msgBody, effectiveTemplateName, tpl.language || "en_US");
                     campaign.sent_count = (campaign.sent_count || 0) + 1;
                     campaign.updated_on = new Date();
                     await campaign.save();
@@ -482,7 +486,7 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                     this.logger.log(`[WA Trigger] Message sent to ${recipientPhone} — campaign: ${campaign.name}`);
                 }
                 catch (err) {
-                    const msg = `WA campaign "${campaign.name}" failed: ${((_h = (_g = (_f = err === null || err === void 0 ? void 0 : err.response) === null || _f === void 0 ? void 0 : _f.data) === null || _g === void 0 ? void 0 : _g.error) === null || _h === void 0 ? void 0 : _h.message) || err.message}`;
+                    const msg = `WA campaign "${campaign.name}" failed: ${((_e = (_d = (_c = err === null || err === void 0 ? void 0 : err.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || err.message}`;
                     failed.push(msg);
                     this.logger.error(`[WA Trigger] ${msg}`);
                 }
@@ -508,8 +512,20 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.email) ||
                 null;
             const recipientName = ctx.leadName || (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.name) || "Valued Lead";
+            if (!recipientEmail) {
+                await this.emailService.recordEmailNotSent(ctx.tenantId, null, "contact has no email address", {
+                    leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id,
+                    subject: `${event} confirmation`,
+                });
+                return { sent: 0, failed: 0, details: ["email skipped: contact has no email address"] };
+            }
             if (matching.length === 0) {
-                if (recipientEmail && (event === "quotation_requested" || /quot|pric|detail/i.test(ctx.outcome || ""))) {
+                const wantsQuotation = event === "quotation_requested" || /quot|pric|detail/i.test(ctx.outcome || "");
+                if (recipientEmail && wantsQuotation && !ctx.dealValue) {
+                    await this.emailService.recordEmailNotSent(ctx.tenantId, null, "quotation not sent: no amount is known for this customer (no invented price)", { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id, subject: `${event} quotation` });
+                    this.logger.warn(`[Email Trigger] quotation skipped for ${recipientEmail}: no deal value`);
+                }
+                if (recipientEmail && wantsQuotation && ctx.dealValue) {
                     try {
                         const quotationSubject = `Official Quotation & Proposal for ${ctx.company || recipientName} — Sharyx AI`;
                         const quotationHtml = `
@@ -523,18 +539,17 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                   <p style="color: #475569; font-size: 13px; line-height: 1.6;">${ctx.llmEmailParagraph || "Thank you for speaking with our AI representative today! As requested, here is your customized workforce automation quotation:"}</p>
                   <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 20px 0;">
                     <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase;">Estimated Investment</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #0284c7; margin: 6px 0;">${ctx.currency || "INR"} ${ctx.dealValue || "15,000"}</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0284c7; margin: 6px 0;">${ctx.currency || "INR"} ${ctx.dealValue}</div>
                     <div style="font-size: 12px; color: #475569; margin-top: 4px;">Includes Autonomous Voice Agents, WhatsApp AI Copilot, and Lead Qualification CRM.</div>
                   </div>
                   <p style="color: #475569; font-size: 13px; line-height: 1.6;">Our specialist team will follow up to finalize the onboarding schedule. Feel free to reply to this email anytime!</p>
                 </div>
               </div>
             `;
-                        await this.emailService.sendEmail({
-                            to: recipientEmail,
-                            subject: quotationSubject,
-                            html: quotationHtml,
-                        });
+                        const QR = await this.emailService.sendEmailReliable({ to: recipientEmail, subject: quotationSubject, html: quotationHtml }, "system", false, ctx.tenantId, { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id });
+                        if (QR.status !== "sent") {
+                            return { sent: 0, failed: QR.status === "failed" ? 1 : 0, details: [`Email ${QR.status}: ${QR.reason}`] };
+                        }
                         this.logger.log(`⚡ [Email Trigger] Default quotation email sent to ${recipientEmail}`);
                         sent.push(`Quotation email sent to ${recipientEmail}`);
                         return { sent: 1, failed: 0, details: sent };
@@ -543,11 +558,14 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                         this.logger.warn(`Failed to dispatch fallback quotation email: ${quotErr.message}`);
                     }
                 }
-                if (recipientEmail && (event === "appointment_booked" || event === "meeting_link_requested" || ctx.meetUrl)) {
+                if (recipientEmail && (event === "appointment_booked" || event === "meeting_link_requested" || ctx.meetUrl) && !isRealMeetingLink(ctx.meetUrl)) {
+                    await this.emailService.recordEmailNotSent(ctx.tenantId, null, "meeting e-mail not sent: no real meeting link exists yet", { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id, subject: `${event} confirmation` });
+                }
+                else if (recipientEmail && (event === "appointment_booked" || event === "meeting_link_requested" || ctx.meetUrl)) {
                     try {
                         const defaultSubject = `Google Meet Invitation: Sharyx Session with ${recipientName}`;
                         const slotText = ctx.callSummary || "Scheduled Session";
-                        const meetUrl = ctx.meetUrl || "https://meet.google.com/shx-demo-room";
+                        const meetUrl = ctx.meetUrl;
                         const defaultHtml = `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
                 <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
@@ -575,11 +593,14 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 </div>
               </div>
             `;
-                        await this.emailService.sendEmail({
+                        const R = await this.emailService.sendEmailReliable({
                             to: recipientEmail,
                             subject: defaultSubject,
                             html: defaultHtml,
-                        }, "system");
+                        }, "system", false, ctx.tenantId, { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id });
+                        if (R.status !== "sent") {
+                            return { sent: 0, failed: R.status === "failed" ? 1 : 0, details: [`Email ${R.status}: ${R.reason}`] };
+                        }
                         try {
                             const logEntry = new EmailLog_entity_1.EmailLog();
                             logEntry.lead_id = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id) || null;
@@ -637,11 +658,14 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 </div>
               </div>
             `;
-                        await this.emailService.sendEmail({
+                        const R = await this.emailService.sendEmailReliable({
                             to: recipientEmail,
                             subject: defaultSubject,
                             html: defaultHtml,
-                        }, "system");
+                        }, "system", false, ctx.tenantId, { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id });
+                        if (R.status !== "sent") {
+                            return { sent: 0, failed: R.status === "failed" ? 1 : 0, details: [`Email ${R.status}: ${R.reason}`] };
+                        }
                         try {
                             const logEntry = new EmailLog_entity_1.EmailLog();
                             logEntry.lead_id = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id) || null;
@@ -718,12 +742,17 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                             this.logger.warn(`[Email Trigger] PDF failed: ${pdfErr.message}`);
                         }
                     }
-                    await this.emailService.sendEmail({
+                    const CR_ = await this.emailService.sendEmailReliable({
                         to: recipientEmail,
                         subject: resolvedSubject,
                         html: resolvedHtml,
                         attachments,
-                    }, "system");
+                    }, "system", false, ctx.tenantId, { leadId: leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id });
+                    if (CR_.status !== "sent") {
+                        if (CR_.status === "failed")
+                            failed.push(`Email campaign "${campaign.campaign_name}" failed: ${CR_.reason}`);
+                        continue;
+                    }
                     try {
                         const logEntry = new EmailLog_entity_1.EmailLog();
                         logEntry.lead_id = (leadRecord === null || leadRecord === void 0 ? void 0 : leadRecord.id) || null;

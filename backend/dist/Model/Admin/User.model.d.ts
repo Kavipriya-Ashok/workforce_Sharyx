@@ -7,15 +7,8 @@ export declare class UserModel extends BaseModel {
     password: string;
     mobile: string;
 }
-export declare class ForgotPasswordModel {
-    email: string;
-}
-export declare class ResetPasswordModel {
-    user_id: string;
-    reset_otp: number;
-    password: string;
-}
 export declare class ChangePasswordModel {
     old_password: string;
     password: string;
+    confirm_password: string;
 }

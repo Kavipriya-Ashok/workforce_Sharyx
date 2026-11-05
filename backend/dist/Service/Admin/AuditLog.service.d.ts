@@ -17,7 +17,7 @@ export declare class AuditLogService {
     private GenerateQuery;
     private GetLastAddedLog;
     private Insert;
-    LazyLoadList(AuditLogLazyLoadData: AuditLogLazyLoadModel): Promise<any>;
+    LazyLoadList(AuditLogLazyLoadData: AuditLogLazyLoadModel, allowedUserIds?: string[] | null): Promise<any>;
     DetailList(EventLog: any): Promise<any>;
     GetColumneName(table: string, columns: string): any;
     GetTableName(table: string, columns: string): string;

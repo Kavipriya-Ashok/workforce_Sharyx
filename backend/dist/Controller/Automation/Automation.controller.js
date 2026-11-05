@@ -16,6 +16,8 @@ exports.AutomationController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const RuleEngine_service_1 = require("../../Service/Automation/RuleEngine.service");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let AutomationController = class AutomationController {
     constructor(ruleEngineService) {
         this.ruleEngineService = ruleEngineService;
@@ -111,6 +113,8 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AutomationController.prototype, "deleteRule", null);
 exports.AutomationController = AutomationController = __decorate([
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
+    (0, swagger_1.ApiBearerAuth)(),
     (0, common_1.Controller)({
         path: ["Automation", "api/Automation", "api/v1/Automation"],
         version: ["1", common_1.VERSION_NEUTRAL],

@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailController = void 0;
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const AuthBase_controller_1 = require("../../Controller/AuthBase.controller");
+const JWTAuth_controller_1 = require("../../Controller/JWTAuth.controller");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const ResponseEnum_1 = require("../../Helper/Enum/ResponseEnum");
 const Email_service_1 = require("../Services/Email.service");
@@ -23,7 +23,11 @@ const EmailAI_service_1 = require("../Services/EmailAI.service");
 const EmailImap_service_1 = require("../Services/EmailImap.service");
 const EmailAccountConfig_model_1 = require("../Models/EmailAccountConfig.model");
 const SendEmail_model_1 = require("../Models/SendEmail.model");
-let EmailController = class EmailController extends AuthBase_controller_1.AuthBaseController {
+const common_2 = require("@nestjs/common");
+const StrictValidation_1 = require("../../Helper/StrictValidation");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
+let EmailController = class EmailController extends JWTAuth_controller_1.JWTAuthController {
     constructor(emailService, emailAiService, emailImapService) {
         super();
         this.emailService = emailService;
@@ -31,26 +35,30 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         this.emailImapService = emailImapService;
     }
     async getConfig(headerTenantId) {
-        const config = await this.emailService.getConfig(headerTenantId || "default");
-        return this.SendResponseData(config);
+        const safe = await this.emailService.getSafeConfig(headerTenantId || "default");
+        return this.SendResponseData(safe);
     }
     async saveConfig(body, userId, headerTenantId) {
-        if (headerTenantId && headerTenantId !== "all") {
-            body.tenant_id = headerTenantId;
+        if (!headerTenantId || headerTenantId === "all") {
+            throw new common_1.BadRequestException("Select a specific tenant to save its email settings.");
         }
-        const result = await this.emailService.saveConfig(body, userId);
-        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, result);
+        body.tenant_id = headerTenantId;
+        const saved = await this.emailService.saveConfig(body, userId);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, this.emailService.toSafeConfig(saved));
     }
-    async testConnection(body) {
-        const result = await this.emailService.testConnection(body);
-        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, "Email connection verified successfully", result);
+    async testConnection(body, userId, headerTenantId) {
+        const result = await this.emailService.testConnection(headerTenantId, userId, body);
+        return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, result.message, result);
     }
     getGoogleAuthUrl(redirectUri) {
         const res = this.emailService.getGoogleAuthUrl(redirectUri);
         return this.SendResponseData(res);
     }
     async connectGoogle(body, userId, headerTenantId) {
-        const activeTenant = (headerTenantId && headerTenantId !== "all") ? headerTenantId : "646b4abe-e6de-401b-ba33-46884bf3f6e6";
+        if (!headerTenantId || headerTenantId === "all") {
+            throw new common_1.BadRequestException("Select a specific tenant to connect a Google mailbox.");
+        }
+        const activeTenant = headerTenantId;
         const result = await this.emailService.connectGoogleAccount(body.code, body.redirectUri, userId, activeTenant);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Saved, result);
     }
@@ -64,11 +72,11 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         const result = await this.emailService.disconnectGoogleAccount(activeTenant, userId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Deleted, result);
     }
-    async generateLeadDraft(body) {
-        const draft = await this.emailAiService.generateLeadFollowupDraft(body.lead_id, body.customPrompt, body.intent);
+    async generateLeadDraft(body, tenantId) {
+        const draft = await this.emailAiService.generateLeadFollowupDraft(body.lead_id, body.customPrompt, body.intent, tenantId);
         return this.SendResponseData(draft);
     }
-    async sendLeadEmail(body, userId) {
+    async sendLeadEmail(body, userId, tenantId) {
         var _a;
         const sendDto = {
             to: body.to,
@@ -76,15 +84,15 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
             html: body.html,
             lead_id: body.lead_id,
         };
-        const result = await this.emailService.sendEmail(sendDto, userId, (_a = body.isAiDrafted) !== null && _a !== void 0 ? _a : false);
+        const result = await this.emailService.sendEmail(sendDto, userId, (_a = body.isAiDrafted) !== null && _a !== void 0 ? _a : false, tenantId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Mail, result);
     }
     async validateEmail(email) {
         const result = await this.emailService.validateEmail(email);
         return this.SendResponseData(result);
     }
-    async sendEmail(body, userId) {
-        const result = await this.emailService.sendEmail(body, userId);
+    async sendEmail(body, userId, tenantId) {
+        const result = await this.emailService.sendEmail(body, userId, false, tenantId);
         return this.SendResponse(ResponseEnum_1.ResponseEnum.Success, ResponseEnum_1.ResponseEnum.Mail, result);
     }
     async getInbox(headerTenantId) {
@@ -96,33 +104,37 @@ let EmailController = class EmailController extends AuthBase_controller_1.AuthBa
         const result = await this.emailImapService.pollInbox();
         return this.SendResponseData(result);
     }
-    async getThread(identifier) {
-        const thread = await this.emailService.getThread(identifier);
+    async getThread(identifier, tenantId) {
+        const thread = await this.emailService.getThread(identifier, tenantId);
         return this.SendResponseData(thread);
     }
 };
 exports.EmailController = EmailController;
 __decorate([
     (0, common_1.Get)("Config"),
-    __param(0, (0, common_1.Headers)("x-tenant-id")),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getConfig", null);
 __decorate([
     (0, common_1.Post)("Config"),
+    (0, common_2.UsePipes)(...(0, StrictValidation_1.strictPipes)()),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
-    __param(2, (0, common_1.Headers)("x-tenant-id")),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "saveConfig", null);
 __decorate([
     (0, common_1.Post)("Test-Connection"),
+    (0, common_2.UsePipes)(...(0, StrictValidation_1.strictPipes)()),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel]),
+    __metadata("design:paramtypes", [EmailAccountConfig_model_1.EmailAccountConfigModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "testConnection", null);
 __decorate([
@@ -136,14 +148,14 @@ __decorate([
     (0, common_1.Post)("OAuth/Connect"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
-    __param(2, (0, common_1.Headers)("x-tenant-id")),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "connectGoogle", null);
 __decorate([
     (0, common_1.Get)("OAuth/Status"),
-    __param(0, (0, common_1.Headers)("x-tenant-id")),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
@@ -151,7 +163,7 @@ __decorate([
 __decorate([
     (0, common_1.Post)("OAuth/Disconnect"),
     __param(0, (0, Common_helper_1.CurrentUser)()),
-    __param(1, (0, common_1.Headers)("x-tenant-id")),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
@@ -159,16 +171,18 @@ __decorate([
 __decorate([
     (0, common_1.Post)("Lead/AiDraft"),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "generateLeadDraft", null);
 __decorate([
     (0, common_1.Post)("Lead/Send"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:paramtypes", [Object, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "sendLeadEmail", null);
 __decorate([
@@ -182,13 +196,14 @@ __decorate([
     (0, common_1.Post)("Send"),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
+    __param(2, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [SendEmail_model_1.SendEmailModel, String]),
+    __metadata("design:paramtypes", [SendEmail_model_1.SendEmailModel, String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "sendEmail", null);
 __decorate([
     (0, common_1.Get)("Inbox"),
-    __param(0, (0, common_1.Headers)("x-tenant-id")),
+    __param(0, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
@@ -202,11 +217,13 @@ __decorate([
 __decorate([
     (0, common_1.Get)("Thread/:identifier"),
     __param(0, (0, common_1.Param)("identifier")),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "getThread", null);
 exports.EmailController = EmailController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Email", version: "1" }),
     (0, swagger_1.ApiTags)("Email Automation"),
     __metadata("design:paramtypes", [Email_service_1.EmailService,

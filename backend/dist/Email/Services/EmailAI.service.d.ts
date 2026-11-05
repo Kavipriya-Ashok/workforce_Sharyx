@@ -3,7 +3,7 @@ import { EmailAIConfigModel, GenerateEmailAIDraftModel } from "../Models/EmailAI
 export declare class EmailAIService {
     private readonly logger;
     getConfig(tenantId?: string): Promise<EmailAIConfig | null>;
-    saveConfig(data: EmailAIConfigModel, userId?: string): Promise<EmailAIConfig>;
+    saveConfig(data: EmailAIConfigModel, userId?: string, tenantId?: string): Promise<EmailAIConfig>;
     generateDraft(dto: GenerateEmailAIDraftModel, tenantId?: string): Promise<{
         subject: string;
         draft: any;

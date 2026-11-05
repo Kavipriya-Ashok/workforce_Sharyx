@@ -5,6 +5,7 @@ export declare class CommonSeederService {
     private _DataSource;
     constructor(_EncryptionService: EncryptionService, _DataSource: DataSource);
     Run(): Promise<void>;
+    LinkSeedAdminToCompany: () => Promise<void>;
     UserRoleSeed: () => Promise<void>;
     UserSeed: () => Promise<void>;
     CurrencySeed: () => Promise<void>;

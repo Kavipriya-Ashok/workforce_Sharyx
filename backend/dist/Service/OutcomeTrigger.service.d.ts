@@ -18,6 +18,7 @@ export interface TriggerContext {
     llmWhatsApp?: string;
     llmEmailParagraph?: string;
 }
+export declare function isRealMeetingLink(url?: string | null): boolean;
 export declare class OutcomeTriggerService {
     private readonly emailService;
     private readonly pdfService;

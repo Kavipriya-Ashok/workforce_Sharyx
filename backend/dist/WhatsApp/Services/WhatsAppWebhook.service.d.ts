@@ -10,6 +10,10 @@ export declare class WhatsAppWebhookService {
     private static readonly phoneQueues;
     constructor(whatsAppService: WhatsAppService, aiService: WhatsAppAIService, events: EventEmitter2);
     verifyHandshake(mode: string, token: string, challenge: string): Promise<string | null>;
+    checkSignature(rawBody: Buffer | undefined, header: string | undefined, body: any): Promise<{
+        ok: boolean;
+        reason?: string;
+    }>;
     processIncomingWebhook(body: any): Promise<{
         status: string;
         error: any;

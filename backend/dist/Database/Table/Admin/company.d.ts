@@ -17,4 +17,9 @@ export declare class company extends BaseTable {
     telephone_no: string;
     fax_no: string;
     invoice_footer: string;
+    onboarding_completed: boolean;
+    onboarding_step: number;
+    onboarding_data: Record<string, any>;
+    industry: string;
+    company_size: string;
 }

@@ -1,12 +1,12 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { WhatsAppCampaignService } from "../Services/WhatsAppCampaign.service";
 import { WhatsAppCampaignModel } from "../Models/WhatsAppCampaign.model";
-export declare class WhatsAppCampaignController extends AuthBaseController {
+export declare class WhatsAppCampaignController extends JWTAuthController {
     private readonly campaignService;
     constructor(campaignService: WhatsAppCampaignService);
-    listCampaigns(): Promise<any>;
-    createCampaignBase(body: WhatsAppCampaignModel, userId: string): Promise<{
+    listCampaigns(tenantId: string): Promise<any>;
+    createCampaignBase(body: WhatsAppCampaignModel, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -15,7 +15,7 @@ export declare class WhatsAppCampaignController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    createCampaign(body: WhatsAppCampaignModel, userId: string): Promise<{
+    createCampaign(body: WhatsAppCampaignModel, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -24,7 +24,7 @@ export declare class WhatsAppCampaignController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    updateCampaign(id: string, body: Partial<WhatsAppCampaignModel>): Promise<{
+    updateCampaign(id: string, body: Partial<WhatsAppCampaignModel>, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -33,7 +33,7 @@ export declare class WhatsAppCampaignController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    toggleCampaign(id: string, isActive: boolean): Promise<{
+    toggleCampaign(id: string, isActive: boolean, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -42,7 +42,7 @@ export declare class WhatsAppCampaignController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    deleteCampaign(id: string): Promise<{
+    deleteCampaign(id: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;

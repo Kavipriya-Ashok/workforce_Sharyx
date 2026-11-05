@@ -4,8 +4,6 @@ export declare class EmailAccountConfigModel extends BaseModel {
     provider?: string;
     display_name?: string;
     email_address: string;
-    client_id?: string;
-    client_secret?: string;
     smtp_host?: string;
     smtp_port?: number;
     smtp_user?: string;

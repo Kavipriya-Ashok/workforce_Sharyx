@@ -5,10 +5,10 @@ export declare class WhatsAppCampaignService {
     private readonly whatsAppService;
     private readonly logger;
     constructor(whatsAppService: WhatsAppService);
-    listCampaigns(tenantId?: string): Promise<WhatsAppCampaign[]>;
-    createCampaign(dto: WhatsAppCampaignModel, userId?: string): Promise<WhatsAppCampaign>;
-    updateCampaign(id: string, data: Partial<WhatsAppCampaignModel>): Promise<WhatsAppCampaign>;
-    toggleCampaign(id: string, is_active: boolean): Promise<WhatsAppCampaign>;
-    deleteCampaign(id: string): Promise<boolean>;
-    executeCampaign(campaignId: string, recipients: string[], templateName: string): Promise<void>;
+    listCampaigns(tenantId: string): Promise<WhatsAppCampaign[]>;
+    createCampaign(dto: WhatsAppCampaignModel, userId: string | undefined, tenantId: string): Promise<WhatsAppCampaign>;
+    updateCampaign(id: string, data: Partial<WhatsAppCampaignModel>, tenantId: string): Promise<WhatsAppCampaign>;
+    toggleCampaign(id: string, is_active: boolean, tenantId: string): Promise<WhatsAppCampaign>;
+    deleteCampaign(id: string, tenantId: string): Promise<boolean>;
+    executeCampaign(campaignId: string, recipients: string[], templateName: string, tenantId: string): Promise<void>;
 }

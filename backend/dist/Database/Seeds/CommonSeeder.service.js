@@ -22,6 +22,19 @@ let CommonSeederService = class CommonSeederService {
     constructor(_EncryptionService, _DataSource) {
         this._EncryptionService = _EncryptionService;
         this._DataSource = _DataSource;
+        this.LinkSeedAdminToCompany = async () => {
+            const seeded = await company_1.company.findOne({ where: { name: 'BoilerPlate' } });
+            if (!seeded)
+                return;
+            seeded.onboarding_completed = true;
+            await seeded.save();
+            await this._DataSource.manager
+                .createQueryBuilder()
+                .update(user_1.user)
+                .set({ company_id: seeded.id })
+                .where('email = :email AND company_id IS NULL', { email: 'admin@user.com' })
+                .execute();
+        };
         this.UserRoleSeed = async () => {
             await this._DataSource.manager.createQueryBuilder()
                 .insert()
@@ -40,7 +53,7 @@ let CommonSeederService = class CommonSeederService {
                 {
                     user_role_id: UserRoleData.id,
                     email: 'admin@user.com',
-                    password: this._EncryptionService.Encrypt('Login123!!'),
+                    password: await this._EncryptionService.HashPassword(process.env.SEED_ADMIN_PASSWORD || 'Login123!!'),
                     created_by_id: "0",
                     created_on: new Date()
                 }
@@ -128,6 +141,12 @@ let CommonSeederService = class CommonSeederService {
         }
         try {
             await this.CompanySeed();
+        }
+        catch (e) {
+            console.log(e);
+        }
+        try {
+            await this.LinkSeedAdminToCompany();
         }
         catch (e) {
             console.log(e);

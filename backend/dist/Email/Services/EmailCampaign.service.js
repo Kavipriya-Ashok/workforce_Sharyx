@@ -25,10 +25,10 @@ let EmailCampaignService = EmailCampaignService_1 = class EmailCampaignService {
             order: { created_on: "DESC" },
         });
     }
-    async createCampaign(dto, userId) {
+    async createCampaign(dto, userId, tenantId = "default") {
         var _a, _b;
         const campaign = new EmailCampaign_entity_1.EmailCampaign();
-        campaign.tenant_id = "default";
+        campaign.tenant_id = tenantId;
         campaign.campaign_name = dto.campaign_name;
         campaign.subject = dto.subject;
         campaign.html_template = dto.html_template;
@@ -40,11 +40,11 @@ let EmailCampaignService = EmailCampaignService_1 = class EmailCampaignService {
         campaign.created_on = new Date();
         await campaign.save();
         if ((_b = dto.recipients) === null || _b === void 0 ? void 0 : _b.length) {
-            this.executeCampaign(campaign.id, dto.recipients, dto.subject, dto.html_template, userId);
+            this.executeCampaign(campaign.id, dto.recipients, dto.subject, dto.html_template, userId, tenantId);
         }
         return campaign;
     }
-    async executeCampaign(campaignId, recipients, subject, html, userId) {
+    async executeCampaign(campaignId, recipients, subject, html, userId, tenantId = "default") {
         const campaign = await EmailCampaign_entity_1.EmailCampaign.findOne({ where: { id: campaignId } });
         if (!campaign)
             return;
@@ -55,7 +55,7 @@ let EmailCampaignService = EmailCampaignService_1 = class EmailCampaignService {
                     to: email,
                     subject,
                     html,
-                }, userId);
+                }, userId, false, tenantId);
                 sent++;
             }
             catch (err) {

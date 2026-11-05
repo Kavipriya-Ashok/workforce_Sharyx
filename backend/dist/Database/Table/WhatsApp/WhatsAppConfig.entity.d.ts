@@ -5,6 +5,7 @@ export declare class WhatsAppConfig extends BaseTable {
     phone_number_id: string;
     waba_id: string;
     access_token: string;
+    app_secret: string;
     verify_token: string;
     provider: string;
     api_url: string;

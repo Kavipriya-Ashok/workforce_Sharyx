@@ -29,6 +29,13 @@ async function bootstrap() {
         cors: { origin: "*", exposedHeaders: "*" },
     });
     app.enableShutdownHooks();
+    const trustProxy = process.env.TRUST_PROXY;
+    if (trustProxy) {
+        app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
+    }
+    else if (process.env.NODE_ENV === "production") {
+        console.warn("⚠️  TRUST_PROXY is not set. If this server runs behind nginx, every client shares one /Auth rate-limit bucket. Set TRUST_PROXY=1.");
+    }
     app.setGlobalPrefix("api", {
         exclude: ["webhook/whatsapp"],
     });
@@ -54,7 +61,12 @@ async function bootstrap() {
     app.use((0, compression_1.default)());
     app.use((0, errorhandler_1.default)());
     app.use((0, express_1.urlencoded)({ limit: "500mb", extended: true }));
-    app.use((0, express_2.json)({ limit: "500mb" }));
+    app.use((0, express_2.json)({
+        limit: "500mb",
+        verify: (req, _res, buf) => {
+            req.rawBody = buf;
+        },
+    }));
     app.use(passport_1.default.initialize());
     app.useGlobalPipes(new common_1.ValidationPipe({ transform: true }));
     app.useGlobalFilters(new Exception_helper_1.ExceptionHelper());

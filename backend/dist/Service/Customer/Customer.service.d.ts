@@ -10,7 +10,7 @@ export declare class CustomerService {
     private readonly leadRepo;
     private readonly logger;
     constructor(customerRepo: Repository<Customer>, dealRepo: Repository<CrmDeal>, interactionRepo: Repository<CustomerInteraction>, leadRepo: Repository<lead>);
-    list(query: any, userContext?: any): Promise<{
+    list(query: any, tenantId: string | null): Promise<{
         items: Customer[];
         total: number;
         page: number;
@@ -24,7 +24,7 @@ export declare class CustomerService {
             autoConversionRate: number;
         };
     }>;
-    getById(id: string): Promise<{
+    getById(id: string, tenantId: string | null): Promise<{
         interactions: CustomerInteraction[];
         deals: CrmDeal[];
         originalLead: lead;
@@ -53,11 +53,11 @@ export declare class CustomerService {
         updated_by_id?: string;
         updated_on?: Date;
     }>;
-    insert(data: Partial<Customer>, userId?: string): Promise<Customer>;
-    update(id: string, data: Partial<Customer>, userId?: string): Promise<Customer>;
-    delete(id: string): Promise<{
+    insert(data: Partial<Customer>, userId: string | undefined, tenantId: string | null): Promise<Customer>;
+    update(id: string, data: Partial<Customer>, userId: string | undefined, tenantId: string | null): Promise<Customer>;
+    delete(id: string, tenantId: string | null): Promise<{
         success: boolean;
     }>;
-    listDeals(tenantId?: string): Promise<CrmDeal[]>;
+    listDeals(tenantId: string | null): Promise<CrmDeal[]>;
     addInteraction(customerId: string, data: Partial<CustomerInteraction>, userId?: string): Promise<CustomerInteraction>;
 }

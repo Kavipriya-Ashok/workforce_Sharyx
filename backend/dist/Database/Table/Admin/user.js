@@ -14,6 +14,7 @@ const AuditLog_decorators_1 = require("../../../Helper/AuditLog.decorators");
 const typeorm_1 = require("typeorm");
 const BaseTable_1 = require("../BaseTable");
 const user_role_1 = require("./user_role");
+const company_1 = require("./company");
 let user = class user extends BaseTable_1.BaseTable {
 };
 exports.user = user;
@@ -27,6 +28,16 @@ __decorate([
     (0, typeorm_1.Index)(),
     __metadata("design:type", String)
 ], user.prototype, "user_role_id", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => company_1.company, { onDelete: "RESTRICT", nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: "company_id" }),
+    __metadata("design:type", company_1.company)
+], user.prototype, "company", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "uuid", nullable: true }),
+    (0, typeorm_1.Index)(),
+    __metadata("design:type", String)
+], user.prototype, "company_id", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }),
     __metadata("design:type", String)
@@ -53,6 +64,10 @@ __decorate([
     (0, typeorm_1.Column)({ type: "bigint", nullable: true }),
     __metadata("design:type", Number)
 ], user.prototype, "reset_otp", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "timestamp", nullable: true }),
+    __metadata("design:type", Date)
+], user.prototype, "reset_otp_expires_at", void 0);
 exports.user = user = __decorate([
     (0, typeorm_1.Entity)({ name: "user" })
 ], user);

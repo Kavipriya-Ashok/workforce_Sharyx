@@ -77,16 +77,14 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
               {activeTab === 'live_chat' ? 'WhatsApp Live Chat Inbox' : 'WhatsApp Automation Suite'}
             </h1>
             <Badge
-              className={`gap-1.5 py-0.5 text-[11px] font-semibold ${
-                isConnected
+              className={`gap-1.5 py-0.5 text-[11px] font-semibold ${isConnected
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                   : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-              }`}
+                }`}
             >
               <Radio
-                className={`h-3 w-3 ${
-                  isConnected ? 'text-emerald-500 animate-pulse' : 'text-amber-500'
-                }`}
+                className={`h-3 w-3 ${isConnected ? 'text-emerald-500 animate-pulse' : 'text-amber-500'
+                  }`}
               />
               {isConnected ? 'Connected' : 'Not Connected'}
             </Badge>
@@ -148,62 +146,84 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
       </div>
 
       {/* Compact Integration Telemetry Ribbon - shown only when not on live_chat */}
+
+      {/* Integration Telemetry Ribbon - shown only when not on live_chat */}
       {activeTab !== 'live_chat' && (
-      <div className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-              <Phone className="h-3 w-3" />
+        isConnected ? (
+          <div className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <Phone className="h-3 w-3" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">Sender:</span>
+                  <span className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                    {config?.phone_number || '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="hidden md:flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                  <ShieldCheck className="h-3 w-3" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">Phone ID:</span>
+                  <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
+                    {config?.phone_number_id || '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="hidden lg:flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800/60 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                  <Layers className="h-3 w-3" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">WABA:</span>
+                  <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
+                    {config?.waba_id || '—'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">Sender:</span>
-              <span className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
-                {config?.phone_number || '+91 93440 78088'}
+
+            <div className="flex items-center gap-3 ml-auto">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="text-[11px]">Webhook Handshake Active</span>
+              </div>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDiagnosticOpen(true)}
+                className="h-6 px-2 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+              >
+                Inspect
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="px-3.5 py-2.5 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0">
+                <Radio className="h-3 w-3" />
+              </div>
+              <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                WhatsApp Business API is not connected. Configure your credentials to enable broadcasts and messaging.
               </span>
             </div>
+            <Button
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              className="h-7 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs"
+            >
+              Connect WhatsApp
+            </Button>
           </div>
-
-          <div className="hidden md:flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-              <ShieldCheck className="h-3 w-3" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">Phone ID:</span>
-              <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
-                {config?.phone_number_id || '1154030421127355'}
-              </span>
-            </div>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800/60 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-              <Layers className="h-3 w-3" />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase text-slate-400 dark:text-slate-500">WABA:</span>
-              <span className="text-xs font-mono text-slate-700 dark:text-slate-300">
-                {config?.waba_id || '1000898049032550'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 ml-auto">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span className="text-[11px]">Webhook Handshake Active</span>
-          </div>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setDiagnosticOpen(true)}
-            className="h-6 px-2 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50"
-          >
-            Inspect
-          </Button>
-        </div>
-      </div>
+        )
       )}
 
       {/* 5-Tab Navigation Hub */}

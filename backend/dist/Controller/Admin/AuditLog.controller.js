@@ -17,14 +17,18 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const AuditLog_service_1 = require("../../Service/Admin/AuditLog.service");
 const JWTAuth_controller_1 = require("../JWTAuth.controller");
+const Common_helper_1 = require("../../Helper/Common.helper");
+const User_service_1 = require("../../Service/Admin/User.service");
 const AuditLog_model_1 = require("../../Model/Admin/AuditLog.model");
 let AuditLogController = class AuditLogController extends JWTAuth_controller_1.JWTAuthController {
-    constructor(_AuditLogService) {
+    constructor(_AuditLogService, _UserService) {
         super();
         this._AuditLogService = _AuditLogService;
+        this._UserService = _UserService;
     }
-    async LazyLoadList(AuditLogLazyLoadData) {
-        const AuditLogListData = await this._AuditLogService.LazyLoadList(AuditLogLazyLoadData);
+    async LazyLoadList(AuditLogLazyLoadData, tenantId) {
+        const allowedUserIds = await this._UserService.GetIdsByTenant(tenantId);
+        const AuditLogListData = await this._AuditLogService.LazyLoadList(AuditLogLazyLoadData, allowedUserIds);
         return this.SendResponseData({ data: AuditLogListData.data, total: AuditLogListData.total_record });
     }
     async DetailList(EventLog) {
@@ -36,8 +40,9 @@ exports.AuditLogController = AuditLogController;
 __decorate([
     (0, common_1.Get)('LazyLoadList'),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, Common_helper_1.CurrentTenant)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [AuditLog_model_1.AuditLogLazyLoadModel]),
+    __metadata("design:paramtypes", [AuditLog_model_1.AuditLogLazyLoadModel, String]),
     __metadata("design:returntype", Promise)
 ], AuditLogController.prototype, "LazyLoadList", null);
 __decorate([
@@ -50,6 +55,6 @@ __decorate([
 exports.AuditLogController = AuditLogController = __decorate([
     (0, common_1.Controller)({ path: "AuditLog", version: '1' }),
     (0, swagger_1.ApiTags)("Audit Log"),
-    __metadata("design:paramtypes", [AuditLog_service_1.AuditLogService])
+    __metadata("design:paramtypes", [AuditLog_service_1.AuditLogService, User_service_1.UserService])
 ], AuditLogController);
 //# sourceMappingURL=AuditLog.controller.js.map

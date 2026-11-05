@@ -15,6 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoiceCallController = void 0;
 const common_1 = require("@nestjs/common");
 const VoiceCall_service_1 = require("../Services/VoiceCall.service");
+const common_2 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const TenantContext_guard_1 = require("../../Service/Auth/TenantContext.guard");
 let VoiceCallController = class VoiceCallController {
     constructor(callService) {
         this.callService = callService;
@@ -97,6 +100,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VoiceCallController.prototype, "syncFromVapi", null);
 exports.VoiceCallController = VoiceCallController = __decorate([
+    (0, common_2.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, TenantContext_guard_1.TenantContextGuard),
     (0, common_1.Controller)({ path: "Voice/Calls", version: "1" }),
     __metadata("design:paramtypes", [VoiceCall_service_1.VoiceCallService])
 ], VoiceCallController);

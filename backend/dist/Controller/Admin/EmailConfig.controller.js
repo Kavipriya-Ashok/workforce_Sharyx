@@ -14,6 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailConfigController = void 0;
 const common_1 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const SuperAdmin_guard_1 = require("../../Service/Auth/SuperAdmin.guard");
+const common_2 = require("@nestjs/common");
 const EmailConfig_model_1 = require("../../Model/Admin/EmailConfig.model");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const swagger_1 = require("@nestjs/swagger");
@@ -41,21 +44,22 @@ let EmailConfigController = class EmailConfigController extends JWTAuth_controll
 };
 exports.EmailConfigController = EmailConfigController;
 __decorate([
-    (0, common_1.Get)(''),
+    (0, common_2.Get)(''),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], EmailConfigController.prototype, "EmailConfig", null);
 __decorate([
-    (0, common_1.Patch)('Update'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_2.Patch)('Update'),
+    __param(0, (0, common_2.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [EmailConfig_model_1.EmailConfigModel, String]),
     __metadata("design:returntype", Promise)
 ], EmailConfigController.prototype, "Update", null);
 exports.EmailConfigController = EmailConfigController = __decorate([
-    (0, common_1.Controller)({ path: "EmailConfig", version: '1' }),
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, SuperAdmin_guard_1.SuperAdminGuard),
+    (0, common_2.Controller)({ path: "EmailConfig", version: '1' }),
     (0, swagger_1.ApiTags)("Email Config"),
     __metadata("design:paramtypes", [EmailConfig_service_1.EmailConfigService])
 ], EmailConfigController);

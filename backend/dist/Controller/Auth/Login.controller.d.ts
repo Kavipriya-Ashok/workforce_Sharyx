@@ -1,48 +1,52 @@
 import { ResponseEnum } from '@Helper/Enum/ResponseEnum';
-import { ForgotPasswordModel, ResetPasswordModel } from '@Model/Admin/User.model';
-import { UserLoginModel } from '@Model/Admin/UserLogin.model';
+import { ForgotPasswordDto, GoogleAuthDto, LoginDto, ResendSignupOtpDto, ResetPasswordDto, SendSignupOtpDto, VerifySignupOtpDto } from '@Model/Auth/Auth.model';
 import { UserService } from '@Service/Admin/User.service';
 import { AuthService } from '@Service/Auth/Auth.service';
+import { GoogleAuthService } from '@Service/Auth/GoogleAuth.service';
 import { AuthBaseController } from '@Controller/AuthBase.controller';
+export declare const AUTH_THROTTLE_TTL_MS: number;
+export declare const AUTH_THROTTLE_LIMIT: number;
 export declare class LoginController extends AuthBaseController {
     private _AuthService;
     private _UserService;
-    constructor(_AuthService: AuthService, _UserService: UserService);
-    UserLogin(UserLogin: UserLoginModel): Promise<{
+    private _GoogleAuthService;
+    constructor(_AuthService: AuthService, _UserService: UserService, _GoogleAuthService: GoogleAuthService);
+    UserLogin(UserLogin: LoginDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         result: any;
     }>;
-    SendSignupOtp(body: {
-        email: string;
-        name?: string;
-    }): Promise<{
+    Logout(req: any): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+    }>;
+    SendSignupOtp(body: SendSignupOtpDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         result: {
             ok: boolean;
             message: string;
-            debugOtp?: string;
         };
     }>;
-    VerifySignupOtp(body: any): Promise<{
+    ResendSignupOtp(body: ResendSignupOtpDto): Promise<{
+        Type: ResponseEnum;
+        Message: string;
+        result: {
+            ok: boolean;
+            message: string;
+        };
+    }>;
+    VerifySignupOtp(body: VerifySignupOtpDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         result: any;
     }>;
-    GoogleAuth(body: {
-        code?: string;
-        redirect_uri?: string;
-        credential?: string;
-        email?: string;
-        name?: string;
-        picture?: string;
-    }): Promise<{
+    GoogleAuth(body: GoogleAuthDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         result: any;
     }>;
-    ForgotPassword(ForgotPasswordData: ForgotPasswordModel): Promise<{
+    ForgotPassword(ForgotPasswordData: ForgotPasswordDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -51,7 +55,7 @@ export declare class LoginController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    ResetPassword(ResetPasswordData: ResetPasswordModel): Promise<{
+    ResetPassword(ResetPasswordData: ResetPasswordDto): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;

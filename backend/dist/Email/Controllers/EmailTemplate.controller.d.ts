@@ -1,7 +1,7 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { EmailTemplateService } from "../Services/EmailTemplate.service";
-export declare class EmailTemplateController extends AuthBaseController {
+export declare class EmailTemplateController extends JWTAuthController {
     private readonly templateService;
     constructor(templateService: EmailTemplateService);
     getTemplates(): Promise<any>;

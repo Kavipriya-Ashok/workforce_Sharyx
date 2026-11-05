@@ -5,5 +5,5 @@ export declare class WhatsAppWebhookController {
     private readonly logger;
     constructor(webhookService: WhatsAppWebhookService);
     verifyWebhook(mode: string, token: string, challenge: string, res: Response): Promise<Response<any, Record<string, any>>>;
-    handleIncomingMessage(body: any): Promise<string>;
+    handleIncomingMessage(body: any, req: any, signature?: string): Promise<string>;
 }

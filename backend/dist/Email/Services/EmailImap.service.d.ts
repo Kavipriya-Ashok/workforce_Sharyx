@@ -1,5 +1,6 @@
 import { OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { ModuleRef } from "@nestjs/core";
 import { lead } from "@Database/Table/Lead/lead";
 import { EncryptionService } from "@Service/Encryption.service";
 import { EmailAIService } from "./EmailAI.service";
@@ -11,10 +12,11 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     private readonly aiService;
     private readonly orchestrator;
     private readonly events;
+    private readonly moduleRef;
     private readonly logger;
     private timer;
     private isPolling;
-    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService, orchestrator: AgentOrchestratorService, events: EventEmitter2);
+    constructor(encryptionService: EncryptionService, emailService: EmailService, aiService: EmailAIService, orchestrator: AgentOrchestratorService, events: EventEmitter2, moduleRef: ModuleRef);
     onModuleInit(): void;
     onModuleDestroy(): void;
     extractPhoneNumber(text: string): string | null;
@@ -32,20 +34,11 @@ export declare class EmailImapService implements OnModuleInit, OnModuleDestroy {
     syncNow(tenantId?: string): Promise<{
         synced: number;
         status: string;
-        provider?: undefined;
-    } | {
-        synced: number;
-        provider: string;
-        status?: undefined;
     }>;
     private isSystemOrAutomatedEmail;
     pollInbox(): Promise<{
         synced: number;
         status: string;
-        provider?: undefined;
-    } | {
-        synced: number;
-        provider: string;
-        status?: undefined;
     }>;
+    private pollOneMailbox;
 }

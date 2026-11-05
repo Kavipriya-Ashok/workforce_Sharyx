@@ -7,6 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WhatsAppModule = void 0;
+const WhatsAppFollowup_service_1 = require("./Services/WhatsAppFollowup.service");
 const common_1 = require("@nestjs/common");
 const WhatsApp_controller_1 = require("./Controllers/WhatsApp.controller");
 const WhatsAppWebhook_controller_1 = require("./Controllers/WhatsAppWebhook.controller");
@@ -36,12 +37,14 @@ exports.WhatsAppModule = WhatsAppModule = __decorate([
         providers: [
             WhatsApp_service_1.WhatsAppService,
             WhatsAppAI_service_1.WhatsAppAIService,
+            WhatsAppFollowup_service_1.WhatsAppFollowupService,
             WhatsAppWebhook_service_1.WhatsAppWebhookService,
             WhatsAppCampaign_service_1.WhatsAppCampaignService,
             WhatsAppTemplate_service_1.WhatsAppTemplateService,
             PromptEngine_service_1.PromptEngineService,
         ],
         exports: [
+            WhatsAppFollowup_service_1.WhatsAppFollowupService,
             WhatsApp_service_1.WhatsAppService,
             WhatsAppAI_service_1.WhatsAppAIService,
             WhatsAppWebhook_service_1.WhatsAppWebhookService,

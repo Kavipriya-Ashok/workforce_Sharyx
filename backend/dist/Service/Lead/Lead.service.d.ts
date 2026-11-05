@@ -8,6 +8,9 @@ export declare class LeadService {
     private readonly events;
     private readonly logger;
     constructor(leadRepo: Repository<lead>, activityRepo: Repository<lead_activity>, events: EventEmitter2);
+    private ctxTenant;
+    private requireCtxTenant;
+    private owned;
     getAll(filter: any, userContext?: any): Promise<{
         items: lead[];
         total: number;
@@ -82,7 +85,7 @@ export declare class LeadService {
             lead_status: string;
         };
     }>;
-    checkDuplicateEmail(email: string, excludeId?: string): Promise<{
+    checkDuplicateEmail(email: string, excludeId?: string, userContext?: any): Promise<{
         is_duplicate: boolean;
         existing_lead?: undefined;
     } | {
@@ -95,21 +98,21 @@ export declare class LeadService {
         };
     }>;
     insert(data: any, userId?: string, userContext?: any): Promise<lead>;
-    update(id: string, data: any, userId?: string): Promise<lead>;
-    updateStatus(id: string, newStatus: string, userId?: string): Promise<lead>;
-    updateCandidateStage(id: string, candidate_stage: string, userId?: string): Promise<lead>;
-    delete(id: string): Promise<{
+    update(id: string, data: any, userId?: string, tenantId?: string | null): Promise<lead>;
+    updateStatus(id: string, newStatus: string, userId?: string, tenantId?: string | null): Promise<lead>;
+    updateCandidateStage(id: string, candidate_stage: string, userId?: string, tenantId?: string | null): Promise<lead>;
+    delete(id: string, tenantId?: string | null): Promise<{
         success: boolean;
     }>;
-    bulkDelete(ids: string[]): Promise<{
-        success: boolean;
-        count: number;
-    }>;
-    bulkUpdateStatus(ids: string[], lead_status: string, userId?: string): Promise<{
+    bulkDelete(ids: string[], tenantId?: string | null): Promise<{
         success: boolean;
         count: number;
     }>;
-    addActivity(body: any, userId?: string): Promise<lead_activity>;
+    bulkUpdateStatus(ids: string[], lead_status: string, userId?: string, tenantId?: string | null): Promise<{
+        success: boolean;
+        count: number;
+    }>;
+    addActivity(body: any, userId?: string, tenantId?: string | null): Promise<lead_activity>;
     importLeads(model: any, userId?: string, userContext?: any): Promise<{
         success: boolean;
         imported: number;

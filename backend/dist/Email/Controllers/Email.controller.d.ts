@@ -1,11 +1,11 @@
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { EmailService } from "../Services/Email.service";
 import { EmailAIService } from "../Services/EmailAI.service";
 import { EmailImapService } from "../Services/EmailImap.service";
 import { EmailAccountConfigModel } from "../Models/EmailAccountConfig.model";
 import { SendEmailModel } from "../Models/SendEmail.model";
-export declare class EmailController extends AuthBaseController {
+export declare class EmailController extends JWTAuthController {
     private readonly emailService;
     private readonly emailAiService;
     private readonly emailImapService;
@@ -20,7 +20,7 @@ export declare class EmailController extends AuthBaseController {
         Message: string;
         AddtionalData?: undefined;
     }>;
-    testConnection(body: EmailAccountConfigModel): Promise<{
+    testConnection(body: EmailAccountConfigModel, userId: string, headerTenantId?: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -56,14 +56,14 @@ export declare class EmailController extends AuthBaseController {
         lead_id: string;
         customPrompt?: string;
         intent?: string;
-    }): Promise<any>;
+    }, tenantId: string): Promise<any>;
     sendLeadEmail(body: {
         lead_id: string;
         to: string;
         subject: string;
         html: string;
         isAiDrafted?: boolean;
-    }, userId: string): Promise<{
+    }, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -73,7 +73,7 @@ export declare class EmailController extends AuthBaseController {
         AddtionalData?: undefined;
     }>;
     validateEmail(email: string): Promise<any>;
-    sendEmail(body: SendEmailModel, userId: string): Promise<{
+    sendEmail(body: SendEmailModel, userId: string, tenantId: string): Promise<{
         Type: ResponseEnum;
         Message: string;
         AddtionalData: any;
@@ -84,5 +84,5 @@ export declare class EmailController extends AuthBaseController {
     }>;
     getInbox(headerTenantId?: string): Promise<any>;
     syncInbox(): Promise<any>;
-    getThread(identifier: string): Promise<any>;
+    getThread(identifier: string, tenantId: string): Promise<any>;
 }

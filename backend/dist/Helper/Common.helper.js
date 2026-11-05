@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmptyUuid = exports.SetLastDateOfMonth = exports.DateComparison = exports.DateFormatForReport = exports.DBDateTimeEnd = exports.DBDateTimeStart = exports.DateFormatForDB = exports.RandomValue = exports.CurrentTenant = exports.CurrentUser = void 0;
+exports.EmptyUuid = exports.SetLastDateOfMonth = exports.DateComparison = exports.DateFormatForReport = exports.DBDateTimeEnd = exports.DBDateTimeStart = exports.DateFormatForDB = exports.RandomValue = exports.CurrentTenant = exports.isSuperAdminUser = exports.CurrentUser = void 0;
 const common_1 = require("@nestjs/common");
 const date_fns_1 = require("date-fns");
 require("reflect-metadata");
@@ -14,20 +14,31 @@ exports.CurrentUser = (0, common_1.createParamDecorator)((data, req) => {
         return 0;
     }
 });
+const isSuperAdminUser = (user) => !!user &&
+    (user.is_super_admin === true ||
+        (typeof user.user_role_name === "string" && user.user_role_name.toLowerCase().includes("super")));
+exports.isSuperAdminUser = isSuperAdminUser;
 exports.CurrentTenant = (0, common_1.createParamDecorator)((data, req) => {
-    var _a, _b, _c, _d, _e;
+    var _a;
     const request = req.getArgs()[0];
     const user = request === null || request === void 0 ? void 0 : request.user;
-    const isSuperAdmin = ((_a = user === null || user === void 0 ? void 0 : user.user_role_name) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes('super')) ||
-        ((_b = user === null || user === void 0 ? void 0 : user.role) === null || _b === void 0 ? void 0 : _b.toLowerCase().includes('super'));
-    if (isSuperAdmin) {
-        const requestedTenantId = (_c = request === null || request === void 0 ? void 0 : request.headers) === null || _c === void 0 ? void 0 : _c['x-tenant-id'];
-        if (requestedTenantId && requestedTenantId !== 'all') {
-            return requestedTenantId;
-        }
-        return requestedTenantId === 'all' ? null : (((_d = user === null || user === void 0 ? void 0 : user.company) === null || _d === void 0 ? void 0 : _d.id) || null);
+    if (!user) {
+        throw new common_1.UnauthorizedException("Authentication required");
     }
-    return ((_e = user === null || user === void 0 ? void 0 : user.company) === null || _e === void 0 ? void 0 : _e.id) || (user === null || user === void 0 ? void 0 : user.company_id) || null;
+    const isSuperAdmin = user.is_super_admin === true ||
+        (typeof user.user_role_name === "string" && user.user_role_name.toLowerCase().includes("super"));
+    if (isSuperAdmin) {
+        const requested = (_a = request === null || request === void 0 ? void 0 : request.headers) === null || _a === void 0 ? void 0 : _a['x-tenant-id'];
+        if (requested === 'all')
+            return null;
+        if (requested && typeof requested === 'string')
+            return requested;
+    }
+    const tenantId = user.tenant_id || user.company_id;
+    if (!tenantId) {
+        throw new common_1.UnauthorizedException("No tenant is associated with this account");
+    }
+    return tenantId;
 });
 const RandomValue = (min, max) => {
     return Math.floor(Math.random() * (max - min) + min);

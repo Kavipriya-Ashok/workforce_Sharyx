@@ -14,6 +14,9 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserRoleController = void 0;
 const common_1 = require("@nestjs/common");
+const JwtAuthGuard_service_1 = require("../../Service/Auth/JwtAuthGuard.service");
+const SuperAdmin_guard_1 = require("../../Service/Auth/SuperAdmin.guard");
+const common_2 = require("@nestjs/common");
 const Common_helper_1 = require("../../Helper/Common.helper");
 const swagger_1 = require("@nestjs/swagger");
 const UserRole_service_1 = require("../../Service/Admin/UserRole.service");
@@ -48,44 +51,47 @@ let UserRoleController = class UserRoleController extends JWTAuth_controller_1.J
 };
 exports.UserRoleController = UserRoleController;
 __decorate([
-    (0, common_1.Get)('List'),
+    (0, common_2.Get)('List'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], UserRoleController.prototype, "List", null);
 __decorate([
-    (0, common_1.Get)('ById/:Id'),
-    __param(0, (0, common_1.Param)('Id')),
+    (0, common_2.Get)('ById/:Id'),
+    __param(0, (0, common_2.Param)('Id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserRoleController.prototype, "ById", null);
 __decorate([
-    (0, common_1.Post)('Insert'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, SuperAdmin_guard_1.SuperAdminGuard),
+    (0, common_2.Post)('Insert'),
+    __param(0, (0, common_2.Body)()),
     __param(1, (0, Common_helper_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [UserRole_model_1.UserRoleModel, String]),
     __metadata("design:returntype", Promise)
 ], UserRoleController.prototype, "Insert", null);
 __decorate([
-    (0, common_1.Put)('Update/:Id'),
-    __param(0, (0, common_1.Param)('Id')),
-    __param(1, (0, common_1.Body)()),
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, SuperAdmin_guard_1.SuperAdminGuard),
+    (0, common_2.Put)('Update/:Id'),
+    __param(0, (0, common_2.Param)('Id')),
+    __param(1, (0, common_2.Body)()),
     __param(2, (0, Common_helper_1.CurrentUser)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, UserRole_model_1.UserRoleModel, String]),
     __metadata("design:returntype", Promise)
 ], UserRoleController.prototype, "Update", null);
 __decorate([
-    (0, common_1.Delete)('Delete/:Id'),
-    __param(0, (0, common_1.Param)('Id')),
+    (0, common_1.UseGuards)(JwtAuthGuard_service_1.JwtAuthGuard, SuperAdmin_guard_1.SuperAdminGuard),
+    (0, common_2.Delete)('Delete/:Id'),
+    __param(0, (0, common_2.Param)('Id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], UserRoleController.prototype, "Delete", null);
 exports.UserRoleController = UserRoleController = __decorate([
-    (0, common_1.Controller)({ path: "UserRole", version: '1' }),
+    (0, common_2.Controller)({ path: "UserRole", version: '1' }),
     (0, swagger_1.ApiTags)("User Role"),
     __metadata("design:paramtypes", [UserRole_service_1.UserRoleService])
 ], UserRoleController);

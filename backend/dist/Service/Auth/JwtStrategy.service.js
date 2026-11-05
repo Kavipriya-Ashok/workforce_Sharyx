@@ -13,17 +13,28 @@ exports.JwtStrategy = void 0;
 const passport_jwt_1 = require("passport-jwt");
 const passport_1 = require("@nestjs/passport");
 const common_1 = require("@nestjs/common");
+const SessionVersion_1 = require("./SessionVersion");
 const config_1 = require("@nestjs/config");
 let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(_ConfigService) {
+        const secret = _ConfigService.get("JWT.SecertToken");
+        if (!secret) {
+            throw new Error("TOKEN_SECRET is not configured. Refusing to start without a JWT signing secret.");
+        }
         super({
             jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: _ConfigService.get("JWT.SecertToken") || "sharyx_jwt_secret_token_secure_key_2026",
+            secretOrKey: secret,
         });
         this._ConfigService = _ConfigService;
     }
     async validate(payload) {
+        if (!(payload === null || payload === void 0 ? void 0 : payload.user_id))
+            throw new common_1.UnauthorizedException('Unauthorized');
+        const row = await (0, SessionVersion_1.readSession)(payload.user_id);
+        if (!row || row.status === false || row.tokenVersion !== (Number(payload.token_version) || 0)) {
+            throw new common_1.UnauthorizedException('Session expired. Please sign in again.');
+        }
         return payload;
     }
 };
