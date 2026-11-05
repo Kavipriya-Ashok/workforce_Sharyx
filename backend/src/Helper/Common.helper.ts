@@ -1,4 +1,4 @@
-import { createParamDecorator } from "@nestjs/common";
+import { createParamDecorator, UnauthorizedException } from "@nestjs/common";
 import { format, differenceInDays } from "date-fns";
 import "reflect-metadata";
 
@@ -11,22 +11,40 @@ export const CurrentUser = createParamDecorator((data, req) => {
   }
 });
 
+/** True only for a genuine Super Admin (role/flag come from the signed JWT, never from the client). */
+export const isSuperAdminUser = (user: any): boolean =>
+  !!user &&
+  (user.is_super_admin === true ||
+    (typeof user.user_role_name === "string" && user.user_role_name.toLowerCase().includes("super")));
+
+/**
+ * Resolves the tenant (company) for the current request.
+ *
+ * SECURITY: the tenant comes ONLY from the verified JWT (populated by
+ * JwtAuthGuard). A client-supplied header/query/body value is never trusted,
+ * except for a genuine Super Admin (flag comes from the signed token) who may
+ * impersonate a tenant via `x-tenant-id`, or pass `all` => null (cross-tenant).
+ * Anyone else without a tenant claim is rejected.
+ */
 export const CurrentTenant = createParamDecorator((data, req) => {
   const request = req.getArgs()[0];
   const user = request?.user;
-  const isSuperAdmin =
-    user?.user_role_name?.toLowerCase().includes('super') ||
-    user?.role?.toLowerCase().includes('super');
-
-  if (isSuperAdmin) {
-    const requestedTenantId = request?.headers?.['x-tenant-id'];
-    if (requestedTenantId && requestedTenantId !== 'all') {
-      return requestedTenantId;
-    }
-    return requestedTenantId === 'all' ? null : (user?.company?.id || null);
+  if (!user) {
+    throw new UnauthorizedException("Authentication required");
   }
-
-  return user?.company?.id || user?.company_id || null;
+  const isSuperAdmin =
+    user.is_super_admin === true ||
+    (typeof user.user_role_name === "string" && user.user_role_name.toLowerCase().includes("super"));
+  if (isSuperAdmin) {
+    const requested = request?.headers?.['x-tenant-id'];
+    if (requested === 'all') return null;
+    if (requested && typeof requested === 'string') return requested;
+  }
+  const tenantId = user.tenant_id || user.company_id;
+  if (!tenantId) {
+    throw new UnauthorizedException("No tenant is associated with this account");
+  }
+  return tenantId;
 });
 
 export const RandomValue = (min: any, max: any) => {

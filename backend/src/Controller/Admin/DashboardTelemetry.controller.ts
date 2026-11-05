@@ -1,7 +1,11 @@
-import { Controller, Get, Query, Headers } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Query, Headers, UseGuards } from "@nestjs/common";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { DashboardTelemetryService } from "@Service/Admin/DashboardTelemetry.service";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
 
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
+@ApiBearerAuth()
 @Controller({ path: "Admin/Dashboard", version: "1" })
 @ApiTags("Dashboard Telemetry")
 export class DashboardTelemetryController {

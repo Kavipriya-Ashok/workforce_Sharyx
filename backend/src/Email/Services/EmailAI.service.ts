@@ -10,9 +10,6 @@ export class EmailAIService {
 
   async getConfig(tenantId: string = "default"): Promise<EmailAIConfig | null> {
     let config = await EmailAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
-    if (!config && tenantId !== "default") {
-      config = await EmailAIConfig.findOne({ where: { tenant_id: "default", status: true } });
-    }
     if (!config) {
       config = new EmailAIConfig();
       config.tenant_id = tenantId;
@@ -32,11 +29,12 @@ export class EmailAIService {
     return config;
   }
 
-  async saveConfig(data: EmailAIConfigModel, userId?: string): Promise<EmailAIConfig> {
-    let config = await EmailAIConfig.findOne({ where: { tenant_id: data.tenant_id || "default" } });
+  async saveConfig(data: EmailAIConfigModel, userId?: string, tenantId?: string): Promise<EmailAIConfig> {
+    const tid = tenantId && tenantId !== "all" ? tenantId : data.tenant_id || "default";
+    let config = await EmailAIConfig.findOne({ where: { tenant_id: tid } });
     if (!config) {
       config = new EmailAIConfig();
-      config.tenant_id = data.tenant_id || "default";
+      config.tenant_id = tid;
       config.created_by_id = userId || "system";
       config.created_on = new Date();
     }
@@ -242,7 +240,10 @@ GENERAL MEMORY & FORMATTING:
     intent?: string,
     tenantId: string = "default"
   ) {
-    const foundLead = await lead.findOne({ where: { id: leadId } });
+    const foundLead = await lead.findOne({
+      where: tenantId && tenantId !== "all" ? { id: leadId, tenant_id: tenantId } : { id: leadId },
+    });
+    const aiCfg = await this.getConfig(tenantId);
 
     const leadName = foundLead ? foundLead.name || `${foundLead.first_name || ""} ${foundLead.last_name || ""}`.trim() : "Valued Client";
     const company = foundLead?.company_name || "your company";
@@ -266,8 +267,8 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
 }
     `.trim();
 
-    const openAiKey = process.env.OPENAI_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const openAiKey = aiCfg?.api_key && aiCfg?.llm_provider === "openai" ? aiCfg.api_key : process.env.OPENAI_API_KEY;
+    const geminiKey = aiCfg?.api_key && aiCfg?.llm_provider === "gemini" ? aiCfg.api_key : process.env.GEMINI_API_KEY;
 
     if (geminiKey) {
       const modelsToTry = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];

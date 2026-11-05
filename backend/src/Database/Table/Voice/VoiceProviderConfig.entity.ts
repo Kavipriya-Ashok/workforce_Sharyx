@@ -1,5 +1,6 @@
 import { Column, Entity } from "typeorm";
 import { BaseTable } from "../BaseTable";
+import { EncryptedColumn } from "@Helper/SecretTransformer";
 
 export type VoiceProviderType = "vapi" | "retell" | "bland" | "saas_fallback";
 
@@ -11,7 +12,8 @@ export class VoiceProviderConfig extends BaseTable {
   @Column({ type: "varchar", length: 30, default: "vapi" })
   provider: VoiceProviderType;
 
-  @Column({ type: "text", nullable: true })
+  // Encrypted at rest (enc:v1:); plain legacy values are still readable until migrated.
+  @Column({ type: "text", nullable: true, transformer: EncryptedColumn })
   api_key: string;
 
   @Column({ type: "varchar", length: 100, nullable: true })

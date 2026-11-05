@@ -1,5 +1,6 @@
 import { Column, Entity } from "typeorm";
 import { BaseTable } from "../BaseTable";
+import { EncryptedColumn } from "@Helper/SecretTransformer";
 
 @Entity("wa_ai_config")
 export class WhatsAppAIConfig extends BaseTable {
@@ -27,7 +28,8 @@ export class WhatsAppAIConfig extends BaseTable {
   @Column({ length: 50, default: "gpt-4o-mini" })
   llm_model: string;
 
-  @Column({ type: "text", nullable: true })
+  // Encrypted at rest (enc:v1:); plain legacy values are still readable until migrated.
+  @Column({ type: "text", nullable: true, transformer: EncryptedColumn })
   api_key: string;
 
   @Column({ type: "boolean", default: true })

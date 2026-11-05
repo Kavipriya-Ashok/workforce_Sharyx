@@ -28,6 +28,10 @@ import {
   SendLeadReplyDto,
 } from "../Dto/Omnichannel.dto";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({
   path: ["omnichannel", "Omnichannel"],
   version: ["1", VERSION_NEUTRAL],
@@ -195,14 +199,14 @@ export class OmnichannelController {
 
   @Get("stream")
   @ApiOperation({ summary: "Server-Sent Events (SSE) real-time stream" })
-  streamUpdates(@Res() res: Response) {
+  streamUpdates(@Res() res: Response, @Headers("x-tenant-id") tenantHeader?: string) {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders?.();
 
-    this.realtimeService.registerClient(res);
+    // x-tenant-id is set by TenantContextGuard from the verified JWT (Super Admin may pass "all").
+    this.realtimeService.registerClient(res, tenantHeader || "none");
   }
 
   @Get("leads")

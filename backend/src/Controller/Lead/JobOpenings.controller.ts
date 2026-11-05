@@ -9,10 +9,15 @@ import {
   Param,
   Query,
   VERSION_NEUTRAL,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { JobOpeningsService } from "@Service/Lead/JobOpenings.service";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
 
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
+@ApiBearerAuth()
 @Controller({
   path: ["openings", "Lead/Openings"],
   version: ["1", VERSION_NEUTRAL],

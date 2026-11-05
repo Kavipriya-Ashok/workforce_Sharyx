@@ -49,12 +49,26 @@ import { AgentOrchestratorModule } from "./AgentOrchestrator/agent-orchestrator.
 import { VoiceModule } from "./Voice/voice.module";
 import { DashboardTelemetryController } from "./Controller/Admin/DashboardTelemetry.controller";
 import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.service";
+import { OnboardingController } from "./Controller/Onboarding/Onboarding.controller";
+import { OnboardingService } from "./Service/Onboarding/Onboarding.service";
+import { GoogleAuthService } from "./Service/Auth/GoogleAuth.service";
+import { AuthOtpService } from "./Service/Auth/AuthOtp.service";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { IntegrationsModule } from "./Module/Integrations.module";
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    // Per-IP rate limiting. Only controllers that opt in with ThrottlerGuard (the /Auth/* routes) are limited.
+    ThrottlerModule.forRoot([
+      {
+        ttl: Number(process.env.AUTH_THROTTLE_TTL_MS) > 0 ? Number(process.env.AUTH_THROTTLE_TTL_MS) : 60_000,
+        limit: Number(process.env.AUTH_THROTTLE_LIMIT) > 0 ? Number(process.env.AUTH_THROTTLE_LIMIT) : 30,
+      },
+    ]),
     VoiceModule,
     AgentOrchestratorModule,
+    IntegrationsModule,
     WhatsAppModule,
     EmailModule,
     LeadModule,
@@ -97,10 +111,16 @@ import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.se
     }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (_ConfigService: ConfigService) => ({
-        secret: _ConfigService.get("JWT.SecertToken") || "sharyx_jwt_secret_token_secure_key_2026",
-        signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") || "7d" },
-      }),
+      useFactory: (_ConfigService: ConfigService) => {
+        const secret = _ConfigService.get("JWT.SecertToken");
+        if (!secret) {
+          throw new Error("TOKEN_SECRET is not configured. Refusing to start without a JWT signing secret.");
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: _ConfigService.get("JWT.ExpiresIn") || "7d" },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
@@ -116,9 +136,13 @@ import { DashboardTelemetryService } from "./Service/Admin/DashboardTelemetry.se
     AuditLogController,
     AutoNumberController,
     DashboardTelemetryController,
+    OnboardingController,
   ],
   providers: [
     DashboardTelemetryService,
+    OnboardingService,
+    GoogleAuthService,
+    AuthOtpService,
     AuthService,
     UserService,
     UserRoleService,

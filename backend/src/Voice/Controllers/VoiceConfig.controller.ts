@@ -2,6 +2,10 @@ import { Controller, Get, Post, Body, Query, Param } from "@nestjs/common";
 import { VoiceConfigService, SaveVoiceConfigDto } from "../Services/VoiceConfig.service";
 import { VoiceProviderType } from "@Database/Table/Voice/VoiceProviderConfig.entity";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({ path: "Voice/Config", version: "1" })
 export class VoiceConfigController {
   constructor(private readonly configService: VoiceConfigService) {}

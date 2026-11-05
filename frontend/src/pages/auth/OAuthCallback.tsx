@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 
 export const OAuthCallback: React.FC = () => {
   const [, setLocation] = useLocation();
-  const { googleAuth } = useAuth();
+  const { googleAuth, completeOnboarding } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Exchanging authorization code with Google...');
   const [userEmail, setUserEmail] = useState<string>('');
   const hasExecuted = React.useRef(false);
+  // Where the error button goes: sign-in flows go back to /login, the e-mail-connect flow back to the app.
+  const [backTo, setBackTo] = useState<'login' | 'admin'>('login');
 
   useEffect(() => {
     if (hasExecuted.current) return;
@@ -21,15 +23,21 @@ export const OAuthCallback: React.FC = () => {
     const state = urlParams.get('state');
     const error = urlParams.get('error');
 
+    setBackTo(state === 'auth_google' || !code ? 'login' : 'admin');
+
     if (error) {
       setStatus('error');
-      setMessage(`Google Authorization Error: ${error}`);
+      setMessage(
+        error === 'access_denied'
+          ? 'You cancelled the Google sign-in, so nothing was changed. You can try again, or sign in with your email and password.'
+          : `Google could not complete the sign-in (${error}). Please try again or use your email and password.`
+      );
       return;
     }
 
     if (!code) {
       setStatus('error');
-      setMessage('No authorization code was found in the callback URL.');
+      setMessage('Google did not return an authorization code, so we could not sign you in. Please go back and try again.');
       return;
     }
 
@@ -39,7 +47,13 @@ export const OAuthCallback: React.FC = () => {
     // 1. Check if this is User Login / Sign-up with Google
     if (state === 'auth_google') {
       setMessage('Authenticating your Google account with Sharyx...');
-      googleAuth({ code, redirect_uri: currentRedirectUri })
+      // Never leave the spinner hanging: give up after 30s with a clear message.
+      Promise.race([
+        googleAuth({ code, redirect_uri: currentRedirectUri }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Google sign-in is taking too long. Please go back and try again.')), 30000)
+        ),
+      ])
         .then(() => {
           setStatus('success');
           setMessage('Google Authentication Successful! Redirecting to command center...');
@@ -59,33 +73,72 @@ export const OAuthCallback: React.FC = () => {
         })
         .catch((err: any) => {
           setStatus('error');
+          const status = err?.response?.status;
           setMessage(
-            err.response?.data?.message ||
-              err.message ||
-              'Google sign in failed. Please try again or use email login.'
+            status === 401
+              ? 'Google could not verify your account, so you were not signed in. Please try again or use your email and password.'
+              : status === 503
+                ? 'Google sign-in is not configured on this server yet. Please use your email and password.'
+                : status === 429
+                  ? 'Too many attempts. Please wait a minute and try again.'
+                  : status === 403
+                    ? err.response?.data?.message || 'This account is not allowed to sign in.'
+                    : err?.response
+                      ? 'Google sign-in failed. Please try again or use your email and password.'
+                      : err.message || 'Cannot reach the server. Check your connection and try again.'
           );
         });
       return;
     }
 
     // 2. Otherwise, this is Email Account SMTP/OAuth connection
+    // emailService
+    //   .connectGoogle(code, currentRedirectUri)
+    //   .then((res: any) => {
+    //     setStatus('success');
+    //     const email = res?.email || 'your Google account';
+    //     setUserEmail(email);
+    //     setMessage(`Successfully connected ${email}! Your emails can now be dispatched securely.`);
+    //     setTimeout(() => {
+    //       setLocation('/admin');
+    //     }, 2200);
+    //   })
     emailService
       .connectGoogle(code, currentRedirectUri)
-      .then((res: any) => {
+      .then(async (res: any) => {
         setStatus('success');
         const email = res?.email || 'your Google account';
         setUserEmail(email);
-        setMessage(`Successfully connected ${email}! Your emails can now be dispatched securely.`);
+        // Go back to where the connection was started (wizard step 10 shows the connected address and its saved status;
+        // the Profile page shows the card). Only when we do not know the origin do we keep the old behaviour.
+        let back: string | null = null;
+        try {
+          back = sessionStorage.getItem('sharyx_oauth_return');
+          sessionStorage.removeItem('sharyx_oauth_return');
+        } catch {
+          /* ignore */
+        }
+        if (back && back.startsWith('/')) {
+          setMessage(`Successfully connected ${email}! Taking you back...`);
+          setTimeout(() => setLocation(back as string), 1200);
+          return;
+        }
+        setMessage(`Successfully connected ${email}! Entering dashboard...`);
+        try {
+          await completeOnboarding(); // Marks onboarding completed so you don't get redirected back!
+        } catch (e) {
+          console.error(e);
+        }
         setTimeout(() => {
-          setLocation('/admin');
-        }, 2200);
+          setLocation('/admin'); // Enters the dashboard directly
+        }, 1500);
       })
       .catch((err: any) => {
         setStatus('error');
         setMessage(
           err.response?.data?.message ||
-            err.message ||
-            'Failed to exchange authorization code. Please try again.'
+          err.message ||
+          'Failed to exchange authorization code. Please try again.'
         );
       });
   }, [setLocation, googleAuth]);
@@ -105,7 +158,7 @@ export const OAuthCallback: React.FC = () => {
           <h2 className="text-xl font-bold text-white tracking-tight">
             {status === 'loading' && 'Connecting Google Account'}
             {status === 'success' && 'Google Account Connected!'}
-            {status === 'error' && 'Connection Failed'}
+            {status === 'error' && (backTo === 'login' ? 'Google sign-in failed' : 'Connection Failed')}
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">{message}</p>
           {userEmail && (
@@ -130,10 +183,21 @@ export const OAuthCallback: React.FC = () => {
           <div className="pt-2">
             <Button
               variant="outline"
-              onClick={() => setLocation('/admin')}
+              onClick={() => {
+                let back = '/admin';
+                if (backTo === 'admin') {
+                  try {
+                    back = sessionStorage.getItem('sharyx_oauth_return') || '/admin';
+                    sessionStorage.removeItem('sharyx_oauth_return');
+                  } catch {
+                    /* ignore */
+                  }
+                }
+                setLocation(backTo === 'login' ? '/login' : back);
+              }}
               className="w-full border-slate-700 bg-slate-800 hover:bg-slate-700 text-white text-xs h-10 rounded-xl"
             >
-              Back to Command Center
+              {backTo === 'login' ? 'Back to login' : 'Back to Command Center'}
             </Button>
           </div>
         )}

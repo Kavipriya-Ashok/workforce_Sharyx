@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEmail, IsNotEmpty, MinLength, ValidateIf } from 'class-validator';
+import { IsEmail, IsNotEmpty, MaxLength, ValidateIf } from 'class-validator';
+import { IsStrongPassword, MatchesField, PASSWORD_MAX } from '../Auth/Auth.model';
 import { BaseModel } from '../Base.model';
 
 export class UserModel extends BaseModel {
@@ -36,50 +37,21 @@ export class UserModel extends BaseModel {
 
 }
 
-export class ForgotPasswordModel {
-  @IsNotEmpty({ message: 'Email required' })
-  @IsEmail({}, { message: 'Invaild Email format' })
-  @ApiProperty({ required: true })
-  @Type(() => String)
-  email: string;
-}
-
-export class ResetPasswordModel {
-  @IsNotEmpty({ message: 'User id required' })
-  @ApiProperty({ required: true })
-  @Type(() => String)
-  user_id: string;
-
-  @IsNotEmpty({ message: 'Reset OTP required' })
-  @ApiProperty({ required: true })
-  @Type(() => Number)
-  reset_otp: number;
-
-  @IsNotEmpty({ message: 'Password required' })
-  @MinLength(6, {
-    message: 'Password length mininum 6 characters',
-  })
-  @ApiProperty({ required: true })
-  @Type(() => String)
-  password: string;
-}
-
 export class ChangePasswordModel {
 
   @IsNotEmpty({ message: 'Password required' })
-  @MinLength(6, {
-    message: 'Password length mininum 6 characters',
-  })
+  @MaxLength(PASSWORD_MAX, { message: `Password must be at most ${PASSWORD_MAX} characters` })
   @ApiProperty({ required: true })
   @Type(() => String)
   old_password: string;
 
-  @IsNotEmpty({ message: 'Password required' })
-  @MinLength(6, {
-    message: 'Password length mininum 6 characters',
-  })
+  @IsStrongPassword()
   @ApiProperty({ required: true })
   @Type(() => String)
   password: string;
-}
 
+  @MatchesField('password')
+  @ApiProperty({ required: true })
+  @Type(() => String)
+  confirm_password: string;
+}

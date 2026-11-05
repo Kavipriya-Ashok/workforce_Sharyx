@@ -242,7 +242,7 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
     }
 
     // Per-recipient deduplication guard (prevent duplicate dispatches within 3 minutes)
-    const key = `${(ctx.phone || ctx.email || "").replace(/\D/g, "").slice(-10)}:${event}`;
+    const key = `${ctx.tenantId}:${(ctx.phone || ctx.email || "").replace(/\D/g, "").slice(-10)}:${event}`;
     const now = Date.now();
     const lastSent = this.recentDispatches.get(key);
     if (key.length > 3 && lastSent && now - lastSent < 180000) {
@@ -338,9 +338,8 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
       }
 
       // 3. Load WA Config
-      const waConfig =
-        (await WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } })) ||
-        (await WhatsAppConfig.findOne({ where: { status: true } }));
+      // Only this tenant's own connection - never another tenant's credentials.
+      const waConfig = await WhatsAppConfig.findOne({ where: { tenant_id: ctx.tenantId, status: true } });
       if (!waConfig?.access_token || !waConfig?.phone_number_id) {
         this.logger.warn("[WA Trigger] WhatsApp not configured for tenant");
         return { sent: 0, failed: 1, details: ["WhatsApp not configured"] };
@@ -653,6 +652,15 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
 
       const recipientName = ctx.leadName || leadRecord?.name || "Valued Lead";
 
+      // No email for this contact: skip gracefully and leave an audit trail (never block the chat flow).
+      if (!recipientEmail) {
+        await this.emailService.recordEmailNotSent(ctx.tenantId, null, "contact has no email address", {
+          leadId: leadRecord?.id,
+          subject: `${event} confirmation`,
+        });
+        return { sent: 0, failed: 0, details: ["email skipped: contact has no email address"] };
+      }
+
       if (matching.length === 0) {
         // Default Quotation Dispatch Fallback
         if (recipientEmail && (event === "quotation_requested" || /quot|pric|detail/i.test(ctx.outcome || ""))) {
@@ -676,11 +684,16 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
                 </div>
               </div>
             `;
-            await this.emailService.sendEmail({
-              to: recipientEmail,
-              subject: quotationSubject,
-              html: quotationHtml,
-            });
+            const QR = await this.emailService.sendEmailReliable(
+              { to: recipientEmail, subject: quotationSubject, html: quotationHtml },
+              "system",
+              false,
+              ctx.tenantId,
+              { leadId: leadRecord?.id }
+            );
+            if (QR.status !== "sent") {
+              return { sent: 0, failed: QR.status === "failed" ? 1 : 0, details: [`Email ${QR.status}: ${QR.reason}`] };
+            }
             this.logger.log(`⚡ [Email Trigger] Default quotation email sent to ${recipientEmail}`);
             sent.push(`Quotation email sent to ${recipientEmail}`);
             return { sent: 1, failed: 0, details: sent };
@@ -722,11 +735,20 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
               </div>
             `;
 
-            await this.emailService.sendEmail({
-              to: recipientEmail,
-              subject: defaultSubject,
-              html: defaultHtml,
-            }, "system");
+            const R = await this.emailService.sendEmailReliable(
+              {
+                to: recipientEmail,
+                subject: defaultSubject,
+                html: defaultHtml,
+              },
+              "system",
+              false,
+              ctx.tenantId,
+              { leadId: leadRecord?.id }
+            );
+            if (R.status !== "sent") {
+              return { sent: 0, failed: R.status === "failed" ? 1 : 0, details: [`Email ${R.status}: ${R.reason}`] };
+            }
 
             try {
               const logEntry = new EmailLog();
@@ -787,11 +809,20 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
               </div>
             `;
 
-            await this.emailService.sendEmail({
-              to: recipientEmail,
-              subject: defaultSubject,
-              html: defaultHtml,
-            }, "system");
+            const R = await this.emailService.sendEmailReliable(
+              {
+                to: recipientEmail,
+                subject: defaultSubject,
+                html: defaultHtml,
+              },
+              "system",
+              false,
+              ctx.tenantId,
+              { leadId: leadRecord?.id }
+            );
+            if (R.status !== "sent") {
+              return { sent: 0, failed: R.status === "failed" ? 1 : 0, details: [`Email ${R.status}: ${R.reason}`] };
+            }
 
             try {
               const logEntry = new EmailLog();
@@ -878,15 +909,22 @@ Return JSON: {"whatsapp": "...", "email": "..."}`;
           }
 
           // 6. Send via EmailService
-          await this.emailService.sendEmail(
+          const CR_ = await this.emailService.sendEmailReliable(
             {
               to: recipientEmail,
               subject: resolvedSubject,
               html: resolvedHtml,
               attachments,
             },
-            "system"
+            "system",
+            false,
+            ctx.tenantId,
+            { leadId: leadRecord?.id }
           );
+          if (CR_.status !== "sent") {
+            if (CR_.status === "failed") failed.push(`Email campaign "${campaign.campaign_name}" failed: ${CR_.reason}`);
+            continue;
+          }
 
           // 7. Log to email_log
           try {

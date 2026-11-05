@@ -50,8 +50,29 @@ export class CommonSeederService {
       console.log(e);
     }
 
+    try {
+      await this.LinkSeedAdminToCompany();
+    }
+    catch (e) {
+      console.log(e);
+    }
+
   }
 
+
+  /** The seeded Super Admin must belong to a tenant, otherwise strict tenant login would reject it. */
+  LinkSeedAdminToCompany = async () => {
+    const seeded = await company.findOne({ where: { name: 'BoilerPlate' } });
+    if (!seeded) return;
+    seeded.onboarding_completed = true; // platform company: no onboarding wizard needed
+    await seeded.save();
+    await this._DataSource.manager
+      .createQueryBuilder()
+      .update(user)
+      .set({ company_id: seeded.id })
+      .where('email = :email AND company_id IS NULL', { email: 'admin@user.com' })
+      .execute();
+  }
 
   UserRoleSeed = async () => {
     await this._DataSource.manager.createQueryBuilder()
@@ -72,7 +93,7 @@ export class CommonSeederService {
         {
           user_role_id: UserRoleData.id,
           email: 'admin@user.com',
-          password: this._EncryptionService.Encrypt('Login123!!'),
+          password: await this._EncryptionService.HashPassword(process.env.SEED_ADMIN_PASSWORD || 'Login123!!'),
           created_by_id: "0",
           created_on: new Date()
         }

@@ -1,3 +1,6 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '@Service/Auth/JwtAuthGuard.service';
+import { SuperAdminGuard } from '@Service/Auth/SuperAdmin.guard';
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { CurrentUser } from '@Helper/Common.helper';
 import { ApiTags } from '@nestjs/swagger';
@@ -26,18 +29,21 @@ export class UserRoleController extends JWTAuthController {
     return this.SendResponseData(UserRoleData);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Post('Insert')
   async Insert(@Body() UserRoleData: UserRoleModel, @CurrentUser() UserId: string) {
     await this._UserRoleService.Insert(UserRoleData, UserId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Created);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Put('Update/:Id')
   async Update(@Param('Id') Id: string, @Body() UserRoleData: UserRoleModel, @CurrentUser() UserId: string) {
     await this._UserRoleService.Update(Id, UserRoleData, UserId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Updated);
   }
 
+  @UseGuards(JwtAuthGuard, SuperAdminGuard)
   @Delete('Delete/:Id')
   async Delete(@Param('Id') Id: string) {
     await this._UserRoleService.Delete(Id);

@@ -1,5 +1,8 @@
+import { redactSecrets } from "@Helper/Redact";
+import { markFailed, noteFailure, noteSuccess } from "@Service/Integrations/IntegrationStatus";
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { ModuleRef } from "@nestjs/core";
 import { simpleParser } from "mailparser";
 import * as imaps from "imap-simple";
 import { google } from "googleapis";
@@ -26,7 +29,8 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     private readonly emailService: EmailService,
     private readonly aiService: EmailAIService,
     private readonly orchestrator: AgentOrchestratorService,
-    private readonly events: EventEmitter2
+    private readonly events: EventEmitter2,
+    private readonly moduleRef: ModuleRef
   ) {}
 
   onModuleInit() {
@@ -531,13 +535,13 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
           // Omnichannel sync: Dispatch interview confirmation & Google Meet link to WhatsApp as well!
           try {
             const { WhatsAppService } = await import("../../WhatsApp/Services/WhatsApp.service");
-            const waService = new WhatsAppService();
+            const waService = this.moduleRef.get(WhatsAppService, { strict: false });
             const waText = `Hello ${customerName}! 👋\n\nYour interview for the *${appliedRole}* role has been confirmed for *${scheduledSlot}*.\n\n🎥 *Google Meet Link*: ${meetUrl}\n\nWe have also sent the confirmation details to your email (${fromEmail}). Looking forward to speaking with you! 🚀`;
             await waService.sendMessage({
               to: resolvedPhone,
               text: waText,
               message_type: "text",
-            }, "system", true);
+            }, "system", true, tenantId);
             this.logger.log(`💬 [WHATSAPP CONFIRMATION TRIGGERED FROM EMAIL] Sent meet link to WhatsApp: ${resolvedPhone}`);
           } catch (waErr: any) {
             this.logger.warn(`Could not dispatch WhatsApp confirmation from email flow: ${waErr.message}`);
@@ -629,291 +633,324 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     return false;
   }
 
-  // Master Inbox Polling: Supports Google Gmail API and IMAP
+  // Master Inbox Polling: Supports Google Gmail API and IMAP. EVERY active mailbox (one per tenant) is polled, and
+  // each result updates that tenant's email_imap status (login fails => Failed, timeout => Degraded, works => Connected).
   async pollInbox() {
     if (this.isPolling) return { synced: 0, status: "already_running" };
     this.isPolling = true;
-    let syncedCount = 0;
+    let total = 0;
 
     try {
-      const config = await EmailAccountConfig.findOne({ where: { is_active: true } });
-      if (!config) {
+      // Default (unchanged behaviour): the first active mailbox only. EMAIL_POLL_ALL_MAILBOXES=true polls every
+      // tenant's mailbox (the correct multi-tenant behaviour) - opt-in because it starts reading and auto-replying
+      // on every connected mailbox of the environment it is switched on in.
+      const configs = process.env.EMAIL_POLL_ALL_MAILBOXES === "true"
+        ? await EmailAccountConfig.find({ where: { is_active: true } })
+        : ([await EmailAccountConfig.findOne({ where: { is_active: true } })].filter(Boolean) as EmailAccountConfig[]);
+      if (!configs.length) {
         return { synced: 0, status: "no_active_config" };
       }
-
-      // ── MODE A: GOOGLE GMAIL API (HTTPS 443) ──────────────────────────
-      if (config.provider === "google-email" && config.refresh_token) {
-        let decryptedRefreshToken = config.refresh_token;
+      for (const config of configs) {
         try {
-          decryptedRefreshToken = this.encryptionService.Decrypt(config.refresh_token);
-        } catch {
-          decryptedRefreshToken = config.refresh_token;
-        }
-
-        const oauth2Client = new google.auth.OAuth2(
-          config.client_id || process.env.GOOGLE_CLIENT_ID,
-          config.client_secret || process.env.GOOGLE_CLIENT_SECRET
-        );
-        oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
-        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-        let messages: any[] = [];
-        try {
-          // Search for recent incoming messages in INBOX
-          const listRes = await gmail.users.messages.list({
-            userId: "me",
-            q: "label:INBOX",
-            maxResults: 20,
-          });
-          messages = listRes.data.messages || [];
-        } catch (apiErr: any) {
-          if (apiErr.message?.includes('insufficient authentication scopes') || apiErr.code === 403) {
-            // User account only has login/identity scopes, not full Gmail reading scopes
-            return { synced: 0, status: "insufficient_scopes" };
+          const r: any = await this.pollOneMailbox(config);
+          total += r?.synced || 0;
+          if (r?.status === "insufficient_scopes") {
+            await markFailed(
+              config.tenant_id,
+              "email_imap",
+              "GMAIL_SCOPES",
+              "Google is connected but without permission to read your inbox. Reconnect Google and tick every permission box.",
+              config.email_address
+            );
+          } else if (r && (r.provider || r.status === "idle")) {
+            if (r.provider) void noteSuccess(config.tenant_id, "email_imap", config.email_address);
           }
-          throw apiErr;
+        } catch (err: any) {
+          this.logger.debug(`Inbox polling skipped/failed for tenant ${config.tenant_id}: ${redactSecrets(err.message)}`);
+          await noteFailure(config.tenant_id, "email_imap", err, config.email_address);
         }
+      }
+      return { synced: total, status: "ok" };
+    } catch (err: any) {
+      this.logger.debug(`Inbox polling skipped/failed: ${redactSecrets(err.message)}`);
+    } finally {
+      this.isPolling = false;
+    }
 
-        for (const item of messages) {
-          if (!item.id) continue;
-          try {
-            const msg = await gmail.users.messages.get({
-              userId: "me",
-              id: item.id,
-              format: "full",
-            });
+    return { synced: total, status: "idle" };
+  }
 
-            const headers = msg.data.payload?.headers || [];
-            const fromHeader = headers.find((h) => h.name?.toLowerCase() === "from")?.value || "";
-            const subjectHeader = headers.find((h) => h.name?.toLowerCase() === "subject")?.value || "No Subject";
-            const messageIdHeader = headers.find((h) => h.name?.toLowerCase() === "message-id")?.value || `gmail_${item.id}`;
-
-            // Parse From header: e.g. "John Doe <john@company.com>"
-            let fromEmail = fromHeader;
-            let fromName = fromHeader;
-            const match = fromHeader.match(/^(.*?)\s*<(.+?)>$/);
-            if (match) {
-              fromName = match[1].replace(/["']/g, "").trim();
-              fromEmail = match[2].trim();
-            }
-
-            const isSelfSent = fromEmail.toLowerCase() === (config.email_address || "").toLowerCase();
-
-            // Skip bounces, system alerts, mailer-daemon, and no-reply messages
-            if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
-              this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subjectHeader}"`);
-              // Mark as read so we don't process it every poll
-              try {
-                await gmail.users.messages.modify({
-                  userId: "me",
-                  id: item.id,
-                  requestBody: { removeLabelIds: ["UNREAD"] },
-                });
-              } catch {}
-              continue;
-            }
-
-            // Extract plain text body
-            let bodyText = "";
-            let bodyHtml = "";
-            const parts = msg.data.payload?.parts;
-            if (parts && parts.length > 0) {
-              for (const p of parts) {
-                if (p.mimeType === "text/plain" && p.body?.data) {
-                  bodyText = Buffer.from(p.body.data, "base64").toString("utf-8");
-                }
-                if (p.mimeType === "text/html" && p.body?.data) {
-                  bodyHtml = Buffer.from(p.body.data, "base64").toString("utf-8");
-                }
-              }
-            } else if (msg.data.payload?.body?.data) {
-              bodyText = Buffer.from(msg.data.payload.body.data, "base64").toString("utf-8");
-            }
-
-            // Check if already processed
-            const exists = await EmailLog.findOne({ where: { message_id: messageIdHeader } });
-            if (!exists) {
-              const targetTenant = config.tenant_id || "646b4abe-e6de-401b-ba33-46884bf3f6e6";
-
-              // 1. Auto-Link or Create Lead in CRM & Extract Phone Number
-              const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(
-                fromEmail,
-                fromName,
-                bodyText,
-                subjectHeader,
-                targetTenant
-              );
-
-              // 2. Save Inbound EmailLog
-              const log = new EmailLog();
-              log.tenant_id = targetTenant;
-              log.lead_id = leadRecord?.id || null;
-              log.from_email = fromEmail;
-              log.to_email = config.email_address;
-              log.subject = subjectHeader;
-              log.body_text = bodyText;
-              log.body_html = bodyHtml || `<p>${bodyText}</p>`;
-              log.direction = "inbound";
-              log.delivery_status = "received";
-              log.message_id = messageIdHeader;
-              log.created_by_id = "gmail_api_sync";
-              log.created_on = new Date();
-              await log.save();
-              syncedCount++;
-
-              // 3. Mark message as read in Gmail (safe execution)
-              try {
-                await gmail.users.messages.modify({
-                  userId: "me",
-                  id: item.id,
-                  requestBody: { removeLabelIds: ["UNREAD"] },
-                });
-              } catch (modifyErr: any) {
-                this.logger.debug(`Could not update unread label: ${modifyErr.message}`);
-              }
-
-              // 4. Trigger Autonomous AI Reply
-              const isAiAutoReplyLoop =
-                subjectHeader.toLowerCase().includes("[ai auto-reply]") ||
-                headers.some((h) => (h.name?.toLowerCase() === "x-sharyx-auto-reply" && h.value?.toLowerCase() === "true") || (h.name?.toLowerCase() === "auto-submitted" && h.value?.toLowerCase() !== "no"));
-
-              // Check if this message was actually generated by the system's own outbound dispatch
-              const wasDispatchedBySystem = await EmailLog.findOne({
-                where: { message_id: messageIdHeader, direction: "outbound" },
-              });
-
-              // Allow self-sent testing if it's a genuine user message and not an outbound bot echo
-              const isBotEcho = wasDispatchedBySystem || isAiAutoReplyLoop || (isSelfSent && (bodyText.includes("Best regards,\nSharyx") || bodyText.includes("Sharyx AI Team") || bodyText.includes("Sharyx Talent Acquisition")));
-
-              if (!isBotEcho) {
-                this.logger.log(`🤖 Triggering AI Auto-Reply for inbound email from: ${fromEmail} | Subject: "${subjectHeader}"`);
-                await this.triggerAutoReply(
-                  fromEmail,
-                  subjectHeader,
-                  bodyText,
-                  leadRecord,
-                  !!(extractedPhone || leadRecord?.phone),
-                  targetTenant,
-                  msg.data.threadId || undefined,
-                  messageIdHeader || undefined
-                );
-              } else {
-                this.logger.log(`🛡️ Skipping auto-reply for system outbound/bot echo from: ${fromEmail}`);
-              }
-            }
-          } catch (msgErr: any) {
-            this.logger.warn(`Could not process Gmail message ${item.id}: ${msgErr.message}`);
-          }
-        }
-
-        return { synced: syncedCount, provider: "google-email" };
+  /** One tenant's mailbox: Gmail API or IMAP. Throws on connection/auth errors (the caller turns them into status). */
+  private async pollOneMailbox(config: EmailAccountConfig): Promise<{ synced: number; provider?: string; status?: string }> {
+    let syncedCount = 0;
+    // ── MODE A: GOOGLE GMAIL API (HTTPS 443) ──────────────────────────
+    if (config.provider === "google-email" && config.refresh_token) {
+      let decryptedRefreshToken = config.refresh_token;
+      try {
+        decryptedRefreshToken = this.encryptionService.Decrypt(config.refresh_token);
+      } catch {
+        decryptedRefreshToken = config.refresh_token;
       }
 
-      // ── MODE B: STANDARD IMAP POLLER ──────────────────────────────────
-      if (config.imap_host && config.smtp_user) {
-        let password = config.smtp_password;
-        try {
-          password = this.encryptionService.Decrypt(config.smtp_password);
-        } catch {
-          // Plain text fallback
+      const oauth2Client = new google.auth.OAuth2(
+        config.client_id || process.env.GOOGLE_CLIENT_ID,
+        config.client_secret || process.env.GOOGLE_CLIENT_SECRET
+      );
+      oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
+      const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+      let messages: any[] = [];
+      try {
+        // Search for recent incoming messages in INBOX
+        const listRes = await gmail.users.messages.list({
+          userId: "me",
+          q: "label:INBOX",
+          maxResults: 20,
+        });
+        messages = listRes.data.messages || [];
+      } catch (apiErr: any) {
+        if (apiErr.message?.includes('insufficient authentication scopes') || apiErr.code === 403) {
+          // User account only has login/identity scopes, not full Gmail reading scopes
+          return { synced: 0, status: "insufficient_scopes" };
         }
+        throw apiErr;
+      }
 
-        const imapConfig: imaps.ImapSimpleOptions = {
-          imap: {
-            user: config.smtp_user,
-            password: password,
-            host: config.imap_host,
-            port: config.imap_port || 993,
-            tls: config.use_ssl ?? true,
-            authTimeout: 5000,
-          },
-        };
+      for (const item of messages) {
+        if (!item.id) continue;
+        try {
+          const msg = await gmail.users.messages.get({
+            userId: "me",
+            id: item.id,
+            format: "full",
+          });
 
-        const connection = await imaps.connect(imapConfig);
-        await connection.openBox("INBOX");
+          const headers = msg.data.payload?.headers || [];
+          const fromHeader = headers.find((h) => h.name?.toLowerCase() === "from")?.value || "";
+          const subjectHeader = headers.find((h) => h.name?.toLowerCase() === "subject")?.value || "No Subject";
+          const messageIdHeader = headers.find((h) => h.name?.toLowerCase() === "message-id")?.value || `gmail_${item.id}`;
 
-        const searchCriteria = ["UNSEEN"];
-        const fetchOptions = {
-          bodies: ["HEADER", "TEXT", ""],
-          markSeen: true,
-        };
+          // Parse From header: e.g. "John Doe <john@company.com>"
+          let fromEmail = fromHeader;
+          let fromName = fromHeader;
+          const match = fromHeader.match(/^(.*?)\s*<(.+?)>$/);
+          if (match) {
+            fromName = match[1].replace(/["']/g, "").trim();
+            fromEmail = match[2].trim();
+          }
 
-        const messages = await connection.search(searchCriteria, fetchOptions);
+          const isSelfSent = fromEmail.toLowerCase() === (config.email_address || "").toLowerCase();
 
-        for (const item of messages) {
-          const all = item.parts.find((part) => part.which === "");
-          const id = item.attributes.uid;
-          const idHeader = `Imap-UID: ${id}`;
+          // Skip bounces, system alerts, mailer-daemon, and no-reply messages
+          if (this.isSystemOrAutomatedEmail(fromEmail, subjectHeader, headers)) {
+            this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subjectHeader}"`);
+            // Mark as read so we don't process it every poll
+            try {
+              await gmail.users.messages.modify({
+                userId: "me",
+                id: item.id,
+                requestBody: { removeLabelIds: ["UNREAD"] },
+              });
+            } catch {}
+            continue;
+          }
 
-          if (all) {
-            const parsed = await simpleParser(all.body);
-            const fromEmail = parsed.from?.value?.[0]?.address || "unknown@client.com";
-            const fromName = parsed.from?.value?.[0]?.name || fromEmail.split("@")[0];
-            const subject = parsed.subject || "No Subject";
-            const bodyText = parsed.text || "";
-            const bodyHtml = (parsed.html as string) || `<p>${bodyText}</p>`;
-            const messageId = parsed.messageId || `${idHeader}`;
+          // Extract plain text body
+          let bodyText = "";
+          let bodyHtml = "";
+          const parts = msg.data.payload?.parts;
+          if (parts && parts.length > 0) {
+            for (const p of parts) {
+              if (p.mimeType === "text/plain" && p.body?.data) {
+                bodyText = Buffer.from(p.body.data, "base64").toString("utf-8");
+              }
+              if (p.mimeType === "text/html" && p.body?.data) {
+                bodyHtml = Buffer.from(p.body.data, "base64").toString("utf-8");
+              }
+            }
+          } else if (msg.data.payload?.body?.data) {
+            bodyText = Buffer.from(msg.data.payload.body.data, "base64").toString("utf-8");
+          }
 
-            // Skip self-sent emails
-            if (fromEmail.toLowerCase() === config.email_address?.toLowerCase()) {
-              continue;
+          // Check if already processed
+          const exists = await EmailLog.findOne({ where: { message_id: messageIdHeader } });
+          if (!exists) {
+            const targetTenant = config.tenant_id;
+
+            // 1. Auto-Link or Create Lead in CRM & Extract Phone Number
+            const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(
+              fromEmail,
+              fromName,
+              bodyText,
+              subjectHeader,
+              targetTenant
+            );
+
+            // 2. Save Inbound EmailLog
+            const log = new EmailLog();
+            log.tenant_id = targetTenant;
+            log.lead_id = leadRecord?.id || null;
+            log.from_email = fromEmail;
+            log.to_email = config.email_address;
+            log.subject = subjectHeader;
+            log.body_text = bodyText;
+            log.body_html = bodyHtml || `<p>${bodyText}</p>`;
+            log.direction = "inbound";
+            log.delivery_status = "received";
+            log.message_id = messageIdHeader;
+            log.created_by_id = "gmail_api_sync";
+            log.created_on = new Date();
+            await log.save();
+            syncedCount++;
+
+            // 3. Mark message as read in Gmail (safe execution)
+            try {
+              await gmail.users.messages.modify({
+                userId: "me",
+                id: item.id,
+                requestBody: { removeLabelIds: ["UNREAD"] },
+              });
+            } catch (modifyErr: any) {
+              this.logger.debug(`Could not update unread label: ${modifyErr.message}`);
             }
 
-            // Skip bounces, system alerts, mailer-daemon, and no-reply messages
-            if (this.isSystemOrAutomatedEmail(fromEmail, subject)) {
-              this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subject}"`);
-              continue;
-            }
+            // 4. Trigger Autonomous AI Reply
+            const isAiAutoReplyLoop =
+              subjectHeader.toLowerCase().includes("[ai auto-reply]") ||
+              headers.some((h) => (h.name?.toLowerCase() === "x-sharyx-auto-reply" && h.value?.toLowerCase() === "true") || (h.name?.toLowerCase() === "auto-submitted" && h.value?.toLowerCase() !== "no"));
 
-            // Check if already processed
-            const exists = await EmailLog.findOne({ where: { message_id: messageId } });
-            if (!exists) {
-              // 1. Auto-Link / Create Lead in CRM with extracted Phone
-              const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(
-                fromEmail,
-                fromName,
-                bodyText,
-                subject,
-                config.tenant_id
-              );
+            // Check if this message was actually generated by the system's own outbound dispatch
+            const wasDispatchedBySystem = await EmailLog.findOne({
+              where: { message_id: messageIdHeader, direction: "outbound" },
+            });
 
-              // 2. Save Inbound EmailLog
-              const log = new EmailLog();
-              log.tenant_id = config.tenant_id;
-              log.lead_id = leadRecord?.id || null;
-              log.from_email = fromEmail;
-              log.to_email = config.email_address;
-              log.subject = subject;
-              log.body_text = bodyText;
-              log.body_html = bodyHtml;
-              log.direction = "inbound";
-              log.delivery_status = "received";
-              log.message_id = messageId;
-              log.created_by_id = "imap_poller";
-              log.created_on = new Date();
-              await log.save();
-              syncedCount++;
+            // Allow self-sent testing if it's a genuine user message and not an outbound bot echo
+            const isBotEcho = wasDispatchedBySystem || isAiAutoReplyLoop || (isSelfSent && (bodyText.includes("Best regards,\nSharyx") || bodyText.includes("Sharyx AI Team") || bodyText.includes("Sharyx Talent Acquisition")));
 
-              // 3. Trigger Autonomous AI Reply
+            if (!isBotEcho) {
+              this.logger.log(`🤖 Triggering AI Auto-Reply for inbound email from: ${fromEmail} | Subject: "${subjectHeader}"`);
               await this.triggerAutoReply(
                 fromEmail,
-                subject,
+                subjectHeader,
                 bodyText,
                 leadRecord,
                 !!(extractedPhone || leadRecord?.phone),
-                config.tenant_id
+                targetTenant,
+                msg.data.threadId || undefined,
+                messageIdHeader || undefined
               );
+            } else {
+              this.logger.log(`🛡️ Skipping auto-reply for system outbound/bot echo from: ${fromEmail}`);
             }
           }
+        } catch (msgErr: any) {
+          this.logger.warn(`Could not process Gmail message ${item.id}: ${msgErr.message}`);
         }
-
-        await connection.end();
-        return { synced: syncedCount, provider: "smtp_imap" };
       }
-    } catch (err: any) {
-      this.logger.debug(`Inbox polling skipped/failed: ${err.message}`);
-    } finally {
-      this.isPolling = false;
+
+      return { synced: syncedCount, provider: "google-email" };
+    }
+
+    // ── MODE B: STANDARD IMAP POLLER ──────────────────────────────────
+    if (config.imap_host && config.smtp_user) {
+      let password = config.smtp_password;
+      try {
+        password = this.encryptionService.Decrypt(config.smtp_password);
+      } catch {
+        // Plain text fallback
+      }
+
+      const imapConfig: imaps.ImapSimpleOptions = {
+        imap: {
+          user: config.smtp_user,
+          password: password,
+          host: config.imap_host,
+          port: config.imap_port || 993,
+          tls: config.use_ssl ?? true,
+          authTimeout: 5000,
+        },
+      };
+
+      const connection = await imaps.connect(imapConfig);
+      await connection.openBox("INBOX");
+
+      const searchCriteria = ["UNSEEN"];
+      const fetchOptions = {
+        bodies: ["HEADER", "TEXT", ""],
+        markSeen: true,
+      };
+
+      const messages = await connection.search(searchCriteria, fetchOptions);
+
+      for (const item of messages) {
+        const all = item.parts.find((part) => part.which === "");
+        const id = item.attributes.uid;
+        const idHeader = `Imap-UID: ${id}`;
+
+        if (all) {
+          const parsed = await simpleParser(all.body);
+          const fromEmail = parsed.from?.value?.[0]?.address || "unknown@client.com";
+          const fromName = parsed.from?.value?.[0]?.name || fromEmail.split("@")[0];
+          const subject = parsed.subject || "No Subject";
+          const bodyText = parsed.text || "";
+          const bodyHtml = (parsed.html as string) || `<p>${bodyText}</p>`;
+          const messageId = parsed.messageId || `${idHeader}`;
+
+          // Skip self-sent emails
+          if (fromEmail.toLowerCase() === config.email_address?.toLowerCase()) {
+            continue;
+          }
+
+          // Skip bounces, system alerts, mailer-daemon, and no-reply messages
+          if (this.isSystemOrAutomatedEmail(fromEmail, subject)) {
+            this.logger.log(`🛡️ [EMAIL FILTER] Ignored system/no-reply email from ${fromEmail} | Subject: "${subject}"`);
+            continue;
+          }
+
+          // Check if already processed
+          const exists = await EmailLog.findOne({ where: { message_id: messageId } });
+          if (!exists) {
+            // 1. Auto-Link / Create Lead in CRM with extracted Phone
+            const { leadRecord, extractedPhone } = await this.findOrCreateLeadFromEmail(
+              fromEmail,
+              fromName,
+              bodyText,
+              subject,
+              config.tenant_id
+            );
+
+            // 2. Save Inbound EmailLog
+            const log = new EmailLog();
+            log.tenant_id = config.tenant_id;
+            log.lead_id = leadRecord?.id || null;
+            log.from_email = fromEmail;
+            log.to_email = config.email_address;
+            log.subject = subject;
+            log.body_text = bodyText;
+            log.body_html = bodyHtml;
+            log.direction = "inbound";
+            log.delivery_status = "received";
+            log.message_id = messageId;
+            log.created_by_id = "imap_poller";
+            log.created_on = new Date();
+            await log.save();
+            syncedCount++;
+
+            // 3. Trigger Autonomous AI Reply
+            await this.triggerAutoReply(
+              fromEmail,
+              subject,
+              bodyText,
+              leadRecord,
+              !!(extractedPhone || leadRecord?.phone),
+              config.tenant_id
+            );
+          }
+        }
+      }
+
+      await connection.end();
+      return { synced: syncedCount, provider: "smtp_imap" };
     }
 
     return { synced: syncedCount, status: "idle" };

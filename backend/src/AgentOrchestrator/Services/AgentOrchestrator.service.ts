@@ -287,7 +287,7 @@ export class AgentOrchestratorService {
     input: InboundAgentMessage,
     justHandedOff: boolean
   ): Promise<string> {
-    const biz = await this.getBusiness();
+    const biz = await this.getBusiness(state.tenant_id);
     const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" });
     const leadRec = await this.findLead(state);
     const isSupport = agent.agent_key === "support";
@@ -451,7 +451,7 @@ RULES:
     try {
       const phone = state.customer_phone || leadRec?.phone;
       if (phone) {
-        const conv = await WhatsAppConversation.findOne({ where: { customer_phone: phone } });
+        const conv = await WhatsAppConversation.findOne({ where: { customer_phone: phone, tenant_id: state.tenant_id } });
         if (conv) {
           const msgs = await WhatsAppMessage.find({ where: { conversation_id: conv.id }, order: { created_on: "DESC" }, take: 15 });
           if (msgs.length) {
@@ -1186,20 +1186,20 @@ RULES:
 
   private async findLead(state: ConversationAgentState): Promise<lead | null> {
     try {
-      if (state.lead_id) return await lead.findOne({ where: { id: state.lead_id } });
+      if (state.lead_id) return await lead.findOne({ where: { id: state.lead_id, tenant_id: state.tenant_id } });
       if (state.customer_phone) {
         const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
         const withPlus = "+" + cleanPhone;
-        let l = await lead.findOne({ where: { phone: state.customer_phone } });
-        if (!l) l = await lead.findOne({ where: { phone: withPlus } });
-        if (!l) l = await lead.findOne({ where: { phone: cleanPhone } });
+        let l = await lead.findOne({ where: { phone: state.customer_phone, tenant_id: state.tenant_id } });
+        if (!l) l = await lead.findOne({ where: { phone: withPlus, tenant_id: state.tenant_id } });
+        if (!l) l = await lead.findOne({ where: { phone: cleanPhone, tenant_id: state.tenant_id } });
         if (l) {
           state.lead_id = l.id;
           return l;
         }
       }
       if (state.customer_email) {
-        const l = await lead.findOne({ where: { email: state.customer_email } });
+        const l = await lead.findOne({ where: { email: state.customer_email, tenant_id: state.tenant_id } });
         if (l) {
           state.lead_id = l.id;
           return l;
@@ -1212,22 +1212,24 @@ RULES:
   private async getWaMeeting(state: ConversationAgentState): Promise<any> {
     if (state.channel !== "whatsapp") return null;
     try {
-      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
       return conv?.meeting_info?.meet_url ? { slot: conv.meeting_info.slot, meet_url: conv.meeting_info.meet_url } : null;
     } catch {
       return null;
     }
   }
 
-  private bizCache: { name: string; email?: string; address?: string } | null = null;
-  private async getBusiness() {
-    if (this.bizCache) return this.bizCache;
+  // Per-tenant (was one process-wide cache of the FIRST company in the table).
+  private bizCache = new Map<string, { name: string; email?: string; address?: string }>();
+  private async getBusiness(tenantId: string) {
+    const cached = this.bizCache.get(tenantId);
+    if (cached) return cached;
+    let biz: { name: string; email?: string; address?: string } = { name: "the business" };
     try {
-      const c: any = await company.findOne({ where: {} });
-      this.bizCache = { name: c?.name || "Sharyx", email: c?.email, address: c?.address };
-    } catch {
-      this.bizCache = { name: "Sharyx" };
-    }
-    return this.bizCache;
+      const c: any = tenantId ? await company.findOne({ where: { id: tenantId } }) : null;
+      if (c) biz = { name: c.name || "the business", email: c.email, address: c.address };
+    } catch {}
+    this.bizCache.set(tenantId, biz);
+    return biz;
   }
 }

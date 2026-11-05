@@ -1,0 +1,1787 @@
+[
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/AiAgents",
+    "handler": "list"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/AiAgents/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/AiAgents/:id/Reset",
+    "handler": "reset"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/AiAgents/Conversations",
+    "handler": "states"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/AiAgents/Conversations/:id/Handoffs",
+    "handler": "handoffs"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/AiAgents/Conversations/:id/Takeover",
+    "handler": "takeover"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/AiAgents/Conversations/:id/Assign",
+    "handler": "assign"
+  },
+  {
+    "controller": "AiAgent.controller.ts",
+    "file": "backend\\src\\AgentOrchestrator\\Controllers\\AiAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/AiAgents/Simulate",
+    "handler": "simulate"
+  },
+  {
+    "controller": "AuditLog.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\AuditLog.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/AuditLog/LazyLoadList",
+    "handler": "LazyLoadList"
+  },
+  {
+    "controller": "AuditLog.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\AuditLog.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/AuditLog/DetailList",
+    "handler": "DetailList"
+  },
+  {
+    "controller": "AutoNumber.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\AutoNumber.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/AutoNumber/Generate/:Type",
+    "handler": "Generate"
+  },
+  {
+    "controller": "Company.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Company.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Company/Get",
+    "handler": "Get"
+  },
+  {
+    "controller": "Company.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Company.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Company/List",
+    "handler": "List"
+  },
+  {
+    "controller": "Company.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Company.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Company/Update",
+    "handler": "Update"
+  },
+  {
+    "controller": "Country.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Country.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Country/List",
+    "handler": "List"
+  },
+  {
+    "controller": "Country.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Country.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Country/ById/:Id",
+    "handler": "ById"
+  },
+  {
+    "controller": "Country.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Country.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Country/Insert",
+    "handler": "Insert"
+  },
+  {
+    "controller": "Country.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Country.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Country/Update/:Id",
+    "handler": "Update"
+  },
+  {
+    "controller": "Country.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Country.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Country/Delete/:Id",
+    "handler": "Delete"
+  },
+  {
+    "controller": "Currency.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Currency.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Currency/List",
+    "handler": "List"
+  },
+  {
+    "controller": "Currency.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Currency.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Currency/ById/:Id",
+    "handler": "ById"
+  },
+  {
+    "controller": "Currency.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Currency.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Currency/Insert",
+    "handler": "Insert"
+  },
+  {
+    "controller": "Currency.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Currency.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Currency/Update/:Id",
+    "handler": "Update"
+  },
+  {
+    "controller": "Currency.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\Currency.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Currency/Delete/:Id",
+    "handler": "Delete"
+  },
+  {
+    "controller": "DashboardTelemetry.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\DashboardTelemetry.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Admin/Dashboard/telemetry",
+    "handler": "getTelemetry"
+  },
+  {
+    "controller": "DashboardTelemetry.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\DashboardTelemetry.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Admin/Dashboard/sync",
+    "handler": "syncNow"
+  },
+  {
+    "controller": "EmailConfig.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\EmailConfig.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/EmailConfig",
+    "handler": "EmailConfig"
+  },
+  {
+    "controller": "EmailConfig.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\EmailConfig.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/EmailConfig/Update",
+    "handler": "Update"
+  },
+  {
+    "controller": "ErrorLog.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\ErrorLog.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/ErrorLog/LazyLoadList",
+    "handler": "LazyLoadList"
+  },
+  {
+    "controller": "ErrorLog.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\ErrorLog.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/ErrorLog/DeleteByAsOfDate",
+    "handler": "DeleteByAsOfDate"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/User/List",
+    "handler": "List"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/User/ById/:Id",
+    "handler": "ById"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/User/Insert",
+    "handler": "Insert"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/User/Update/:Id",
+    "handler": "Update"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/User/SuspendOrActivate/:Id",
+    "handler": "SuspendOrActivate"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/User/ChangePassword",
+    "handler": "ChangePassword"
+  },
+  {
+    "controller": "User.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\User.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/User/ResetPassword/:Id",
+    "handler": "ResetPassword"
+  },
+  {
+    "controller": "UserRole.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\UserRole.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/UserRole/List",
+    "handler": "List"
+  },
+  {
+    "controller": "UserRole.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\UserRole.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/UserRole/ById/:Id",
+    "handler": "ById"
+  },
+  {
+    "controller": "UserRole.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\UserRole.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/UserRole/Insert",
+    "handler": "Insert"
+  },
+  {
+    "controller": "UserRole.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\UserRole.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/UserRole/Update/:Id",
+    "handler": "Update"
+  },
+  {
+    "controller": "UserRole.controller.ts",
+    "file": "backend\\src\\Controller\\Admin\\UserRole.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/UserRole/Delete/:Id",
+    "handler": "Delete"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/Login",
+    "handler": "UserLogin"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/SendSignupOtp",
+    "handler": "SendSignupOtp"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/ResendSignupOtp",
+    "handler": "ResendSignupOtp"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/VerifySignupOtp",
+    "handler": "VerifySignupOtp"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/GoogleAuth",
+    "handler": "GoogleAuth"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/ForgotPassword",
+    "handler": "ForgotPassword"
+  },
+  {
+    "controller": "Login.controller.ts",
+    "file": "backend\\src\\Controller\\Auth\\Login.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Auth/ResetPassword",
+    "handler": "ResetPassword"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Automation",
+    "handler": "getRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/Automation",
+    "handler": "getRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/v1/Automation",
+    "handler": "getRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Automation",
+    "handler": "createRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/Automation",
+    "handler": "createRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/v1/Automation",
+    "handler": "createRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Automation/DryRunTest",
+    "handler": "dryRunTest"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/Automation/DryRunTest",
+    "handler": "dryRunTest"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/v1/Automation/DryRunTest",
+    "handler": "dryRunTest"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Automation/ConvertLead/:id",
+    "handler": "convertLead"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/Automation/ConvertLead/:id",
+    "handler": "convertLead"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/v1/Automation/ConvertLead/:id",
+    "handler": "convertLead"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Automation/SeedRules",
+    "handler": "seedRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/Automation/SeedRules",
+    "handler": "seedRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/v1/Automation/SeedRules",
+    "handler": "seedRules"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Automation/:id",
+    "handler": "getRuleById"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/Automation/:id",
+    "handler": "getRuleById"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/v1/Automation/:id",
+    "handler": "getRuleById"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Automation/:id",
+    "handler": "updateRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/api/Automation/:id",
+    "handler": "updateRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/api/v1/Automation/:id",
+    "handler": "updateRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Automation/:id",
+    "handler": "deleteRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/api/Automation/:id",
+    "handler": "deleteRule"
+  },
+  {
+    "controller": "Automation.controller.ts",
+    "file": "backend\\src\\Controller\\Automation\\Automation.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/api/v1/Automation/:id",
+    "handler": "deleteRule"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Customer/List",
+    "handler": "list"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/Customer/List",
+    "handler": "list"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/v1/Customer/List",
+    "handler": "list"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Customer/Deals",
+    "handler": "listDeals"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/Customer/Deals",
+    "handler": "listDeals"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/v1/Customer/Deals",
+    "handler": "listDeals"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Customer/:id",
+    "handler": "getById"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/Customer/:id",
+    "handler": "getById"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/v1/Customer/:id",
+    "handler": "getById"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Customer/Insert",
+    "handler": "insert"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/Customer/Insert",
+    "handler": "insert"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/v1/Customer/Insert",
+    "handler": "insert"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Customer/Update/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/api/Customer/Update/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/api/v1/Customer/Update/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Customer/Delete/:id",
+    "handler": "delete"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/api/Customer/Delete/:id",
+    "handler": "delete"
+  },
+  {
+    "controller": "Customer.controller.ts",
+    "file": "backend\\src\\Controller\\Customer\\Customer.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/api/v1/Customer/Delete/:id",
+    "handler": "delete"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/openings",
+    "handler": "listOpenings"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/Openings",
+    "handler": "listOpenings"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/openings/slots",
+    "handler": "getAvailableSlots"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/Openings/slots",
+    "handler": "getAvailableSlots"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/openings",
+    "handler": "createOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/Openings",
+    "handler": "createOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/openings/:id",
+    "handler": "updateOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Lead/Openings/:id",
+    "handler": "updateOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/openings/:id",
+    "handler": "patchOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Lead/Openings/:id",
+    "handler": "patchOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/openings/:id/status",
+    "handler": "updateStatus"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Lead/Openings/:id/status",
+    "handler": "updateStatus"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/openings/:id",
+    "handler": "deleteOpening"
+  },
+  {
+    "controller": "JobOpenings.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\JobOpenings.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Lead/Openings/:id",
+    "handler": "deleteOpening"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/List",
+    "handler": "list"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/Stats",
+    "handler": "stats"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/ById/:id",
+    "handler": "getById"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/CheckDuplicate",
+    "handler": "checkDuplicate"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Lead/CheckDuplicateEmail",
+    "handler": "checkDuplicateEmail"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/Insert",
+    "handler": "insert"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Lead/Update/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Lead/UpdateStatus/:id",
+    "handler": "updateStatus"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Lead/UpdateCandidateStage/:id",
+    "handler": "updateCandidateStage"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Lead/Delete/:id",
+    "handler": "delete"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/BulkDelete",
+    "handler": "bulkDelete"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/BulkUpdateStatus",
+    "handler": "bulkUpdateStatus"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/Activity",
+    "handler": "addActivity"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/Import",
+    "handler": "importLeads"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/ApproveInterview/:id",
+    "handler": "approveInterview"
+  },
+  {
+    "controller": "Lead.controller.ts",
+    "file": "backend\\src\\Controller\\Lead\\Lead.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Lead/TriggerVoiceCall/:id",
+    "handler": "triggerVoiceCall"
+  },
+  {
+    "controller": "Onboarding.controller.ts",
+    "file": "backend\\src\\Controller\\Onboarding\\Onboarding.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Onboarding/State",
+    "handler": "state"
+  },
+  {
+    "controller": "Onboarding.controller.ts",
+    "file": "backend\\src\\Controller\\Onboarding\\Onboarding.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Onboarding/Step",
+    "handler": "saveStep"
+  },
+  {
+    "controller": "Onboarding.controller.ts",
+    "file": "backend\\src\\Controller\\Onboarding\\Onboarding.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Onboarding/Complete",
+    "handler": "complete"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/Config",
+    "handler": "getConfig"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Config",
+    "handler": "saveConfig"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Test-Connection",
+    "handler": "testConnection"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/OAuth/AuthUrl",
+    "handler": "getGoogleAuthUrl"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/OAuth/Connect",
+    "handler": "connectGoogle"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/OAuth/Status",
+    "handler": "getOAuthStatus"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/OAuth/Disconnect",
+    "handler": "disconnectGoogle"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Lead/AiDraft",
+    "handler": "generateLeadDraft"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Lead/Send",
+    "handler": "sendLeadEmail"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Validate",
+    "handler": "validateEmail"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Send",
+    "handler": "sendEmail"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/Inbox",
+    "handler": "getInbox"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Sync",
+    "handler": "syncInbox"
+  },
+  {
+    "controller": "Email.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\Email.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/Thread/:identifier",
+    "handler": "getThread"
+  },
+  {
+    "controller": "EmailAI.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailAI.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/AI/Config",
+    "handler": "getConfig"
+  },
+  {
+    "controller": "EmailAI.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailAI.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/AI/Config",
+    "handler": "saveConfig"
+  },
+  {
+    "controller": "EmailAI.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailAI.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/AI/Draft",
+    "handler": "generateDraft"
+  },
+  {
+    "controller": "EmailCampaign.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailCampaign.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/Campaign",
+    "handler": "listCampaigns"
+  },
+  {
+    "controller": "EmailCampaign.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailCampaign.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Campaign",
+    "handler": "createCampaign"
+  },
+  {
+    "controller": "EmailTemplate.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTemplate.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Email/Templates",
+    "handler": "getTemplates"
+  },
+  {
+    "controller": "EmailTemplate.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTemplate.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Templates/Create",
+    "handler": "createTemplate"
+  },
+  {
+    "controller": "EmailTemplate.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTemplate.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Email/Templates/Update/:id",
+    "handler": "updateTemplate"
+  },
+  {
+    "controller": "EmailTemplate.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTemplate.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Email/Templates/Delete/:id",
+    "handler": "deleteTemplate"
+  },
+  {
+    "controller": "EmailTemplate.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTemplate.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Templates/Preview/:id",
+    "handler": "previewTemplate"
+  },
+  {
+    "controller": "EmailTrigger.controller.ts",
+    "file": "backend\\src\\Email\\Controllers\\EmailTrigger.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Email/Trigger/Execute",
+    "handler": "executeTrigger"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/customers",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/customers",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/customers/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/customers/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/customers/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/customers/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/customers/:id/summary",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/customers/:id/summary",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/events/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/events/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/customers/:id/link-identity",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/customers/:id/link-identity",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/customers/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/customers/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/conversations",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/conversations",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/conversations/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/conversations/:id",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/omnichannel/conversations/:id/status",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/Omnichannel/conversations/:id/status",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/conversations/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/conversations/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/customers/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/customers/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/stream",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/stream",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/leads",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/leads",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/omnichannel/leads/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Omnichannel/leads/:id/timeline",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/leads/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/leads/:id/reply",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/seed-demo",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/seed-demo",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/seed-ram",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "Omnichannel.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\Omnichannel.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/seed-ram",
+    "handler": "ApiOperation"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhook/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhook/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhooks/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhooks/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhook/email",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhook/email",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhooks/email",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhooks/email",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhook/call",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhook/call",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/omnichannel/webhooks/call",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "OmnichannelWebhook.controller.ts",
+    "file": "backend\\src\\Omnichannel\\Controllers\\OmnichannelWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Omnichannel/Webhooks/call",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Agents",
+    "handler": "list"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Agents/providers",
+    "handler": "getProviders"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/sync-all",
+    "handler": "syncAll"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/deploy-workforce-team",
+    "handler": "deployWorkforceTeam"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/deploy-to-vapi",
+    "handler": "deployToVapi"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/sync/:provider",
+    "handler": "syncFromProvider"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Agents/catalog",
+    "handler": "getCatalog"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/catalog/:key/enable",
+    "handler": "enableCatalogAgent"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/catalog/:key/disable",
+    "handler": "disableCatalogAgent"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/catalog/enable-all",
+    "handler": "enableAllCatalogAgents"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents/catalog/disable-all",
+    "handler": "disableAllCatalogAgents"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Agents/:id",
+    "handler": "getOne"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Agents",
+    "handler": "create"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/Voice/Agents/:id",
+    "handler": "update"
+  },
+  {
+    "controller": "VoiceAgent.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceAgent.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/Voice/Agents/:id",
+    "handler": "remove"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Calls/dispatch",
+    "handler": "dispatch"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Calls/logs",
+    "handler": "getLogs"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Calls/stats",
+    "handler": "getStats"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Calls/sync-saas",
+    "handler": "syncFromSaas"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Calls/audio",
+    "handler": "streamAudio"
+  },
+  {
+    "controller": "VoiceCall.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceCall.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Calls/sync-vapi",
+    "handler": "syncFromVapi"
+  },
+  {
+    "controller": "VoiceConfig.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceConfig.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/Voice/Config",
+    "handler": "getConfigs"
+  },
+  {
+    "controller": "VoiceConfig.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceConfig.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Config",
+    "handler": "saveConfig"
+  },
+  {
+    "controller": "VoiceConfig.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceConfig.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Config/activate/:provider",
+    "handler": "activateProvider"
+  },
+  {
+    "controller": "VoiceConfig.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceConfig.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Config/disconnect/:provider",
+    "handler": "disconnectProvider"
+  },
+  {
+    "controller": "VoiceConfig.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceConfig.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Config/test",
+    "handler": "testConnection"
+  },
+  {
+    "controller": "VoiceWebhook.controller.ts",
+    "file": "backend\\src\\Voice\\Controllers\\VoiceWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/Voice/Webhook/:provider",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Config",
+    "handler": "getConfig"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Config",
+    "handler": "saveConfig"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Test-Connection",
+    "handler": "testConnection"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Disconnect",
+    "handler": "disconnect"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Send",
+    "handler": "sendMessage"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Conversations",
+    "handler": "getConversations"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Messages/:conversationId",
+    "handler": "getMessages"
+  },
+  {
+    "controller": "WhatsApp.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsApp.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/WhatsApp/Conversations/:id/status",
+    "handler": "updateConversationStatus"
+  },
+  {
+    "controller": "WhatsAppAI.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppAI.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/AI/Config",
+    "handler": "getConfig"
+  },
+  {
+    "controller": "WhatsAppAI.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppAI.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/AI/Config",
+    "handler": "saveConfig"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Campaigns",
+    "handler": "listCampaigns"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Campaigns",
+    "handler": "createCampaignBase"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Campaigns/Create",
+    "handler": "createCampaign"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/WhatsApp/Campaigns/Update/:id",
+    "handler": "updateCampaign"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "PATCH",
+    "path": "/api/v1/WhatsApp/Campaigns/Toggle/:id",
+    "handler": "toggleCampaign"
+  },
+  {
+    "controller": "WhatsAppCampaign.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppCampaign.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/WhatsApp/Campaigns/Delete/:id",
+    "handler": "deleteCampaign"
+  },
+  {
+    "controller": "WhatsAppTemplate.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppTemplate.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Templates",
+    "handler": "getTemplates"
+  },
+  {
+    "controller": "WhatsAppTemplate.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppTemplate.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Templates/SyncMeta",
+    "handler": "syncMetaTemplates"
+  },
+  {
+    "controller": "WhatsAppTemplate.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppTemplate.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Templates/Create",
+    "handler": "createTemplate"
+  },
+  {
+    "controller": "WhatsAppTemplate.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppTemplate.controller.ts",
+    "verb": "PUT",
+    "path": "/api/v1/WhatsApp/Templates/Update/:id",
+    "handler": "updateTemplate"
+  },
+  {
+    "controller": "WhatsAppTemplate.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppTemplate.controller.ts",
+    "verb": "DELETE",
+    "path": "/api/v1/WhatsApp/Templates/Delete/:id",
+    "handler": "deleteTemplate"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/WhatsApp/Webhook",
+    "handler": "verifyWebhook"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/webhook/whatsapp",
+    "handler": "verifyWebhook"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/webhook/whatsapp",
+    "handler": "verifyWebhook"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/api/whatsapp/webhook",
+    "handler": "verifyWebhook"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "GET",
+    "path": "/api/v1/webhook",
+    "handler": "verifyWebhook"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/WhatsApp/Webhook",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/webhook/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/webhook/whatsapp",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/api/whatsapp/webhook",
+    "handler": "HttpCode"
+  },
+  {
+    "controller": "WhatsAppWebhook.controller.ts",
+    "file": "backend\\src\\WhatsApp\\Controllers\\WhatsAppWebhook.controller.ts",
+    "verb": "POST",
+    "path": "/api/v1/webhook",
+    "handler": "HttpCode"
+  }
+]

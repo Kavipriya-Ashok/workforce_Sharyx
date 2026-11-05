@@ -57,4 +57,20 @@ export class company extends BaseTable {
   @Column({ nullable: true })
   invoice_footer: string;
 
+  // ---- Onboarding state, persisted server-side per tenant ----
+  @Column({ type: "boolean", default: false })
+  onboarding_completed: boolean;
+
+  @Column({ type: "int", default: 1 })
+  onboarding_step: number;
+
+  @Column({ type: "jsonb", nullable: true })
+  onboarding_data: Record<string, any>;
+
+  @Column({ nullable: true })
+  industry: string;
+
+  @Column({ nullable: true })
+  company_size: string;
+
 }

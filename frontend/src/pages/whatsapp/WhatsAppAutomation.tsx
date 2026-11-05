@@ -55,17 +55,7 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
   const loadConfig = async () => {
     try {
       const data = await whatsappService.getConfig();
-      if (data && (data.phone_number || data.phone_number_id)) {
-        setConfig(data);
-      } else {
-        const savedUser = localStorage.getItem('sharyx_user');
-        if (savedUser) {
-          const u = JSON.parse(savedUser);
-          if (u?.onboarding_data?.whatsapp_config) {
-            setConfig(u.onboarding_data.whatsapp_config);
-          }
-        }
-      }
+      setConfig(data && (data.phone_number || data.phone_number_id) ? data : null);
     } catch {
       // ignore
     }
@@ -75,7 +65,7 @@ export const WhatsAppAutomation: React.FC<WhatsAppAutomationProps> = ({ initialT
     loadConfig();
   }, []);
 
-  const isConnected = Boolean(config?.phone_number || config?.phone_number_id);
+  const isConnected = Boolean(config?.is_connected && (config?.phone_number || config?.phone_number_id));
 
   return (
     <div className="space-y-3.5">

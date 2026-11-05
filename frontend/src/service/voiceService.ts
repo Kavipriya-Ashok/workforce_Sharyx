@@ -124,7 +124,12 @@ function getActiveTenantId(explicitTenantId?: string): string {
     const stored = localStorage.getItem('sharyx_active_tenant_id');
     if (stored && stored !== 'all') return stored;
   } catch {}
-  return '646b4abe-e6de-401b-ba33-46884bf3f6e6';
+  // The server pins every request to the tenant in the JWT anyway; this is only a hint.
+  try {
+    const u = JSON.parse(localStorage.getItem('sharyx_user') || 'null');
+    if (u?.tenant_id) return u.tenant_id;
+  } catch {}
+  return 'default';
 }
 
 export class VoiceService {

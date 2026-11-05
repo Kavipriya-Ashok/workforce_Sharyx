@@ -2,6 +2,10 @@ import { Controller, Get, Post, Body, Query, Res, Headers } from "@nestjs/common
 import { VoiceCallService } from "../Services/VoiceCall.service";
 import { MakeVoiceCallDto } from "../Interfaces/VoiceTypes";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({ path: "Voice/Calls", version: "1" })
 export class VoiceCallController {
   constructor(private readonly callService: VoiceCallService) {}

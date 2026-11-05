@@ -2,14 +2,14 @@ import {
   Controller, Get, Post, Put, Patch, Delete,
   Body, Param, Query
 } from "@nestjs/common";
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { CurrentUser, CurrentTenant } from "@Helper/Common.helper";
 import { LeadService } from "@Service/Lead/Lead.service";
 import { ApiTags } from "@nestjs/swagger";
 
 @Controller({ path: "Lead", version: "1" })
 @ApiTags("Lead CRM")
-export class LeadController extends AuthBaseController {
+export class LeadController extends JWTAuthController {
   constructor(private readonly leadService: LeadService) {
     super();
   }
@@ -49,36 +49,38 @@ export class LeadController extends AuthBaseController {
   async checkDuplicate(
     @Query("phone") phone: string,
     @Query("exclude_id") excludeId: string,
-    @CurrentUser() userId: string
+    @CurrentUser() userId: string,
+    @CurrentTenant() tenantId: string | null
   ) {
-    const res = await this.leadService.checkDuplicatePhone(phone, excludeId, { userId });
+    const res = await this.leadService.checkDuplicatePhone(phone, excludeId, { userId, tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 
   @Get("CheckDuplicateEmail")
   async checkDuplicateEmail(
     @Query("email") email: string,
-    @Query("exclude_id") excludeId: string
+    @Query("exclude_id") excludeId: string,
+    @CurrentTenant() tenantId: string | null
   ) {
-    const res = await this.leadService.checkDuplicateEmail(email, excludeId);
+    const res = await this.leadService.checkDuplicateEmail(email, excludeId, { tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 
   @Post("Insert")
-  async insert(@Body() data: any, @CurrentUser() userId: string) {
-    const saved = await this.leadService.insert(data, userId, { userId });
+  async insert(@Body() data: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const saved = await this.leadService.insert(data, userId, { userId, tenant_id: tenantId });
     return this.SendResponseData(saved);
   }
 
   @Put("Update/:id")
-  async update(@Param("id") id: string, @Body() data: any, @CurrentUser() userId: string) {
-    const updated = await this.leadService.update(id, data, userId);
+  async update(@Param("id") id: string, @Body() data: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const updated = await this.leadService.update(id, data, userId, tenantId);
     return this.SendResponseData(updated);
   }
 
   @Patch("UpdateStatus/:id")
-  async updateStatus(@Param("id") id: string, @Body("lead_status") newStatus: string, @CurrentUser() userId: string) {
-    const updated = await this.leadService.updateStatus(id, newStatus, userId);
+  async updateStatus(@Param("id") id: string, @Body("lead_status") newStatus: string, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const updated = await this.leadService.updateStatus(id, newStatus, userId, tenantId);
     return this.SendResponseData(updated);
   }
 
@@ -86,51 +88,52 @@ export class LeadController extends AuthBaseController {
   async updateCandidateStage(
     @Param("id") id: string,
     @Body("candidate_stage") stage: string,
-    @CurrentUser() userId: string
+    @CurrentUser() userId: string,
+    @CurrentTenant() tenantId: string | null
   ) {
-    const updated = await this.leadService.updateCandidateStage(id, stage, userId);
+    const updated = await this.leadService.updateCandidateStage(id, stage, userId, tenantId);
     return this.SendResponseData(updated);
   }
 
   @Delete("Delete/:id")
-  async delete(@Param("id") id: string) {
-    const res = await this.leadService.delete(id);
+  async delete(@Param("id") id: string, @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.delete(id, tenantId);
     return this.SendResponseData(res);
   }
 
   @Post("BulkDelete")
-  async bulkDelete(@Body("ids") ids: string[]) {
-    const res = await this.leadService.bulkDelete(ids);
+  async bulkDelete(@Body("ids") ids: string[], @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.bulkDelete(ids, tenantId);
     return this.SendResponseData(res);
   }
 
   @Post("BulkUpdateStatus")
-  async bulkUpdateStatus(@Body() body: { ids: string[]; lead_status: string }, @CurrentUser() userId: string) {
-    const res = await this.leadService.bulkUpdateStatus(body.ids, body.lead_status, userId);
+  async bulkUpdateStatus(@Body() body: { ids: string[]; lead_status: string }, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.bulkUpdateStatus(body.ids, body.lead_status, userId, tenantId);
     return this.SendResponseData(res);
   }
 
   @Post("Activity")
-  async addActivity(@Body() body: any, @CurrentUser() userId: string) {
-    const act = await this.leadService.addActivity(body, userId);
+  async addActivity(@Body() body: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const act = await this.leadService.addActivity(body, userId, tenantId);
     return this.SendResponseData(act);
   }
 
   @Post("Import")
-  async importLeads(@Body() model: any, @CurrentUser() userId: string) {
-    const res = await this.leadService.importLeads(model, userId, { userId });
+  async importLeads(@Body() model: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.importLeads(model, userId, { userId, tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 
   @Post("ApproveInterview/:id")
-  async approveInterview(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string) {
-    const res = await this.leadService.approveCandidateInterview(id, body, { userId });
+  async approveInterview(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.approveCandidateInterview(id, body, { userId, tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 
   @Post("TriggerVoiceCall/:id")
-  async triggerVoiceCall(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string) {
-    const res = await this.leadService.triggerVoiceCall(id, body, { userId });
+  async triggerVoiceCall(@Param("id") id: string, @Body() body: any, @CurrentUser() userId: string, @CurrentTenant() tenantId: string | null) {
+    const res = await this.leadService.triggerVoiceCall(id, body, { userId, tenant_id: tenantId });
     return this.SendResponseData(res);
   }
 }

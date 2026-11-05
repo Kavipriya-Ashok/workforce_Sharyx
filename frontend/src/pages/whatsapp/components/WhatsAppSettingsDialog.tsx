@@ -29,8 +29,9 @@ export const WhatsAppSettingsDialog: React.FC<Props> = ({ open, onOpenChange, on
     phone_number_id: '',
     waba_id: '',
     access_token: '',
-    verify_token: 'sharyx_verify_token_secure',
+    verify_token: '',
   });
+  const [tokenHint, setTokenHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -41,9 +42,10 @@ export const WhatsAppSettingsDialog: React.FC<Props> = ({ open, onOpenChange, on
             phone_number: data.phone_number || '',
             phone_number_id: data.phone_number_id || '',
             waba_id: data.waba_id || '',
-            access_token: data.access_token || '',
-            verify_token: data.verify_token || 'sharyx_verify_token_secure',
+            access_token: '', // never returned by the server; leave blank to keep the saved one
+            verify_token: data.verify_token || '',
           });
+          setTokenHint(data.has_access_token ? data.access_token_hint || 'saved' : null);
         }
       });
     }
@@ -153,11 +155,11 @@ export const WhatsAppSettingsDialog: React.FC<Props> = ({ open, onOpenChange, on
             <label className="text-xs font-semibold text-slate-700">Permanent System User Access Token</label>
             <Input
               type="password"
-              placeholder="EAAG..."
+              placeholder={tokenHint ? `Saved (${tokenHint}) - leave blank to keep` : 'EAAG...'}
               className="mt-1 bg-slate-50 border-slate-200 focus:bg-white text-xs text-slate-900"
               value={config.access_token || ''}
               onChange={(e) => setConfig({ ...config, access_token: e.target.value })}
-              required
+              required={!tokenHint}
             />
           </div>
 
@@ -196,7 +198,7 @@ export const WhatsAppSettingsDialog: React.FC<Props> = ({ open, onOpenChange, on
               type="button"
               variant="outline"
               size="sm"
-              disabled={testing || !config.phone_number_id || !config.access_token}
+              disabled={testing || !config.phone_number_id || (!config.access_token && !tokenHint)}
               onClick={handleTestConnection}
               className="gap-2 text-xs font-semibold text-slate-700 border-slate-200 hover:bg-slate-50"
             >

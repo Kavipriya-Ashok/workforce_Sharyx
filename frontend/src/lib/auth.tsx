@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface User {
   id: string;
@@ -14,236 +15,250 @@ export interface User {
   tenantId?: string;
   onboarding_completed?: boolean;
   onboardingCompleted?: boolean;
+  onboarding_step?: number;
   avatar?: string;
-  onboarding_data?: any;
+  api_token?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (userData: any) => Promise<boolean>;
-  signup: (userData: any) => Promise<boolean>;
   sendSignupOtp: (email: string, name?: string) => Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }>;
   resendSignupOtp: (email: string) => Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }>;
   verifySignupOtp: (payload: any) => Promise<boolean>;
   googleAuth: (payload: { code?: string; redirect_uri?: string; credential?: string }) => Promise<boolean>;
-  completeOnboarding: (data: any) => Promise<boolean>;
+  /** Re-reads the tenant's onboarding state from the server (source of truth). */
+  refreshOnboarding: () => Promise<void>;
+  /** Marks onboarding complete ON THE SERVER, then updates the local session. */
+  completeOnboarding: () => Promise<boolean>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const STORAGE_KEY = 'sharyx_user';
+
+const isSuperRole = (role?: string) => (role || '').toLowerCase().includes('super');
 
 export function checkUserOnboarded(rawUser: any): boolean {
   if (!rawUser) return false;
   const u = rawUser.user || rawUser;
-  const role = (u.role || '').toLowerCase();
-  if (role.includes('super') || role.includes('whitelabel')) return true;
-
+  if (isSuperRole(u.role)) return true;
   const isCompleted =
     u.onboardingCompleted === true ||
     u.onboardingCompleted === 'true' ||
     u.onboarding_completed === true ||
     u.onboarding_completed === 'true';
+  return isCompleted && Boolean(u.tenantId || u.tenant_id);
+}
 
-  if (!isCompleted) return false;
-  const hasTenant = Boolean(u.tenantId || u.tenant_id);
-  return hasTenant;
+const readStoredUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+};
+
+// ---- Axios wiring (registered once) ---------------------------------------------------------
+// 1. Every request carries the session's JWT.
+// 2. An expired/invalid session (401 from a protected API) clears the session and returns to login.
+if (typeof window !== 'undefined' && !(axios as any).__sharyxAuthWired) {
+  (axios as any).__sharyxAuthWired = true;
+  axios.interceptors.request.use((config) => {
+    const token = readStoredUser()?.api_token;
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+  axios.interceptors.response.use(
+    (r) => r,
+    (error) => {
+      const url: string = error?.config?.url || '';
+      if (error?.response?.status === 401 && !url.includes('/Auth/') && readStoredUser()?.api_token) {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem('sharyx_active_tenant_id');
+          localStorage.removeItem('sharyx_active_tenant_name');
+        } catch {
+          /* ignore */
+        }
+        if (!window.location.pathname.startsWith('/login')) window.location.assign('/login');
+      }
+      return Promise.reject(error);
+    }
+  );
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    // Check stored user session
-    const savedUser = localStorage.getItem('sharyx_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('sharyx_user');
-      }
+  const persist = (u: User | null) => {
+    setUser(u);
+    try {
+      if (u) localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
     }
-    setIsLoading(false);
+  };
+
+  /** Pulls the real onboarding state for the signed-in tenant from the database. */
+  const fetchOnboardingState = async (token: string) => {
+    const res = await axios.get('/api/v1/Onboarding/State', { headers: { Authorization: `Bearer ${token}` } });
+    return res.data as { onboarding_completed: boolean; onboarding_step: number; company?: { name?: string } };
+  };
+
+  const applySession = async (data: any): Promise<boolean> => {
+    const userData = data?.user || data;
+    const token = data?.api_token || data?.token;
+    if (!userData || !token) throw new Error('Invalid response from server');
+    const tenantId = userData.tenant_id || userData.tenantId;
+    let loggedUser: User = { ...userData, tenant_id: tenantId, tenantId, api_token: token };
+    // The server's stored onboarding state is authoritative (login payload is only a hint).
+    try {
+      const state = await fetchOnboardingState(token);
+      loggedUser = {
+        ...loggedUser,
+        onboarding_completed: isSuperRole(loggedUser.role) ? true : !!state.onboarding_completed,
+        onboarding_step: state.onboarding_step,
+        company_name: state.company?.name || loggedUser.company_name,
+      };
+    } catch {
+      /* keep the login payload values */
+    }
+    persist(loggedUser);
+    return true;
+  };
+
+  // Restore the session and re-validate it against the server.
+  useEffect(() => {
+    const saved = readStoredUser();
+    if (!saved?.api_token) {
+      setIsLoading(false);
+      return;
+    }
+    setUser(saved);
+    fetchOnboardingState(saved.api_token)
+      .then((state) => {
+        persist({
+          ...saved,
+          onboarding_completed: isSuperRole(saved.role) ? true : !!state.onboarding_completed,
+          onboarding_step: state.onboarding_step,
+          company_name: state.company?.name || saved.company_name,
+        });
+      })
+      .catch(() => {
+        /* a 401 is handled by the response interceptor; network errors keep the cached session */
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
+  // NOTE: login / verifySignupOtp / googleAuth deliberately do NOT toggle the global `isLoading`.
+  // PublicOnlyRoute swaps the whole page for a spinner while it is true, which unmounted the form and
+  // wiped what the user had typed after every wrong password / wrong code. Each page has its own loading state.
   const login = async (credentials: any): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      let loggedUser: User;
-      const cleanEmail = (credentials.email || credentials.username || '').toLowerCase().trim();
-      const payload = {
-        email: cleanEmail,
-        password: credentials.password,
-      };
-
-      const isSuper =
-        cleanEmail === 'admin@user.com' ||
-        cleanEmail === 'admin@sharyx.com' ||
-        cleanEmail.includes('super') ||
-        cleanEmail.includes('priyashok');
-
-      try {
-        const res = await axios.post('/api/v1/Auth/Login', payload);
-        const data = res.data?.result || res.data;
-        if (data?.user) {
-          loggedUser = {
-            ...data.user,
-            role: isSuper ? 'Super Admin' : (data.user.role || 'user'),
-            tenant_id: data.user.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-            tenantId: data.user.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-            api_token: data.api_token || data.token,
-          };
-        } else {
-          loggedUser = {
-            ...data,
-            role: isSuper ? 'Super Admin' : (data.role || 'user'),
-            tenant_id: data.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-          };
-        }
-      } catch (err: any) {
-        // If the backend actively rejected with an error response (e.g. 401 invalid password), rethrow
-        if (err.response && err.response.status >= 400 && err.response.status < 500) {
-          throw err;
-        }
-
-        // Fallback ONLY for server network downtime
-        loggedUser = {
-          id: cleanEmail.includes('priyashok') ? 'c83abcba-903b-47f6-9ca3-3268a7468147' : 'user-default-1',
-          first_name: cleanEmail.includes('priyashok') ? 'Priya' : (cleanEmail.split('@')[0] || 'Super Admin'),
-          last_name: cleanEmail.includes('priyashok') ? 'Ashok' : 'User',
-          username: cleanEmail || 'admin',
-          email: cleanEmail || 'admin@user.com',
-          role: isSuper ? 'Super Admin' : 'user',
-          tenant_id: '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-          tenantId: '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-          onboarding_completed: true,
-          company_name: 'Sharyx Enterprise Inc',
-        };
-      }
-
-      setUser(loggedUser);
-      localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
-      return true;
-    } finally {
-      setIsLoading(false);
-    }
+    const cleanEmail = (credentials.email || credentials.username || '').toLowerCase().trim();
+    // No offline/"fallback" login and no client-side role guessing: the server decides who you are.
+    const res = await axios.post('/api/v1/Auth/Login', { email: cleanEmail, password: credentials.password });
+    queryClient.clear(); // a new session must never reuse another account's cached data
+    return await applySession(res.data?.result || res.data);
   };
 
-  const signup = async (signupData: any): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        first_name: signupData.first_name,
-        last_name: signupData.last_name,
-        username: signupData.username,
-        email: signupData.email,
-        mobile: signupData.mobile,
-        company_name: signupData.company_name,
-        role: 'user',
-        onboarding_completed: false, // Must go through 10-step wizard
-      };
-
-      setUser(newUser);
-      localStorage.setItem('sharyx_user', JSON.stringify(newUser));
-      return true;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const sendSignupOtp = async (email: string, name?: string): Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }> => {
+  const sendSignupOtp = async (email: string, name?: string) => {
     const res = await axios.post('/api/v1/Auth/SendSignupOtp', { email, name });
     const data = res.data?.result || res.data;
     return {
       success: true,
       message: res.data?.Message || data?.message || `Verification code sent to ${email}`,
-      debugOtp: data?.debugOtp || data?.otp,
+      debugOtp: data?.debugOtp,
       previewUrl: data?.previewUrl,
     };
   };
 
-  const resendSignupOtp = async (email: string): Promise<{ success: boolean; message: string; debugOtp?: string; previewUrl?: string }> => {
+  const resendSignupOtp = async (email: string) => {
     const res = await axios.post('/api/v1/Auth/ResendSignupOtp', { email });
     const data = res.data?.result || res.data;
     return {
       success: true,
-      message: res.data?.Message || data?.message || `A new verification code has been dispatched to ${email}`,
-      debugOtp: data?.debugOtp || data?.otp,
+      message: res.data?.Message || data?.message || `A new verification code has been sent to ${email}`,
+      debugOtp: data?.debugOtp,
       previewUrl: data?.previewUrl,
     };
   };
 
   const verifySignupOtp = async (payload: any): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const res = await axios.post('/api/v1/Auth/VerifySignupOtp', payload);
-      const data = res.data?.result || res.data;
-      const userData = data?.user || data;
-      const token = data?.api_token || data?.token || userData?.api_token;
-      const loggedUser: User = {
-        ...userData,
-        api_token: token,
-        tenant_id: userData?.tenant_id || userData?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-        tenantId: userData?.tenantId || userData?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-      };
-      setUser(loggedUser);
-      localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
-      return true;
-    } finally {
-      setIsLoading(false);
-    }
+    const res = await axios.post('/api/v1/Auth/VerifySignupOtp', payload);
+    return await applySession(res.data?.result || res.data);
   };
 
   const googleAuth = async (payload: { code?: string; redirect_uri?: string; credential?: string }): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const res = await axios.post('/api/v1/Auth/GoogleAuth', payload);
-      const data = res.data?.result || res.data;
-      const userData = data?.user || data;
-      const token = data?.api_token || data?.token || userData?.api_token;
-      const loggedUser: User = {
-        ...userData,
-        api_token: token,
-        tenant_id: userData?.tenant_id || userData?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-        tenantId: userData?.tenantId || userData?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-      };
-      setUser(loggedUser);
-      localStorage.setItem('sharyx_user', JSON.stringify(loggedUser));
-      return true;
-    } finally {
-      setIsLoading(false);
-    }
+    // Only Google-verifiable proof is sent; the server never trusts an email we could pass here.
+    const res = await axios.post('/api/v1/Auth/GoogleAuth', {
+      code: payload.code,
+      redirect_uri: payload.redirect_uri,
+      credential: payload.credential,
+    });
+    return await applySession(res.data?.result || res.data);
   };
 
-  const completeOnboarding = async (data: any): Promise<boolean> => {
+  const refreshOnboarding = useCallback(async () => {
+    const saved = readStoredUser();
+    if (!saved?.api_token) return;
+    const state = await fetchOnboardingState(saved.api_token);
+    persist({
+      ...saved,
+      onboarding_completed: isSuperRole(saved.role) ? true : !!state.onboarding_completed,
+      onboarding_step: state.onboarding_step,
+      company_name: state.company?.name || saved.company_name,
+    });
+  }, []);
+
+  const completeOnboarding = async (): Promise<boolean> => {
+    const saved = readStoredUser();
+    if (!saved?.api_token) return false;
     setIsLoading(true);
     try {
-      const updatedUser: User = {
-        ...user!,
-        tenant_id: user?.tenant_id || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-        tenantId: user?.tenantId || '646b4abe-e6de-401b-ba33-46884bf3f6e6',
-        onboarding_completed: true,
-        onboarding_data: data,
-        company_name: data.company_name || user?.company_name || 'My Company',
-      };
-
-      setUser(updatedUser);
-      localStorage.setItem('sharyx_user', JSON.stringify(updatedUser));
-      return true;
+      const res = await axios.post('/api/v1/Onboarding/Complete', {}, { headers: { Authorization: `Bearer ${saved.api_token}` } });
+      const state = res.data;
+      persist({
+        ...saved,
+        onboarding_completed: !!state?.onboarding_completed,
+        onboarding_step: state?.onboarding_step,
+        company_name: state?.company?.name || saved.company_name,
+      });
+      return !!state?.onboarding_completed;
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('sharyx_user');
+    // Best-effort server-side revoke (bumps token_version) BEFORE the token is forgotten locally.
+    // A network failure must never stop the user from signing out on this device.
+    const token = readStoredUser()?.api_token;
+    if (token) {
+      axios.post('/api/v1/Auth/Logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
+    persist(null);
+    // Drop every cached API response so the next account never sees the previous tenant's data.
+    queryClient.clear();
+    try {
+      localStorage.removeItem('sharyx_active_tenant_id');
+      localStorage.removeItem('sharyx_active_tenant_name');
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, sendSignupOtp, resendSignupOtp, verifySignupOtp, googleAuth, completeOnboarding, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, sendSignupOtp, resendSignupOtp, verifySignupOtp, googleAuth, refreshOnboarding, completeOnboarding, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

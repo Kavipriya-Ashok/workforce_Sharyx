@@ -21,18 +21,19 @@ export class CustomerService {
     private readonly leadRepo: Repository<lead>
   ) {}
 
-  async list(query: any, userContext?: any) {
+  async list(query: any, tenantId: string | null) {
     const page = Math.max(1, parseInt(query.page || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(query.limit || "10", 10)));
     const skip = (page - 1) * limit;
 
-    const tenantId = userContext?.active_tenant_id || userContext?.tenant_id || query.tenant_id || "default";
-
     const qb = this.customerRepo.createQueryBuilder("c")
       .where("c.status = true");
 
-    if (tenantId && tenantId !== "default") {
-      qb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+    // tenantId === null means a verified super admin explicitly asked for "all" tenants.
+    // Any other caller is always scoped to exactly their own tenant — no "default"/NULL
+    // catch-all that would otherwise leak every tenant's rows to everyone.
+    if (tenantId) {
+      qb.andWhere("c.tenant_id = :tenantId", { tenantId });
     }
 
     if (query.search && query.search.trim()) {
@@ -57,8 +58,8 @@ export class CustomerService {
 
     // Calculate KPI metrics
     const allCustQb = this.customerRepo.createQueryBuilder("c").where("c.status = true");
-    if (tenantId && tenantId !== "default") {
-      allCustQb.andWhere("(c.tenant_id = :tenantId OR c.tenant_id = 'default' OR c.tenant_id IS NULL)", { tenantId });
+    if (tenantId) {
+      allCustQb.andWhere("c.tenant_id = :tenantId", { tenantId });
     }
     const allCustomers = await allCustQb.getMany();
     const totalCustomers = allCustomers.length;
@@ -83,8 +84,8 @@ export class CustomerService {
     };
   }
 
-  async getById(id: string) {
-    const customer = await this.customerRepo.findOne({ where: { id, status: true } });
+  async getById(id: string, tenantId: string | null) {
+    const customer = await this.customerRepo.findOne({ where: tenantId ? { id, status: true, tenant_id: tenantId } : { id, status: true } });
     if (!customer) throw new NotFoundException(`Customer ${id} not found`);
 
     const interactions = await this.interactionRepo.find({
@@ -110,9 +111,11 @@ export class CustomerService {
     };
   }
 
-  async insert(data: Partial<Customer>, userId?: string) {
+  async insert(data: Partial<Customer>, userId: string | undefined, tenantId: string | null) {
+    if (!tenantId) throw new NotFoundException("A tenant is required to create a customer");
     const cust = this.customerRepo.create({
       ...data,
+      tenant_id: tenantId,
       created_by_id: userId || "system",
       created_on: new Date(),
       status: true,
@@ -120,23 +123,27 @@ export class CustomerService {
     return await this.customerRepo.save(cust);
   }
 
-  async update(id: string, data: Partial<Customer>, userId?: string) {
-    const cust = await this.customerRepo.findOne({ where: { id } });
+  async update(id: string, data: Partial<Customer>, userId: string | undefined, tenantId: string | null) {
+    const cust = await this.customerRepo.findOne({ where: tenantId ? { id, tenant_id: tenantId } : { id } });
     if (!cust) throw new NotFoundException(`Customer ${id} not found`);
 
-    Object.assign(cust, data, { updated_by_id: userId || "system", updated_on: new Date() });
+    // Never let the caller overwrite which tenant a record belongs to.
+    const { tenant_id: _ignored, ...safeData } = data as any;
+    Object.assign(cust, safeData, { updated_by_id: userId || "system", updated_on: new Date() });
     return await this.customerRepo.save(cust);
   }
 
-  async delete(id: string) {
+  async delete(id: string, tenantId: string | null) {
+    const cust = await this.customerRepo.findOne({ where: tenantId ? { id, tenant_id: tenantId } : { id } });
+    if (!cust) throw new NotFoundException(`Customer ${id} not found`);
     await this.customerRepo.update(id, { status: false });
     return { success: true };
   }
 
-  async listDeals(tenantId: string = "default") {
+  async listDeals(tenantId: string | null) {
     const dealsQb = this.dealRepo.createQueryBuilder("d").where("d.status = true");
-    if (tenantId && tenantId !== "default") {
-      dealsQb.andWhere("(d.tenant_id = :tenantId OR d.tenant_id = 'default' OR d.tenant_id IS NULL)", { tenantId });
+    if (tenantId) {
+      dealsQb.andWhere("d.tenant_id = :tenantId", { tenantId });
     }
     return await dealsQb.orderBy("d.created_on", "DESC").getMany();
   }

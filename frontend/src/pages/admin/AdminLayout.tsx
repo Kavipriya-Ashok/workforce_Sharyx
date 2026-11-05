@@ -12,6 +12,7 @@ import { VoiceService, VoiceAgentDto } from '@/service/voiceService';
 import Leads from '@/pages/lead/Leads';
 import { Customers } from '@/pages/customer/Customers';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { OmnichannelInboxPage } from '@/pages/omnichannel/OmnichannelInboxPage';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
@@ -66,12 +67,15 @@ export type AdminPage =
   | 'leads'
   | 'candidates'
   | 'customers'
+  | 'profile'
   | 'settings';
 
 export const AdminLayout: React.FC = () => {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // below the md breakpoint the sidebar is an off-canvas drawer opened from the top bar
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const getPageFromLocation = (loc: string): AdminPage => {
     const path = loc.split('?')[0].replace(/^\/admin\/?/, '').toLowerCase().trim();
@@ -89,6 +93,7 @@ export const AdminLayout: React.FC = () => {
       if (query === 'customers') return 'customers';
     }
 
+    if (path === 'profile' || path.startsWith('profile/')) return 'profile';
     if (!path || path === 'dashboard') return 'dashboard';
     if (path === 'omnichannel' || path === 'inbox' || path.startsWith('omnichannel/')) return 'omnichannel';
     if (path === 'api' || path === 'settings' || path === 'credentials' || path === 'api-credentials') return 'settings';
@@ -115,6 +120,7 @@ export const AdminLayout: React.FC = () => {
   const [activePage, setActivePage] = useState<AdminPage>(() => getPageFromLocation(location));
 
   const navigateToPage = (page: AdminPage) => {
+    setMobileNavOpen(false);
     setActivePage(page);
     const routeMap: Record<AdminPage, string> = {
       dashboard: '/admin/dashboard',
@@ -137,6 +143,7 @@ export const AdminLayout: React.FC = () => {
       leads: '/admin/leads',
       candidates: '/admin/candidates',
       customers: '/admin/customers',
+      profile: '/admin/profile',
       settings: '/admin/api',
     };
     const targetRoute = routeMap[page] || '/admin/dashboard';
@@ -205,10 +212,14 @@ export const AdminLayout: React.FC = () => {
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#eaedf2] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex font-sans selection:bg-blue-600 selection:text-white transition-colors duration-200">
       {/* SIDEBAR */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileNavOpen(false)} aria-hidden="true" />
+      )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs ${
-          sidebarCollapsed ? 'w-20' : 'w-64'
-        }`}
+        data-testid="sidebar"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 transition-all duration-300 shadow-xs w-64 ${
+          sidebarCollapsed ? 'md:w-20' : 'md:w-64'
+        } ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
         {/* Brand */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -533,6 +544,19 @@ export const AdminLayout: React.FC = () => {
           </button>
 
           <button
+            onClick={() => navigateToPage('profile')}
+            data-testid="nav-profile"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activePage === 'profile'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 cursor-pointer'
+            }`}
+          >
+            <Building2 className={`h-4 w-4 shrink-0 ${activePage === 'profile' ? 'text-white' : 'text-indigo-500'}`} />
+            {!sidebarCollapsed && <span>Company Profile &amp; Integrations</span>}
+          </button>
+
+          <button
             onClick={() => navigateToPage('settings')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               activePage === 'settings'
@@ -574,14 +598,23 @@ export const AdminLayout: React.FC = () => {
 
       {/* MAIN VIEW AREA */}
       <div
-        className={`flex-1 flex flex-col h-screen min-w-0 overflow-hidden transition-all duration-300 ${
-          sidebarCollapsed ? 'pl-20' : 'pl-64'
+        className={`flex-1 flex flex-col h-screen min-w-0 overflow-hidden transition-all duration-300 pl-0 ${
+          sidebarCollapsed ? 'md:pl-20' : 'md:pl-64'
         }`}
       >
         {/* TOPBAR */}
-        <header className="sticky top-0 z-30 h-16 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-6 shadow-2xs transition-colors duration-200">
+        <header className="sticky top-0 z-30 h-16 border-b border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 shadow-2xs transition-colors duration-200">
           {/* Tenant Switcher & Breadcrumb */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+            <button
+              type="button"
+              aria-label="Open menu"
+              data-testid="mobile-menu"
+              onClick={() => { setSidebarCollapsed(false); setMobileNavOpen(true); }}
+              className="md:hidden shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <div className="relative">
               {isSuperAdmin ? (
                 <>
@@ -717,6 +750,7 @@ export const AdminLayout: React.FC = () => {
                 {activePage === 'leads' && 'Leads & Contacts'}
                 {activePage === 'candidates' && 'Candidates & Scheduled Interviews'}
                 {activePage === 'customers' && 'Customers 360° & Automated Conversions'}
+                {activePage === 'profile' && 'Company Profile & Integrations'}
                 {activePage === 'settings' && 'API Keys & Connected Platforms'}
               </span>
             </div>
@@ -831,6 +865,7 @@ export const AdminLayout: React.FC = () => {
           {activePage === 'leads' && <Leads isCandidate={false} />}
           {activePage === 'candidates' && <Leads isCandidate={true} />}
           {activePage === 'customers' && <Customers />}
+          {activePage === 'profile' && <ProfilePage />}
           {activePage === 'settings' && <SettingsPage />}
         </main>
       </div>

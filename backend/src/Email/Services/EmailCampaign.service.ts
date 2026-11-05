@@ -16,9 +16,9 @@ export class EmailCampaignService {
     });
   }
 
-  async createCampaign(dto: EmailCampaignModel, userId?: string) {
+  async createCampaign(dto: EmailCampaignModel, userId?: string, tenantId: string = "default") {
     const campaign = new EmailCampaign();
-    campaign.tenant_id = "default";
+    campaign.tenant_id = tenantId;
     campaign.campaign_name = dto.campaign_name;
     campaign.subject = dto.subject;
     campaign.html_template = dto.html_template;
@@ -32,7 +32,7 @@ export class EmailCampaignService {
 
     // Run sending in background
     if (dto.recipients?.length) {
-      this.executeCampaign(campaign.id, dto.recipients, dto.subject, dto.html_template, userId);
+      this.executeCampaign(campaign.id, dto.recipients, dto.subject, dto.html_template, userId, tenantId);
     }
 
     return campaign;
@@ -43,7 +43,8 @@ export class EmailCampaignService {
     recipients: string[],
     subject: string,
     html: string,
-    userId?: string
+    userId?: string,
+    tenantId: string = "default"
   ) {
     const campaign = await EmailCampaign.findOne({ where: { id: campaignId } });
     if (!campaign) return;
@@ -57,7 +58,9 @@ export class EmailCampaignService {
             subject,
             html,
           },
-          userId
+          userId,
+          false,
+          tenantId
         );
         sent++;
       } catch (err: any) {

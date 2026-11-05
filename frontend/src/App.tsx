@@ -10,6 +10,7 @@ import { SignupPage } from '@/pages/auth/SignupPage';
 import { OnboardingWizard } from '@/pages/onboarding/OnboardingWizard';
 import { AdminLayout } from '@/pages/admin/AdminLayout';
 import { OAuthCallback } from '@/pages/auth/OAuthCallback';
+import { ResetPasswordLinkPage } from '@/pages/auth/ResetPasswordLinkPage';
 
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -45,6 +46,7 @@ export function App() {
                 <Route path="/signup">
                   <PublicOnlyRoute component={SignupPage} />
                 </Route>
+                <Route path="/ResetPassword/:id" component={ResetPasswordLinkPage} />
 
                 {/* 10-Step Onboarding Wizard */}
                 <Route path="/onboarding" component={OnboardingWizard} />

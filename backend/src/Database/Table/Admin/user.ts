@@ -8,6 +8,7 @@ import {
 import { Entity, Column, JoinColumn, ManyToOne, Index } from "typeorm";
 import { BaseTable } from "../BaseTable";
 import { user_role } from "./user_role";
+import { company } from "./company";
 
 @Entity({ name: "user" })
 export class user extends BaseTable {
@@ -18,6 +19,16 @@ export class user extends BaseTable {
   @Column({ type: "uuid" })
   @Index()
   user_role_id: string;
+
+  // The tenant this user belongs to. Every signup must create/attach its own
+  // company row here instead of relying on a hardcoded tenant id anywhere else.
+  @ManyToOne(() => company, { onDelete: "RESTRICT", nullable: true })
+  @JoinColumn({ name: "company_id" })
+  company: company;
+
+  @Column({ type: "uuid", nullable: true })
+  @Index()
+  company_id: string;
 
   @Column({ type: "text", nullable: true })
   first_name: string;
@@ -38,4 +49,11 @@ export class user extends BaseTable {
 
   @Column({ type: "bigint", nullable: true })
   reset_otp: number;
+
+  @Column({ type: "timestamp", nullable: true })
+  reset_otp_expires_at: Date;
+
+  // NOTE: user.token_version and user.reset_otp_attempts (migrations/1731000000000-AuthHardening.sql) are intentionally
+  // NOT mapped here. They are read/written with raw SQL in Service/Auth/SessionVersion.ts so this build also runs on a
+  // database where the migration has not been applied yet (a mapped column would break every query on `user`).
 }

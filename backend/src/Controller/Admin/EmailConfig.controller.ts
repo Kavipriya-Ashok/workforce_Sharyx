@@ -1,3 +1,6 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '@Service/Auth/JwtAuthGuard.service';
+import { SuperAdminGuard } from '@Service/Auth/SuperAdmin.guard';
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import { EmailConfigModel } from '@Model/Admin/EmailConfig.model';
 import { CurrentUser } from '@Helper/Common.helper';
@@ -6,6 +9,7 @@ import { EmailConfigService } from '@Service/Admin/EmailConfig.service';
 import { ResponseEnum } from '@Helper/Enum/ResponseEnum';
 import { JWTAuthController } from '@Controller/JWTAuth.controller';
 
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 @Controller({ path: "EmailConfig", version: '1' })
 @ApiTags("Email Config")
 export class EmailConfigController extends JWTAuthController {

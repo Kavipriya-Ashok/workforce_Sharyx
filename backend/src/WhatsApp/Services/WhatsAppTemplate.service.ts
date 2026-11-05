@@ -8,14 +8,14 @@ export class WhatsAppTemplateService {
   private readonly logger = new Logger(WhatsAppTemplateService.name);
   private readonly graphApiVersion = "v18.0";
 
-  async getTemplates(tenantId: string = "default"): Promise<WhatsAppTemplate[]> {
+  async getTemplates(tenantId: string): Promise<WhatsAppTemplate[]> {
     return await WhatsAppTemplate.find({
       where: { tenant_id: tenantId, status: true },
       order: { created_on: "DESC" },
     });
   }
 
-  async createTemplate(data: Partial<WhatsAppTemplate>, tenantId: string = "default"): Promise<WhatsAppTemplate> {
+  async createTemplate(data: Partial<WhatsAppTemplate>, tenantId: string): Promise<WhatsAppTemplate> {
     const sanitizedName = (data.name || "template")
       .toLowerCase()
       .replace(/[^a-z0-9_]/g, "_")
@@ -133,7 +133,7 @@ export class WhatsAppTemplateService {
     return saved;
   }
 
-  async syncMetaTemplates(tenantId: string = "default"): Promise<WhatsAppTemplate[]> {
+  async syncMetaTemplates(tenantId: string): Promise<WhatsAppTemplate[]> {
     const config = await WhatsAppConfig.findOne({
       where: { tenant_id: tenantId, status: true },
     });
@@ -192,8 +192,8 @@ export class WhatsAppTemplateService {
     return await this.getTemplates(tenantId);
   }
 
-  async updateTemplate(id: string, data: Partial<WhatsAppTemplate>): Promise<WhatsAppTemplate> {
-    const tpl = await WhatsAppTemplate.findOne({ where: { id, status: true } });
+  async updateTemplate(id: string, data: Partial<WhatsAppTemplate>, tenantId: string): Promise<WhatsAppTemplate> {
+    const tpl = await WhatsAppTemplate.findOne({ where: { id, tenant_id: tenantId, status: true } });
     if (!tpl) throw new NotFoundException("Template not found");
 
     if (data.name) {
@@ -211,8 +211,8 @@ export class WhatsAppTemplateService {
     return await tpl.save();
   }
 
-  async deleteTemplate(id: string, tenantId: string = "default"): Promise<boolean> {
-    const tpl = await WhatsAppTemplate.findOne({ where: { id } });
+  async deleteTemplate(id: string, tenantId: string): Promise<boolean> {
+    const tpl = await WhatsAppTemplate.findOne({ where: { id, tenant_id: tenantId } });
     if (!tpl) throw new NotFoundException("Template not found");
 
     const templateName = tpl.name;
@@ -248,7 +248,7 @@ export class WhatsAppTemplateService {
     phone: string,
     templateName: string,
     parameters: string[] = [],
-    tenantId: string = "default"
+    tenantId: string
   ) {
     const config = await WhatsAppConfig.findOne({
       where: { tenant_id: tenantId, status: true },

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
-import { CurrentUser } from '@Helper/Common.helper';
+import { CurrentUser, CurrentTenant } from '@Helper/Common.helper';
 import { ApiTags } from '@nestjs/swagger';
 import { UserService } from '@Service/Admin/User.service';
 import { ResponseEnum } from '@Helper/Enum/ResponseEnum';
@@ -17,32 +17,32 @@ export class UserController extends JWTAuthController {
   }
 
   @Get('List')
-  async List() {
-    const UserListData = await this._UserService.GetAllExpectSuperAdmin();
+  async List(@CurrentTenant() tenantId: string | null) {
+    const UserListData = await this._UserService.GetAllExpectSuperAdmin(tenantId);
     return this.SendResponseData(UserListData);
   }
 
   @Get('ById/:Id')
-  async ById(@Param('Id') Id: string) {
-    const UserData = await this._UserService.GetById(Id);
+  async ById(@Param('Id') Id: string, @CurrentTenant() tenantId: string | null) {
+    const UserData = await this._UserService.GetById(Id, tenantId);
     return this.SendResponseData(UserData);
   }
 
   @Post('Insert')
-  async Insert(@Body() UserData: UserModel, @CurrentUser() UserId: string) {
-    const ResultData = await this._UserService.Insert(UserData, UserId);
+  async Insert(@Body() UserData: UserModel, @CurrentUser() UserId: string, @CurrentTenant() tenantId: string | null) {
+    const ResultData = await this._UserService.Insert(UserData, UserId, tenantId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Created, ResultData.id);
   }
 
   @Put('Update/:Id')
-  async Update(@Param('Id') Id: string, @Body() UserData: UserModel, @CurrentUser() UserId: string) {
-    await this._UserService.Update(Id, UserData, UserId);
+  async Update(@Param('Id') Id: string, @Body() UserData: UserModel, @CurrentUser() UserId: string, @CurrentTenant() tenantId: string | null) {
+    await this._UserService.Update(Id, UserData, UserId, tenantId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Updated);
   }
 
   @Patch('SuspendOrActivate/:Id')
-  async SuspendOrActivate(@Param('Id') id: string, @CurrentUser() UserId: string) {
-    const UserData = await this._UserService.SuspendOrActivate(id, UserId);
+  async SuspendOrActivate(@Param('Id') id: string, @CurrentUser() UserId: string, @CurrentTenant() tenantId: string | null) {
+    const UserData = await this._UserService.SuspendOrActivate(id, UserId, tenantId);
     if (UserData.status == true) {
       return this.SendResponse(ResponseEnum.Success, ResponseEnum.Activated);
     }
@@ -58,8 +58,8 @@ export class UserController extends JWTAuthController {
   }
 
   @Put('ResetPassword/:Id')
-  async ResetPassword(@Param('UserId') Id: string, @Body() UserData: UserModel, @CurrentUser() UserId: string) {
-    await this._UserService.UserResetPassword(Id, UserData, UserId);
+  async ResetPassword(@Param('Id') Id: string, @Body() UserData: UserModel, @CurrentUser() UserId: string, @CurrentTenant() tenantId: string | null) {
+    await this._UserService.UserResetPassword(Id, UserData, UserId, tenantId);
     return this.SendResponse(ResponseEnum.Success, ResponseEnum.Reset);
   }
 

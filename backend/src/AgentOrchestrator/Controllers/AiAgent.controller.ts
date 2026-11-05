@@ -1,14 +1,18 @@
 import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { CurrentUser } from "@Helper/Common.helper";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { AiAgentService } from "../Services/AiAgent.service";
 import { AgentOrchestratorService } from "../Services/AgentOrchestrator.service";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({ path: "AiAgents", version: "1" })
 @ApiTags("AI Multi-Agent")
-export class AiAgentController extends AuthBaseController {
+export class AiAgentController extends JWTAuthController {
   constructor(
     private readonly agentService: AiAgentService,
     private readonly orchestrator: AgentOrchestratorService

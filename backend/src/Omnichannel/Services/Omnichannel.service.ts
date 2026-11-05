@@ -184,7 +184,7 @@ export class OmnichannelService {
       conversationId: id,
       oldStatus,
       newStatus: status,
-    });
+    }, tenantId);
 
     return {
       ...updated,
@@ -297,7 +297,7 @@ export class OmnichannelService {
       channel,
       summary: shortSummary,
       reply: createdItem,
-    });
+    }, tenantId);
 
     return {
       success: true,

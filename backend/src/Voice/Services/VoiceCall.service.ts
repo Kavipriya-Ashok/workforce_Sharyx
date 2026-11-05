@@ -1306,7 +1306,6 @@ Recent Email:
     }
 
     const isAll = tenantId === "all" || !tenantId;
-    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
 
     // Select lightweight columns (excluding 90KB raw_webhook_payload per row) so 50+ call logs load in <300ms
     const qb = VoiceCallLog.createQueryBuilder("log")
@@ -1334,13 +1333,7 @@ Recent Email:
       ]);
 
     if (!isAll) {
-      if (isDefaultOrSharyx) {
-        qb.where("log.tenant_id IN (:...tenantIds)", {
-          tenantIds: ["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"],
-        });
-      } else {
-        qb.where("log.tenant_id = :tenantId", { tenantId });
-      }
+      qb.where("log.tenant_id = :tenantId", { tenantId });
     }
 
     if (agentId) {
@@ -1670,18 +1663,22 @@ Recent Email:
    * Proxies call audio recording from Vapi / S3 directly to the client browser,
    * bypassing Cloudflare R2 CORS and expiration issues.
    */
-  async streamCallAudio(callId?: string, providerCallId?: string, tenantId: string = "default", res?: any) {
+  async streamCallAudio(callId?: string, providerCallId?: string, tenantId?: string, res?: any) {
     try {
       let callLog: VoiceCallLog | null = null;
+      const tenantFilter: any = tenantId && tenantId !== "all" ? { tenant_id: tenantId } : {};
       if (callId) {
-        callLog = await VoiceCallLog.findOne({ where: { id: callId } });
+        callLog = await VoiceCallLog.findOne({ where: { id: callId, ...tenantFilter } });
       }
       if (!callLog && providerCallId) {
-        callLog = await VoiceCallLog.findOne({ where: { provider_call_id: providerCallId } });
+        callLog = await VoiceCallLog.findOne({ where: { provider_call_id: providerCallId, ...tenantFilter } });
+      }
+      if (!callLog) {
+        return res?.status(404).send("Call not found");
       }
 
-      const pCallId = providerCallId || callLog?.provider_call_id;
-      const vapiConfig = await VoiceProviderConfig.findOne({ where: { provider: "vapi", status: true } });
+      const pCallId = callLog.provider_call_id;
+      const vapiConfig = await VoiceProviderConfig.findOne({ where: { provider: "vapi", status: true, ...tenantFilter } });
       const vapiKey = vapiConfig?.api_key || process.env.VAPI_API_KEY;
 
       let streamUrl = callLog?.recording_url;
@@ -1729,17 +1726,12 @@ Recent Email:
     }
   }
 
-  async getCallStats(tenantId: string = "default") {
+  async getCallStats(tenantId: string) {
     const isAll = tenantId === "all" || !tenantId;
-    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
 
     let logs: VoiceCallLog[];
     if (isAll) {
       logs = await VoiceCallLog.find();
-    } else if (isDefaultOrSharyx) {
-      logs = await VoiceCallLog.find({
-        where: { tenant_id: In(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"]) },
-      });
     } else {
       logs = await VoiceCallLog.find({ where: { tenant_id: tenantId } });
     }

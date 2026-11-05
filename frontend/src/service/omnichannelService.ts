@@ -295,7 +295,8 @@ export const omnichannelService = {
   },
 
   subscribeToStream(onEvent: (event: any) => void, onError?: (err: any) => void): () => void {
-    const sseUrl = `${API_BASE}/stream`;
+    const sseToken = (() => { try { return JSON.parse(localStorage.getItem('sharyx_user') || 'null')?.api_token || ''; } catch { return ''; } })();
+    const sseUrl = `${API_BASE}/stream?access_token=${encodeURIComponent(sseToken)}`;
     let eventSource: EventSource | null = null;
 
     try {

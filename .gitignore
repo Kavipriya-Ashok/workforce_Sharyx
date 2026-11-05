@@ -31,3 +31,6 @@ frontend/node_modules/
 .idea/
 .DS_Store
 Thumbs.db
+
+# DB backups contain user data
+backups/

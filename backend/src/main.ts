@@ -28,6 +28,14 @@ async function bootstrap() {
     cors: { origin: "*", exposedHeaders: "*" },
   });
   app.enableShutdownHooks();
+  // Behind nginx/a load balancer set TRUST_PROXY=1 (number of proxy hops) so req.ip - and therefore the
+  // per-IP rate limit - is the real client, not the proxy. Left unset, X-Forwarded-For is ignored (not spoofable).
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
+  } else if (process.env.NODE_ENV === "production") {
+    console.warn("⚠️  TRUST_PROXY is not set. If this server runs behind nginx, every client shares one /Auth rate-limit bucket. Set TRUST_PROXY=1.");
+  }
   app.setGlobalPrefix("api", {
     exclude: ["webhook/whatsapp"],
   });
@@ -54,7 +62,15 @@ async function bootstrap() {
   app.use(compression());
   app.use(errorHandler());
   app.use(urlencoded({ limit: "500mb", extended: true }));
-  app.use(json({ limit: "500mb" }));
+  app.use(
+    json({
+      limit: "500mb",
+      // keep the exact bytes so webhook signatures (HMAC over the raw body) can be verified
+      verify: (req: any, _res: any, buf: Buffer) => {
+        req.rawBody = buf;
+      },
+    })
+  );
   app.use(passport.initialize());
 
   // app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true, forbidUnknownValues: true }));

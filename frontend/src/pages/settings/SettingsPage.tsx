@@ -59,8 +59,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
     phone_number_id: '',
     waba_id: '',
     access_token: '',
-    verify_token: 'sharyx_verify_token_secure',
+    verify_token: '',
   });
+  const [waHasToken, setWaHasToken] = useState(false);
   const [showWaToken, setShowWaToken] = useState(false);
   const [savingWa, setSavingWa] = useState(false);
   const [testingWa, setTestingWa] = useState(false);
@@ -115,9 +116,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
           phone_number: waData.phone_number || '',
           phone_number_id: waData.phone_number_id || '',
           waba_id: waData.waba_id || '',
-          access_token: waData.access_token || '',
-          verify_token: waData.verify_token || 'sharyx_verify_token_secure',
+          access_token: '', // never returned by the server; blank keeps the saved token
+          verify_token: waData.verify_token || '',
         });
+        setWaHasToken(!!waData.has_access_token);
       }
 
       // 3. AI Brain Config
@@ -410,7 +412,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
         >
           <MessageSquare className="h-3.5 w-3.5" />
           <span>WhatsApp (Meta Cloud API)</span>
-          {waConfig.access_token && (
+          {waHasToken && (
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
           )}
         </button>
@@ -717,7 +719,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ initialTab = 'voice'
                   type={showWaToken ? 'text' : 'password'}
                   value={waConfig.access_token}
                   onChange={(e) => setWaConfig({ ...waConfig, access_token: e.target.value })}
-                  placeholder="EAA..."
+                  placeholder={waHasToken ? 'Saved - leave blank to keep the current token' : 'EAA...'}
                   className="font-mono text-xs pr-10"
                 />
                 <button

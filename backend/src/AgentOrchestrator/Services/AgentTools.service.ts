@@ -108,15 +108,15 @@ export class AgentToolsService {
   // ── helpers ──────────────────────────────────────────────────────────────
   private async getLead(state: ConversationAgentState): Promise<lead | null> {
     if (state.lead_id) {
-      const l = await lead.findOne({ where: { id: state.lead_id } });
+      const l = await lead.findOne({ where: { id: state.lead_id, tenant_id: state.tenant_id } });
       if (l) return l;
     }
     if (state.customer_phone) {
       const cleanPhone = state.customer_phone.replace(/[^\d]/g, "");
       const withPlus = "+" + cleanPhone;
-      let l = await lead.findOne({ where: { phone: state.customer_phone } });
-      if (!l) l = await lead.findOne({ where: { phone: withPlus } });
-      if (!l) l = await lead.findOne({ where: { phone: cleanPhone } });
+      let l = await lead.findOne({ where: { phone: state.customer_phone, tenant_id: state.tenant_id } });
+      if (!l) l = await lead.findOne({ where: { phone: withPlus, tenant_id: state.tenant_id } });
+      if (!l) l = await lead.findOne({ where: { phone: cleanPhone, tenant_id: state.tenant_id } });
       if (l) {
         state.lead_id = l.id;
         return l;
@@ -420,7 +420,7 @@ export class AgentToolsService {
     state.collected_slots = { ...(state.collected_slots || {}), appointment: meeting };
 
     if (state.channel === "whatsapp" && state.conversation_ref) {
-      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
       if (conv) {
         conv.meeting_info = { slot, meet_url: meet.meetUrl, scheduled_at: meeting.booked_at };
         await conv.save();
@@ -637,7 +637,7 @@ export class AgentToolsService {
     delete slots.appointment;
     state.collected_slots = slots;
     if (state.channel === "whatsapp" && state.conversation_ref) {
-      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
       if (conv) {
         conv.meeting_info = null as any;
         await conv.save();
@@ -668,7 +668,7 @@ export class AgentToolsService {
   private async transferToHuman(inputs: any, state: ConversationAgentState, agentName: string): Promise<ToolResult> {
     state.human_takeover = true;
     if (state.channel === "whatsapp" && state.conversation_ref) {
-      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref } });
+      const conv = await WhatsAppConversation.findOne({ where: { id: state.conversation_ref, tenant_id: state.tenant_id } });
       if (conv) {
         conv.conversation_status = "waiting_human";
         await conv.save();

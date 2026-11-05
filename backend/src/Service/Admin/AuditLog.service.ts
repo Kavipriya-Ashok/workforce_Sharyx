@@ -482,7 +482,7 @@ export class AuditLogService {
     }
   }
 
-  async LazyLoadList(AuditLogLazyLoadData: AuditLogLazyLoadModel) {
+  async LazyLoadList(AuditLogLazyLoadData: AuditLogLazyLoadModel, allowedUserIds: string[] | null = null) {
     let WhereCondition: string[] = [];
     let searchKey =
       AuditLogLazyLoadData.keyword?.length || 0 > 0
@@ -492,9 +492,18 @@ export class AuditLogService {
       $gte: AuditLogLazyLoadData.start_date,
       $lt: AuditLogLazyLoadData.end_date,
     };
-    if (AuditLogLazyLoadData.user_id > "0") {
+    // Tenant isolation: a non Super Admin only sees events performed by users of their own company.
+    if (allowedUserIds) {
+      const ids = allowedUserIds.map((i) => String(i).replace(/[^A-Za-z0-9-]/g, ""));
+      const set = ids.length ? ids.map((i) => `"${i}"`).join(", ") : `"__none__"`;
       WhereCondition.push(
-        `|> filter(fn: (r) => r["performed_by_id"] == "${AuditLogLazyLoadData.user_id}")`
+        `|> filter(fn: (r) => contains(value: r["performed_by_id"], set: [${set}]))`
+      );
+    }
+    if (AuditLogLazyLoadData.user_id > "0") {
+      const safeUserId = String(AuditLogLazyLoadData.user_id).replace(/[^A-Za-z0-9-]/g, "");
+      WhereCondition.push(
+        `|> filter(fn: (r) => r["performed_by_id"] == "${safeUserId}")`
       );
     }
     if (AuditLogLazyLoadData.action?.length > 0) {

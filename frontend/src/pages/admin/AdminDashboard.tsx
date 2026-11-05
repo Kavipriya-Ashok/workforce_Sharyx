@@ -47,6 +47,7 @@ import {
 } from '@/service/dashboardService';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
+import { SetupChecklist } from '@/components/integrations/SetupChecklist';
 
 export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -128,6 +129,9 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Setup checklist: Done / Pending / Failed with a button to the exact place to fix it */}
+      <SetupChecklist />
+
       {/* Top Banner & Date Range Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-300 dark:border-slate-800">
         <div>

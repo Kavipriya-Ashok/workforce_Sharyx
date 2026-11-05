@@ -30,7 +30,11 @@ export interface WhatsAppConfig {
   phone_number: string;
   phone_number_id: string;
   waba_id?: string;
-  access_token: string;
+  // Write-only: the server never returns the stored token. Leave blank on update to keep it.
+  access_token?: string;
+  has_access_token?: boolean;
+  access_token_hint?: string | null;
+  has_api_key?: boolean;
   verify_token?: string;
   provider?: 'meta_cloud' | 'qr_gateway' | 'custom_gateway' | 'twilio';
   api_url?: string;

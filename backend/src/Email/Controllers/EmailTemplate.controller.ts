@@ -1,12 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { AuthBaseController } from "@Controller/AuthBase.controller";
+import { JWTAuthController } from "@Controller/JWTAuth.controller";
 import { ResponseEnum } from "@Helper/Enum/ResponseEnum";
 import { EmailTemplateService } from "../Services/EmailTemplate.service";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({ path: "Email/Templates", version: "1" })
 @ApiTags("Email Templates")
-export class EmailTemplateController extends AuthBaseController {
+export class EmailTemplateController extends JWTAuthController {
   constructor(private readonly templateService: EmailTemplateService) {
     super();
   }

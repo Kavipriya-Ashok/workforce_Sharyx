@@ -11,15 +11,14 @@ export class VoiceAgentService {
 
   constructor(private readonly factory: VoiceFactoryService) { }
 
-  async list(tenantId: string = "default"): Promise<VoiceAgent[]> {
+  async list(tenantId: string): Promise<VoiceAgent[]> {
     const isAll = tenantId === "all" || !tenantId;
-    const isDefaultOrSharyx = tenantId === "default" || tenantId === "646b4abe-e6de-401b-ba33-46884bf3f6e6";
 
     // 1. Identify active providers with valid credentials
     const activeConfigs = await VoiceProviderConfig.find({
       where: isAll
         ? { is_active: true }
-        : { tenant_id: In([tenantId, "default", "646b4abe-e6de-401b-ba33-46884bf3f6e6"]), is_active: true },
+        : { tenant_id: tenantId, is_active: true },
     });
 
     const activeProviders = activeConfigs
@@ -49,9 +48,7 @@ export class VoiceAgentService {
     };
 
     if (!isAll) {
-      agentWhere.tenant_id = isDefaultOrSharyx
-        ? In(["646b4abe-e6de-401b-ba33-46884bf3f6e6", "default"])
-        : tenantId;
+      agentWhere.tenant_id = tenantId;
     }
 
     const agents = await VoiceAgent.find({

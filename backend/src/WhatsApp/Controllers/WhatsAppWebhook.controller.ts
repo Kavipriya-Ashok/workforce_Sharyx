@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Query, Res, Post, VERSION_NEUTRAL, Logger } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Query, Res, Req, Headers, Post, VERSION_NEUTRAL, Logger, UnauthorizedException } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { WhatsAppWebhookService } from "../Services/WhatsAppWebhook.service";
@@ -40,8 +40,14 @@ export class WhatsAppWebhookController {
   // Meta Inbound Message Ingestion
   @Post()
   @HttpCode(HttpStatus.OK)
-  async handleIncomingMessage(@Body() body: any) {
+  async handleIncomingMessage(@Body() body: any, @Req() req: any, @Headers("x-hub-signature-256") signature?: string) {
     this.logger.log(`📥 [WEBHOOK HIT] Incoming event from Meta received!`);
+    const sig = await this.webhookService.checkSignature(req?.rawBody, signature, body);
+    if (!sig.ok) {
+      const enforce = (process.env.WA_SIGNATURE_MODE || "log").toLowerCase() === "enforce";
+      this.logger.warn(`[WEBHOOK SIGNATURE] ${sig.reason} - ${enforce ? "REJECTED (enforce)" : "accepted (log mode)"}`);
+      if (enforce) throw new UnauthorizedException("Invalid webhook signature");
+    }
     // Return HTTP 200 immediately and process asynchronously in background queue
     setImmediate(() => {
       this.webhookService.processIncomingWebhook(body).catch((err) => {

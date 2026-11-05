@@ -703,7 +703,7 @@ export function LeadDetailPage({
                           <audio
                             controls
                             className="w-full h-8"
-                            src={`/api/Voice/Calls/audio?callId=${call.id}&providerCallId=${call.provider_call_id || ""}`}
+                            src={`/api/Voice/Calls/audio?callId=${call.id}&providerCallId=${call.provider_call_id || ""}&access_token=${encodeURIComponent((() => { try { return JSON.parse(localStorage.getItem('sharyx_user') || 'null')?.api_token || ''; } catch { return ''; } })())}`}
                             preload="none"
                           >
                             Your browser does not support audio playback.

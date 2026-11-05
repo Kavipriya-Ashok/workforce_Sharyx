@@ -4,6 +4,8 @@ import { AIAgentsHeroPanel } from './AIAgentsHeroPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth, checkUserOnboarded } from '@/lib/auth';
+import { buildGoogleAuthUrl, GOOGLE_NOT_CONFIGURED_MESSAGE, isGoogleConfigured } from '@/lib/google';
+import { ForgotPasswordFlow } from './ForgotPasswordFlow';
 import {
   Eye,
   EyeOff,
@@ -11,7 +13,6 @@ import {
   Lock,
   ArrowRight,
   Loader2,
-  HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -23,6 +24,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<'login' | 'forgot'>('login');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,12 +50,13 @@ export const LoginPage: React.FC = () => {
   };
 
   const handleGoogleLogin = () => {
+    const url = buildGoogleAuthUrl();
+    if (!url) {
+      toast.error(GOOGLE_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
     toast.info('Connecting to Google...');
-    const clientId = '11874827859-h7b1l07qs1pi1ie1489ijdj4u7jvbuqg.apps.googleusercontent.com';
-    const redirectUri = encodeURIComponent(`${window.location.origin}/oauth/callback`);
-    const scope = encodeURIComponent('openid email profile');
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account&state=auth_google`;
-    window.location.href = googleAuthUrl;
+    window.location.href = url;
   };
 
   return (
@@ -65,6 +68,9 @@ export const LoginPage: React.FC = () => {
 
       {/* RIGHT: Modern Glassmorphic Login Form */}
       <div className="lg:col-span-7 xl:col-span-6 flex items-center justify-center p-6 sm:p-12">
+        {view === 'forgot' ? (
+          <ForgotPasswordFlow onBack={() => setView('login')} initialEmail={username.includes('@') ? username : ''} />
+        ) : (
         <div className="w-full max-w-md space-y-6">
           {/* Header */}
           <div className="space-y-1.5">
@@ -103,6 +109,11 @@ export const LoginPage: React.FC = () => {
             </svg>
             Continue with Google
           </Button>
+          {!isGoogleConfigured() && (
+            <p data-testid="google-not-configured" className="-mt-3 text-center text-[11px] text-amber-400/90">
+              {GOOGLE_NOT_CONFIGURED_MESSAGE}
+            </p>
+          )}
 
           {/* Divider */}
           <div className="relative flex items-center justify-center">
@@ -133,7 +144,7 @@ export const LoginPage: React.FC = () => {
                 <label className="text-xs font-medium text-slate-300">Password</label>
                 <button
                   type="button"
-                  onClick={() => toast.info('Password reset email sent to registered account.')}
+                  onClick={() => setView('forgot')}
                   className="text-[11px] text-blue-400 hover:underline"
                 >
                   Forgot password?
@@ -187,6 +198,7 @@ export const LoginPage: React.FC = () => {
             </Link>
           </p>
         </div>
+        )}
       </div>
     </div>
   );

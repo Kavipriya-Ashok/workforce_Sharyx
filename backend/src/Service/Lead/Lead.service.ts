@@ -16,16 +16,34 @@ export class LeadService {
     private readonly events: EventEmitter2
   ) {}
 
+  /** Tenant from a caller context: string = scope to it, null = Super Admin "all", undefined = internal/system call. */
+  private ctxTenant(ctx?: any): string | null | undefined {
+    if (!ctx) return undefined;
+    return ctx.tenant_id ?? ctx.active_tenant_id ?? null;
+  }
+
+  private requireCtxTenant(ctx?: any): string {
+    const t = this.ctxTenant(ctx);
+    if (!t) throw new BadRequestException("A specific tenant is required to create records.");
+    return t;
+  }
+
+  /** where-clause for "this id, but only if it belongs to the caller's tenant". */
+  private owned(id: string, tenantId?: string | null, extra: Record<string, any> = {}): any {
+    return tenantId ? { id, tenant_id: tenantId, ...extra } : { id, ...extra };
+  }
+
   async getAll(filter: any, userContext?: any) {
     const take = parseInt(filter?.take || "50", 10);
     const skip = parseInt(filter?.skip || "0", 10);
-    const tenantId = userContext?.active_tenant_id || userContext?.tenant_id || "default";
+    const tenantId = this.ctxTenant(userContext);
 
     const query = this.leadRepo.createQueryBuilder("l")
       .where("l.status = :active", { active: true });
 
-    if (tenantId && tenantId !== "default") {
-      query.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+    // Strict tenant isolation: exact match only (null = Super Admin "all tenants" view).
+    if (tenantId) {
+      query.andWhere("l.tenant_id = :tenantId", { tenantId });
     }
 
     if (filter?.is_candidate !== undefined && filter?.is_candidate !== "undefined") {
@@ -67,10 +85,10 @@ export class LeadService {
   }
 
   async getStats(userContext?: any, isCandidate?: boolean) {
-    const tenantId = userContext?.active_tenant_id || userContext?.tenant_id;
+    const tenantId = this.ctxTenant(userContext);
     const qb = this.leadRepo.createQueryBuilder("l").where("l.status = true");
-    if (tenantId && tenantId !== "default") {
-      qb.andWhere("(l.tenant_id = :tenantId OR l.tenant_id = 'default' OR l.tenant_id IS NULL)", { tenantId });
+    if (tenantId) {
+      qb.andWhere("l.tenant_id = :tenantId", { tenantId });
     }
     if (isCandidate !== undefined) {
       if (isCandidate) {
@@ -113,7 +131,7 @@ export class LeadService {
   }
 
   async getById(id: string, userContext?: any) {
-    const foundLead = await this.leadRepo.findOne({ where: { id, status: true } });
+    const foundLead = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext), { status: true }) });
     if (!foundLead) throw new NotFoundException("Lead not found");
 
     const activities = await this.activityRepo.find({
@@ -189,6 +207,8 @@ export class LeadService {
     const qb = this.leadRepo.createQueryBuilder("l")
       .where("l.status = true")
       .andWhere("l.phone LIKE :phone", { phone: `%${cleaned}` });
+    const dupTenant = this.ctxTenant(userContext);
+    if (dupTenant) qb.andWhere("l.tenant_id = :dupTenant", { dupTenant });
 
     if (excludeId) qb.andWhere("l.id != :excludeId", { excludeId });
 
@@ -199,11 +219,13 @@ export class LeadService {
     };
   }
 
-  async checkDuplicateEmail(email: string, excludeId?: string) {
+  async checkDuplicateEmail(email: string, excludeId?: string, userContext?: any) {
     if (!email || !email.includes("@")) return { is_duplicate: false };
     const qb = this.leadRepo.createQueryBuilder("l")
       .where("l.status = true")
       .andWhere("LOWER(l.email) = :email", { email: email.toLowerCase().trim() });
+    const dupTenant = this.ctxTenant(userContext);
+    if (dupTenant) qb.andWhere("l.tenant_id = :dupTenant", { dupTenant });
     if (excludeId) qb.andWhere("l.id != :excludeId", { excludeId });
     const existing = await qb.getOne();
     return {
@@ -249,7 +271,7 @@ export class LeadService {
       ...sanitizedData,
       is_candidate: isPlacementOrCandidate,
       name: sanitizedData.name || `${sanitizedData.first_name || ""} ${sanitizedData.last_name || ""}`.trim() || sanitizedData.phone,
-      tenant_id: userContext?.active_tenant_id || userContext?.tenant_id || "default",
+      tenant_id: this.requireCtxTenant(userContext),
       assigned_to_id: sanitizedData.assigned_to_id || userId || undefined,
       created_by_id: resolvedCreatedById,
       created_on: new Date(),
@@ -299,12 +321,14 @@ export class LeadService {
     return saved;
   }
 
-  async update(id: string, data: any, userId?: string) {
-    const target = await this.leadRepo.findOne({ where: { id } });
+  async update(id: string, data: any, userId?: string, tenantId?: string | null) {
+    const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
     if (!target) throw new NotFoundException("Lead not found");
 
     const oldStatus = (target.lead_status || "").toUpperCase().trim();
-    Object.assign(target, data);
+    // Never let a client re-parent a lead to another tenant or overwrite its identity.
+    const { id: _ignoreId, tenant_id: _ignoreTenant, ...safeData } = data || {};
+    Object.assign(target, safeData);
     if (data.lead_status) {
       target.lead_status = data.lead_status.toUpperCase().trim();
     }
@@ -324,8 +348,8 @@ export class LeadService {
     return saved;
   }
 
-  async updateStatus(id: string, newStatus: string, userId?: string) {
-    const target = await this.leadRepo.findOne({ where: { id } });
+  async updateStatus(id: string, newStatus: string, userId?: string, tenantId?: string | null) {
+    const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
     if (!target) throw new NotFoundException("Lead not found");
 
     const oldStatus = (target.lead_status || "").toUpperCase().trim();
@@ -356,8 +380,8 @@ export class LeadService {
     return updated;
   }
 
-  async updateCandidateStage(id: string, candidate_stage: string, userId?: string) {
-    const target = await this.leadRepo.findOne({ where: { id } });
+  async updateCandidateStage(id: string, candidate_stage: string, userId?: string, tenantId?: string | null) {
+    const target = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
     if (!target) throw new NotFoundException("Candidate not found");
 
     const oldStage = target.candidate_stage;
@@ -375,22 +399,25 @@ export class LeadService {
     return updated;
   }
 
-  async delete(id: string) {
-    await this.leadRepo.update(id, { status: false });
+  async delete(id: string, tenantId?: string | null) {
+    const res = await this.leadRepo.update(this.owned(id, tenantId) as any, { status: false });
+    if (!res.affected) throw new NotFoundException("Lead not found");
     return { success: true };
   }
 
-  async bulkDelete(ids: string[]) {
-    await this.leadRepo.update({ id: In(ids) }, { status: false });
-    return { success: true, count: ids.length };
+  async bulkDelete(ids: string[], tenantId?: string | null) {
+    const where: any = tenantId ? { id: In(ids), tenant_id: tenantId } : { id: In(ids) };
+    const res = await this.leadRepo.update(where, { status: false });
+    return { success: true, count: res.affected || 0 };
   }
 
-  async bulkUpdateStatus(ids: string[], lead_status: string, userId?: string) {
+  async bulkUpdateStatus(ids: string[], lead_status: string, userId?: string, tenantId?: string | null) {
     const normalized = (lead_status || "").toUpperCase().trim();
-    await this.leadRepo.update({ id: In(ids) }, { lead_status: normalized });
+    const bulkWhere: any = tenantId ? { id: In(ids), tenant_id: tenantId } : { id: In(ids) };
+    await this.leadRepo.update(bulkWhere, { lead_status: normalized });
     if (normalized === "WON" || normalized === LeadStatus.WON) {
       for (const id of ids) {
-        const l = await this.leadRepo.findOne({ where: { id } });
+        const l = await this.leadRepo.findOne({ where: this.owned(id, tenantId) });
         if (l) {
           this.logger.log(`🏆 Bulk update: Lead ${l.name} (${id}) transitioned to WON! Emitting lead.stage.won...`);
           this.events.emit("lead.stage.won", {
@@ -405,14 +432,16 @@ export class LeadService {
     return { success: true, count: ids.length };
   }
 
-  async addActivity(body: any, userId?: string) {
+  async addActivity(body: any, userId?: string, tenantId?: string | null) {
+    const parent = await this.leadRepo.findOne({ where: this.owned(body.lead_id, tenantId) });
+    if (!parent) throw new NotFoundException("Lead not found");
     const act = this.activityRepo.create({
       lead_id: body.lead_id,
       activity_type: body.activity_type || "NOTE",
       title: body.title || "Manual Note",
       description: body.description || "",
       performer_name: body.performer_name || "Admin",
-      tenant_id: body.tenant_id || "default",
+      tenant_id: parent.tenant_id,
       metadata: body.metadata || {}
     });
     return await this.activityRepo.save(act);
@@ -429,7 +458,7 @@ export class LeadService {
       const cleanPhone = (r.phone || "").replace(/\D/g, "").slice(-10);
 
       if (cleanPhone && strategy !== "allow") {
-        const dup = await this.checkDuplicatePhone(cleanPhone);
+        const dup = await this.checkDuplicatePhone(cleanPhone, undefined, userContext);
         if (dup.is_duplicate) {
           if (strategy === "skip") {
             skipped++;
@@ -454,7 +483,7 @@ export class LeadService {
   }
 
   async approveCandidateInterview(id: string, body: any, userContext?: any) {
-    const l = await this.leadRepo.findOne({ where: { id } });
+    const l = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext)) });
     if (!l) throw new NotFoundException("Candidate not found");
 
     // Set interview date on the entity so the reminder cron can find it
@@ -506,7 +535,7 @@ export class LeadService {
   }
 
   async triggerVoiceCall(id: string, body: any = {}, userContext?: any) {
-    const l = await this.leadRepo.findOne({ where: { id } });
+    const l = await this.leadRepo.findOne({ where: this.owned(id, this.ctxTenant(userContext)) });
     if (!l) throw new NotFoundException("Lead not found");
     if (!l.phone) throw new BadRequestException("Lead does not have a phone number on file");
 
@@ -519,7 +548,7 @@ export class LeadService {
     const reason = body.reason || "Outbound AI Voice Call";
 
     this.events.emit("voice.call.requested", {
-      tenantId: l.tenant_id || userContext?.active_tenant_id || "default",
+      tenantId: l.tenant_id,
       phone: l.phone,
       customerName: l.name,
       scheduledType,

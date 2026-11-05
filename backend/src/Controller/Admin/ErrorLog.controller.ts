@@ -1,3 +1,6 @@
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '@Service/Auth/JwtAuthGuard.service';
+import { SuperAdminGuard } from '@Service/Auth/SuperAdmin.guard';
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ErrorLogService } from '@Service/Admin/ErrorLog.service';
@@ -5,6 +8,7 @@ import { JWTAuthController } from '@Controller/JWTAuth.controller';
 import { ErrorLogDeleteModel, ErrorLogLazyLoadModel } from '@Model/Admin/ErrorLog.model';
 import { ResponseEnum } from '@Helper/Enum/ResponseEnum';
 
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 @Controller({ path: "ErrorLog", version: '1' })
 @ApiTags("Error Log")
 export class ErrorLogController extends JWTAuthController {

@@ -9,10 +9,15 @@ import {
   Query,
   VERSION_NEUTRAL,
   Req,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { RuleEngineService, DryRunPayload } from "@Service/Automation/RuleEngine.service";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
 
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
+@ApiBearerAuth()
 @Controller({
   path: ["Automation", "api/Automation", "api/v1/Automation"],
   version: ["1", VERSION_NEUTRAL],

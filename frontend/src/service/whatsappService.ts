@@ -37,30 +37,7 @@ export class WhatsAppService {
       if (Array.isArray(payload?.data)) return payload.data;
       return [];
     } catch {
-      return [
-        {
-          id: 'demo-tpl-1',
-          name: 'interview_invitation_v1',
-          category: 'UTILITY',
-          language: 'en_US',
-          header_text: 'Interview Invitation',
-          body_text: 'Hi {{1}}, thank you for applying to {{company}}! Your interview is scheduled for {{2}}. Join: {{3}}.',
-          footer_text: 'Sharyx AI Hiring Team',
-          approval_status: 'APPROVED',
-          is_active: true,
-        },
-        {
-          id: 'demo-tpl-2',
-          name: 'demo_scheduled_confirmation',
-          category: 'UTILITY',
-          language: 'en_US',
-          header_text: 'Demo Confirmation 🚀',
-          body_text: 'Hello {{1}}, your Sharyx AI workforce demo is confirmed. Meeting link: {{2}}',
-          footer_text: 'Sharyx Growth Team',
-          approval_status: 'APPROVED',
-          is_active: true,
-        },
-      ];
+      return [];
     }
   }
 
@@ -93,38 +70,7 @@ export class WhatsAppService {
       if (Array.isArray(payload?.data)) return payload.data;
       return [];
     } catch {
-      return [
-        {
-          id: 'camp-1',
-          name: 'Round 2 Google Meet Invite',
-          description: 'Triggered when candidate clears Round 1 interview',
-          trigger_event: 'round_1_cleared',
-          template_name: 'interview_invitation_v1',
-          delay_minutes: 0,
-          is_active: true,
-          total_recipients: 42,
-          sent_count: 42,
-          delivered_count: 41,
-          read_count: 38,
-          campaign_status: 'active',
-          created_on: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        },
-        {
-          id: 'camp-2',
-          name: 'Post-Call Summary Dispatch',
-          description: 'Sends call recap and recording to the caller',
-          trigger_event: 'after_call_ends',
-          template_name: 'post_call_summary',
-          delay_minutes: 2,
-          is_active: true,
-          total_recipients: 120,
-          sent_count: 120,
-          delivered_count: 118,
-          read_count: 95,
-          campaign_status: 'active',
-          created_on: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-        },
-      ];
+      return [];
     }
   }
 
@@ -173,21 +119,17 @@ export const whatsappService = {
     return res.data;
   },
 
+  disconnect: async () => {
+    const res = await axios.post(`${API_BASE}/Disconnect`);
+    return res.data?.AddtionalData || res.data;
+  },
+
   testConnection: async (config: WhatsAppConfig) => {
     try {
       const res = await axios.post(`${API_BASE}/Test-Connection`, config);
       return res.data?.AddtionalData || res.data;
     } catch (err: any) {
       const errorMsg = err?.response?.data?.message || err.message;
-      if (config.access_token && (config.access_token.includes('dummy') || config.access_token.includes('test'))) {
-        return {
-          connected: true,
-          provider: config.provider || 'meta_cloud',
-          display_phone_number: config.phone_number,
-          verified_name: 'Verified Business Account (Sandbox Mode)',
-          message: 'Connected in Sandbox mode successfully!',
-        };
-      }
       throw new Error(errorMsg);
     }
   },
@@ -201,17 +143,7 @@ export const whatsappService = {
       if (Array.isArray(payload?.data)) return payload.data;
       return [];
     } catch {
-      return [
-        {
-          id: 'conv-1',
-          customer_phone: '+91 98765 43210',
-          customer_name: 'Rajesh Kumar',
-          conversation_status: 'open',
-          last_message_text: 'Hi, I need assistance with the CRM pricing plan.',
-          last_message_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-          unread_count: 2,
-        },
-      ];
+      return [];
     }
   },
 
@@ -244,18 +176,7 @@ export const whatsappService = {
       const res = await axios.get(`${API_BASE}/AI/Config`);
       return res.data?.AddtionalData || res.data;
     } catch {
-      return {
-        is_ai_enabled: true,
-        ai_mode: 'hybrid',
-        system_prompt: 'You are an intelligent customer support copilot for Sharyx. Be concise, polite, and guide leads towards booking a demo.',
-        welcome_message: 'Hi there! Welcome to Sharyx. How can our team assist you today?',
-        fallback_message: 'Our human representative will connect with you shortly.',
-        llm_provider: 'openai',
-        llm_model: 'gpt-4o-mini',
-        auto_followup_enabled: true,
-        followup_delay_minutes: 60,
-        stop_words: ['STOP', 'UNSUBSCRIBE'],
-      };
+      return null;
     }
   },
 

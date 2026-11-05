@@ -9,16 +9,16 @@ export class WhatsAppCampaignService {
 
   constructor(private readonly whatsAppService: WhatsAppService) {}
 
-  async listCampaigns(tenantId: string = "default") {
+  async listCampaigns(tenantId: string) {
     return await WhatsAppCampaign.find({
       where: { tenant_id: tenantId, status: true },
       order: { created_on: "DESC" },
     });
   }
 
-  async createCampaign(dto: WhatsAppCampaignModel, userId?: string) {
+  async createCampaign(dto: WhatsAppCampaignModel, userId: string | undefined, tenantId: string) {
     const campaign = new WhatsAppCampaign();
-    campaign.tenant_id = "default";
+    campaign.tenant_id = tenantId;
     campaign.name = dto.name;
     campaign.description = dto.description || null;
     campaign.trigger_event = dto.trigger_event || "after_call_ends";
@@ -32,20 +32,20 @@ export class WhatsAppCampaignService {
     campaign.total_recipients = dto.recipients?.length || 0;
     campaign.campaign_status = "active";
     campaign.scheduled_at = dto.scheduled_at || null;
-    campaign.created_by_id = userId || "system";
+    campaign.created_by_id = userId || undefined;
     campaign.created_on = new Date();
     await campaign.save();
 
     // If manual recipients provided and no schedule date, dispatch immediately
     if (!dto.scheduled_at && dto.recipients?.length) {
-      this.executeCampaign(campaign.id, dto.recipients, dto.template_name);
+      this.executeCampaign(campaign.id, dto.recipients, dto.template_name, tenantId);
     }
 
     return campaign;
   }
 
-  async updateCampaign(id: string, data: Partial<WhatsAppCampaignModel>) {
-    const campaign = await WhatsAppCampaign.findOne({ where: { id, status: true } });
+  async updateCampaign(id: string, data: Partial<WhatsAppCampaignModel>, tenantId: string) {
+    const campaign = await WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId, status: true } });
     if (!campaign) throw new NotFoundException("Campaign not found");
 
     if (data.name) campaign.name = data.name;
@@ -64,8 +64,8 @@ export class WhatsAppCampaignService {
     return await campaign.save();
   }
 
-  async toggleCampaign(id: string, is_active: boolean) {
-    const campaign = await WhatsAppCampaign.findOne({ where: { id, status: true } });
+  async toggleCampaign(id: string, is_active: boolean, tenantId: string) {
+    const campaign = await WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId, status: true } });
     if (!campaign) throw new NotFoundException("Campaign not found");
 
     campaign.is_active = is_active;
@@ -74,8 +74,8 @@ export class WhatsAppCampaignService {
     return await campaign.save();
   }
 
-  async deleteCampaign(id: string) {
-    const campaign = await WhatsAppCampaign.findOne({ where: { id } });
+  async deleteCampaign(id: string, tenantId: string) {
+    const campaign = await WhatsAppCampaign.findOne({ where: { id, tenant_id: tenantId } });
     if (!campaign) throw new NotFoundException("Campaign not found");
 
     campaign.status = false;
@@ -84,8 +84,8 @@ export class WhatsAppCampaignService {
     return true;
   }
 
-  async executeCampaign(campaignId: string, recipients: string[], templateName: string) {
-    const campaign = await WhatsAppCampaign.findOne({ where: { id: campaignId } });
+  async executeCampaign(campaignId: string, recipients: string[], templateName: string, tenantId: string) {
+    const campaign = await WhatsAppCampaign.findOne({ where: { id: campaignId, tenant_id: tenantId } });
     if (!campaign) return;
 
     campaign.campaign_status = "running";
@@ -99,7 +99,7 @@ export class WhatsAppCampaignService {
           text: `Template: ${templateName}`,
           message_type: "template",
           template_name: templateName,
-        });
+        }, undefined, false, tenantId);
         sent++;
       } catch (err: any) {
         this.logger.error(`Failed to send campaign message to ${phone}: ${err.message}`);

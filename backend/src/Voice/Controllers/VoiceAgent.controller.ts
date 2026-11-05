@@ -3,6 +3,10 @@ import { VoiceAgentService } from "../Services/VoiceAgent.service";
 import { VoiceFactoryService } from "../Services/VoiceFactory.service";
 import { CreateVoiceAgentDto, UpdateVoiceAgentDto } from "../Interfaces/VoiceTypes";
 
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "@Service/Auth/JwtAuthGuard.service";
+import { TenantContextGuard } from "@Service/Auth/TenantContext.guard";
+@UseGuards(JwtAuthGuard, TenantContextGuard)
 @Controller({ path: "Voice/Agents", version: "1" })
 export class VoiceAgentController {
   constructor(

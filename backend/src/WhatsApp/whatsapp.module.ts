@@ -1,3 +1,4 @@
+import { WhatsAppFollowupService } from "./Services/WhatsAppFollowup.service";
 import { Module } from "@nestjs/common";
 import { WhatsAppController } from "./Controllers/WhatsApp.controller";
 import { WhatsAppWebhookController } from "./Controllers/WhatsAppWebhook.controller";
@@ -24,12 +25,14 @@ import { AgentOrchestratorModule } from "../AgentOrchestrator/agent-orchestrator
   providers: [
     WhatsAppService,
     WhatsAppAIService,
+    WhatsAppFollowupService,
     WhatsAppWebhookService,
     WhatsAppCampaignService,
     WhatsAppTemplateService,
     PromptEngineService,
   ],
   exports: [
+    WhatsAppFollowupService,
     WhatsAppService,
     WhatsAppAIService,
     WhatsAppWebhookService,

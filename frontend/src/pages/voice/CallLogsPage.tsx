@@ -440,7 +440,7 @@ export const CallLogsPage: React.FC<CallLogsPageProps> = ({ initialAgentId }) =>
                             Recording:
                           </span>
                           <audio controls className="h-7 flex-1 min-w-[200px]">
-                            <source src={`/api/Voice/Calls/audio?callId=${log.id}&providerCallId=${log.provider_call_id || ""}`} type="audio/wav" />
+                            <source src={`/api/Voice/Calls/audio?callId=${log.id}&providerCallId=${log.provider_call_id || ""}&access_token=${encodeURIComponent((() => { try { return JSON.parse(localStorage.getItem('sharyx_user') || 'null')?.api_token || ''; } catch { return ''; } })())}`} type="audio/wav" />
                             <source src={log.recording_url} type="audio/wav" />
                             <source src={log.recording_url} type="audio/mpeg" />
                           </audio>

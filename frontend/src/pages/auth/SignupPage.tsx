@@ -4,6 +4,9 @@ import { AIAgentsHeroPanel } from './AIAgentsHeroPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
+import { buildGoogleAuthUrl, GOOGLE_NOT_CONFIGURED_MESSAGE, isGoogleConfigured } from '@/lib/google';
+import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
+import { evaluatePassword, PASSWORD_MAX } from '@/lib/passwordRules';
 import {
   Eye,
   EyeOff,
@@ -41,6 +44,7 @@ export const SignupPage: React.FC = () => {
     company_name: '',
     mobile: '',
     password: '',
+    confirm_password: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -66,15 +70,23 @@ export const SignupPage: React.FC = () => {
       return;
     }
 
-    if (!formData.email || !formData.email.includes('@')) {
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim()) || formData.email.length > 255) {
       toast.error('Please enter a valid email address');
+      return;
+    }
+    if (!evaluatePassword(formData.password).valid) {
+      toast.error('Your password does not meet all the requirements');
+      return;
+    }
+    if (formData.password !== formData.confirm_password) {
+      toast.error('The two passwords do not match');
       return;
     }
 
     setLoading(true);
     try {
       const res = await sendSignupOtp(formData.email, formData.first_name);
-      toast.success(res.message || `Verification code sent to ${formData.email}!`);
+      toast.success(res.message);
       if (res.previewUrl) {
         setPreviewUrl(res.previewUrl);
         toast.info('Test Mailbox Ready! Click link below to view delivered email.');
@@ -143,14 +155,15 @@ export const SignupPage: React.FC = () => {
     }
   };
 
-  // Google OAuth 1-Click Sign-Up
+  // Google OAuth 1-Click Sign-Up (client id comes from VITE_GOOGLE_CLIENT_ID)
   const handleGoogleSignup = () => {
+    const url = buildGoogleAuthUrl();
+    if (!url) {
+      toast.error(GOOGLE_NOT_CONFIGURED_MESSAGE);
+      return;
+    }
     toast.info('Connecting to Google...');
-    const clientId = '11874827859-h7b1l07qs1pi1ie1489ijdj4u7jvbuqg.apps.googleusercontent.com';
-    const redirectUri = encodeURIComponent(`${window.location.origin}/oauth/callback`);
-    const scope = encodeURIComponent('openid email profile');
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account&state=auth_google`;
-    window.location.href = googleAuthUrl;
+    window.location.href = url;
   };
 
   return (
@@ -202,6 +215,11 @@ export const SignupPage: React.FC = () => {
                 </svg>
                 Sign up with Google
               </Button>
+              {!isGoogleConfigured() && (
+                <p data-testid="google-not-configured" className="-mt-3 text-center text-[11px] text-amber-400/90">
+                  {GOOGLE_NOT_CONFIGURED_MESSAGE}
+                </p>
+              )}
 
               {/* Divider */}
               <div className="relative flex items-center justify-center">
@@ -318,6 +336,8 @@ export const SignupPage: React.FC = () => {
                       placeholder="••••••••••••"
                       className="pl-9 pr-10 h-10 text-xs"
                       value={formData.password}
+                      maxLength={PASSWORD_MAX}
+                      autoComplete="new-password"
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
                     />
@@ -329,6 +349,29 @@ export const SignupPage: React.FC = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <PasswordStrengthMeter password={formData.password} className="mt-2" />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300">
+                    Confirm Password <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••"
+                      className={`pl-9 h-10 text-xs ${formData.confirm_password && formData.confirm_password !== formData.password ? 'border-rose-500/60' : ''}`}
+                      value={formData.confirm_password}
+                      maxLength={PASSWORD_MAX}
+                      autoComplete="new-password"
+                      onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  {formData.confirm_password && formData.confirm_password !== formData.password && (
+                    <p data-testid="confirm-mismatch" className="mt-1 text-[11px] text-rose-400">Passwords do not match.</p>
+                  )}
                 </div>
 
                 {/* Terms checkbox */}
@@ -400,9 +443,13 @@ export const SignupPage: React.FC = () => {
                   Verify your email
                 </h2>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  We've sent a 6-digit confirmation code to{' '}
+                  If this address can be registered, we’ve sent a 6-digit confirmation code to{' '}
                   <span className="font-medium text-emerald-400 underline">{formData.email}</span>.
                   Please enter it below to activate your account.
+                </p>
+                <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                  No code after a minute? Check spam. If this email may already have an account, try{' '}
+                  <Link href="/login" className="text-emerald-400 hover:underline">signing in</Link> or resetting your password.
                 </p>
               </div>
 

@@ -16,10 +16,11 @@ export interface RealtimeEvent {
 @Injectable()
 export class OmnichannelRealtimeService {
   private readonly logger = new Logger(OmnichannelRealtimeService.name);
-  private clients: Set<Response> = new Set();
+  // Each SSE client is bound to ONE tenant (taken from its JWT). "all" is Super Admin only.
+  private clients: Map<Response, string> = new Map();
 
-  registerClient(res: Response) {
-    this.clients.add(res);
+  registerClient(res: Response, tenantId: string) {
+    this.clients.set(res, tenantId);
     this.logger.log(`[SSE] Client connected. Total active SSE clients: ${this.clients.size}`);
 
     // Send initial handshake ping
@@ -31,7 +32,17 @@ export class OmnichannelRealtimeService {
     });
   }
 
-  broadcast(event: RealtimeEvent["event"], data: any) {
+  broadcast(event: RealtimeEvent["event"], data: any, tenantId?: string) {
+    // Resolve which tenant owns this event. If it cannot be determined the event is only
+    // delivered to Super Admin "all" listeners (fail closed) - never to other tenants.
+    const owner: string | undefined =
+      tenantId ??
+      data?.tenant_id ??
+      data?.communication?.tenant_id ??
+      data?.event?.tenant_id ??
+      data?.message?.tenant_id ??
+      data?.call?.tenant_id;
+
     const payload: RealtimeEvent = {
       event,
       data,
@@ -40,7 +51,8 @@ export class OmnichannelRealtimeService {
 
     const sseMessage = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
 
-    for (const client of this.clients) {
+    for (const [client, clientTenant] of this.clients) {
+      if (clientTenant !== "all" && clientTenant !== owner) continue;
       try {
         client.write(sseMessage);
       } catch (err: any) {

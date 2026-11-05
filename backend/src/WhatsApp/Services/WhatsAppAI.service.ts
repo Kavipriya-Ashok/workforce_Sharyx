@@ -4,6 +4,8 @@ import { WhatsAppConversation } from "@Database/Table/WhatsApp/WhatsAppConversat
 import { WhatsAppAIConfigModel } from "../Models/WhatsAppAIConfig.model";
 import { PromptEngineService } from "./PromptEngine.service";
 import { AgentOrchestratorService } from "../../AgentOrchestrator/Services/AgentOrchestrator.service";
+import { company } from "@Database/Table/Admin/company";
+import { DEFAULT_STOP_WORDS, LEGACY_DEFAULT_WELCOME, START_WORDS, matchesKeyword, renderMessage } from "@Helper/MessageTemplate";
 
 export interface WhatsAppAiReply {
   reply: string | null;
@@ -19,7 +21,7 @@ export class WhatsAppAIService {
     private readonly orchestrator: AgentOrchestratorService
   ) {}
 
-  async getConfig(tenantId: string = "default"): Promise<WhatsAppAIConfig | null> {
+  async getConfig(tenantId: string): Promise<WhatsAppAIConfig | null> {
     let config = await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId, status: true } });
     if (!config) {
       config = await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId } });
@@ -31,11 +33,13 @@ export class WhatsAppAIService {
       config.ai_mode = "hybrid";
       config.llm_provider = "gemini";
       config.llm_model = "gemini-2.5-flash";
-      config.api_key = process.env.GEMINI_API_KEY || null;
+      config.api_key = null; // platform key is read from env at call time; never copied into a tenant row
       config.system_prompt =
         "You are Sharyx AI, an intelligent workforce copilot. Be warm, professional, helpful, and concise (1-3 sentences). Respond naturally in the customer language (Tamil, English, or Tanglish).";
-      config.welcome_message = "Hello! How can I help you today?";
-      config.fallback_message = "Thank you for reaching out! A representative will connect with you shortly.";
+      // No canned texts: the first message and the fallback are written by the tenant on the Brain page.
+      // (Nothing is sent from an empty box.)
+      config.welcome_message = null;
+      config.fallback_message = null;
       config.created_by_id = "system";
       config.created_on = new Date();
       config.status = true;
@@ -44,11 +48,11 @@ export class WhatsAppAIService {
     return config;
   }
 
-  async saveConfig(data: WhatsAppAIConfigModel, userId?: string): Promise<WhatsAppAIConfig> {
-    let config = await WhatsAppAIConfig.findOne({ where: { tenant_id: data.tenant_id || "default" } });
+  async saveConfig(data: WhatsAppAIConfigModel, userId: string | undefined, tenantId: string): Promise<WhatsAppAIConfig> {
+    let config = await WhatsAppAIConfig.findOne({ where: { tenant_id: tenantId } });
     if (!config) {
       config = new WhatsAppAIConfig();
-      config.tenant_id = data.tenant_id || "default";
+      config.tenant_id = tenantId;
       config.status = true;
       config.created_by_id = userId || "system";
       config.created_on = new Date();
@@ -67,7 +71,7 @@ export class WhatsAppAIService {
     config.auto_followup_enabled = data.auto_followup_enabled ?? true;
     config.followup_delay_minutes = data.followup_delay_minutes || 60;
     config.followup_message = data.followup_message || null;
-    config.stop_words = data.stop_words || ["STOP", "UNSUBSCRIBE"];
+    config.stop_words = (data.stop_words && data.stop_words.length ? data.stop_words : DEFAULT_STOP_WORDS).map((w) => String(w).trim()).filter(Boolean);
     config.updated_by_id = userId || "system";
     config.updated_on = new Date();
     return await config.save();
@@ -85,10 +89,9 @@ export class WhatsAppAIService {
       return null;
     }
 
-    // Check stop words
-    const upperMsg = customerMessage.trim().toUpperCase();
-    if (config.stop_words && config.stop_words.some((w) => upperMsg.includes(w.toUpperCase()))) {
-      return "You have successfully unsubscribed. Reply START anytime to re-enable messages.";
+    // Opt-out is handled (exact words, recorded per conversation) by the webhook before we get here; never "contains".
+    if (matchesKeyword(customerMessage, config.stop_words?.length ? config.stop_words : DEFAULT_STOP_WORDS)) {
+      return null;
     }
 
     // 1. Check if human takeover is active for this conversation (Human in the loop)
@@ -128,10 +131,37 @@ export class WhatsAppAIService {
       this.logger.error("Base LLM Engine error:", err.message);
     }
 
-    return (
-      config.fallback_message ||
-      config.welcome_message ||
-      "Thank you for contacting Sharyx! A team member will assist you shortly."
-    );
+    // The AI could not answer: use ONLY the fallback text this tenant wrote. No tenant -> no canned text, no brand of ours.
+    return config.fallback_message || null;
+  }
+
+  // ------------------------------------------------------------------ first message / follow-up / opt-out (all tenant-written)
+
+  /** The tenant's own first message, ready to send, or "" when none was written (or it is just the old auto-default). */
+  renderFirstMessage(config: WhatsAppAIConfig | null, vars: { name?: string | null; company?: string | null }): string {
+    const raw = (config?.welcome_message || '').trim();
+    if (!raw || raw === LEGACY_DEFAULT_WELCOME) return '';
+    return renderMessage(raw, vars);
+  }
+
+  renderFollowup(config: WhatsAppAIConfig | null, vars: { name?: string | null; company?: string | null }): string {
+    return renderMessage(config?.followup_message, vars);
+  }
+
+  isStopWord(config: WhatsAppAIConfig | null, text: string): boolean {
+    return matchesKeyword(text, config?.stop_words?.length ? config.stop_words : DEFAULT_STOP_WORDS);
+  }
+
+  isStartWord(text: string): boolean {
+    return matchesKeyword(text, START_WORDS);
+  }
+
+  /** Company name of THIS tenant, for the {company} variable. */
+  async companyName(tenantId: string): Promise<string> {
+    try {
+      return (await company.findOne({ where: { id: tenantId } }))?.name || '';
+    } catch {
+      return '';
+    }
   }
 }
