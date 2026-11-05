@@ -1,3 +1,4 @@
+import { openAiChatUrl } from "@Helper/LlmEndpoints";
 import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 
@@ -28,7 +29,7 @@ export class OmnichannelSummarizerService {
       try {
         if (process.env.OPENAI_API_KEY) {
           const resp = await axios.post(
-            "https://api.openai.com/v1/chat/completions",
+            openAiChatUrl(),
             {
               model: "gpt-4o-mini",
               messages: [

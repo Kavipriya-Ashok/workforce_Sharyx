@@ -1793,7 +1793,7 @@ export class OmnichannelService {
 
     // 1. Client: Ram Kumar
     let ram = await this.leadRepo.findOne({
-      where: { phone: "+919840123456" },
+      where: { phone: "+919840123456", tenant_id: tenantId },
     });
 
     if (!ram) {
@@ -1918,7 +1918,7 @@ export class OmnichannelService {
 
     // 2. Client: Priya Sharma (WhatsApp lead)
     let priya = await this.leadRepo.findOne({
-      where: { phone: "+919876543210" },
+      where: { phone: "+919876543210", tenant_id: tenantId },
     });
     if (!priya) {
       priya = await this.leadRepo.save(
@@ -1949,7 +1949,7 @@ export class OmnichannelService {
 
     // 3. Client: Sarah Jenkins (Email lead)
     let sarah = await this.leadRepo.findOne({
-      where: { email: "sarah@cloudcorp.io" },
+      where: { email: "sarah@cloudcorp.io", tenant_id: tenantId },
     });
     if (!sarah) {
       sarah = await this.leadRepo.save(

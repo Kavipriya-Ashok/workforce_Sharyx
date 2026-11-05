@@ -11,6 +11,10 @@
 **Backend Controllers & Services:** `WhatsApp.controller.ts`, `WhatsAppWebhook.controller.ts`, `WhatsAppAI.controller.ts`, `WhatsAppTemplate.controller.ts`, `WhatsAppCampaign.controller.ts`, `VoiceWebhook.controller.ts`, `OutcomeTrigger.service.ts`, `PromptEngine.service.ts`, `AgentOrchestrator.service.ts`  
 **Database Tables:** `whatsapp_config`, `wa_ai_config`, `wa_template`, `wa_campaign`, `wa_message`, `wa_conversation`, `lead`, `email_delivery_log`, `voice_call_log`  
 
+> ## 🛠 STATUS UPDATE 2026-11-05 — Module 3 remediation: **Phase 0 done** (see **Section 14**)
+> Phase 0 (two-tenant baseline) found **8 real cross-tenant leaks**, all fixed and re-tested (14/14 × 3 runs). Phases 1–8 are **not started** — waiting for your "continue".
+> Everything below this banner is the **original audit, unchanged, for history**.
+
 ---
 
 ## 1. Five-Line Plain English Summary
@@ -301,3 +305,101 @@ Please fix all Critical, High, and Medium bugs identified in Module 3 (WhatsApp 
 5. Enforce Meta's 24-hour customer service window in WhatsApp.service.ts, blocking free-text messages when last_message_at exceeds 24 hours and requiring an approved Meta template.
 ```
 
+---
+
+## 14. Remediation log
+
+### 14.1 Phase 0 — two-tenant baseline (DONE)
+
+**Scenario (real code, real database copy, local fakes for Meta / LLM / SMTP):** the *same* customer phone `+91 98765 43210` and the *same* e-mail `customer@example.test` exist as a lead in **Tenant A** ("Alpha Recruiters", a job candidate who says she is a Java developer with 5 years' experience) and **Tenant B** ("Beta Software", asks for a product demo and **books** it). A also saved its own prompt. The harness then proves what is — and is not — visible across the tenants: leads, conversations, `meeting_info`, prompt, company name, stored agent memory, **every request the LLM received**, the WhatsApp credentials used for each send, and the e-mails.
+
+Reproduce: `cd backend && node -r ts-node/register/transpile-only -r tsconfig-paths/register test/module3/phase0-two-tenant.cjs out.json` (server on :8001 with `WHATSAPP_GRAPH_URL` / `LLM_OPENAI_BASE_URL` / `LLM_GEMINI_BASE_URL` pointing at `test/module3/mocks.cjs`; scratch DB only).
+
+| ID | Check | Before (3 runs, original code) | After (3 runs, fixed code) |
+| :-- | :-- | :-: | :-: |
+| P0-01 | Same phone => one lead PER tenant; A is untouched by B's booking | ✅ ×3 | ✅ ×3 |
+| P0-02 | One conversation per tenant; meeting_info only in B | ✅ ×3 | ✅ ×3 |
+| P0-03 | Messages stay with their own tenant (no mismatched conversation, no crossed text) | ✅ ×3 | ✅ ×3 |
+| P0-04 | Each tenant's replies are sent with its OWN phone_number_id and token | ✅ ×3 | ✅ ×3 |
+| P0-05 | What the LLM saw for B contains nothing of A (prompt, company, facts, mailbox) | ❌ / ✅ / ✅ | ✅ ×3 |
+| P0-06 | What the LLM saw for A contains nothing of B (company, booking, link, mailbox) | ✅ ×3 | ✅ ×3 |
+| P0-07 | Each tenant's LLM input uses its OWN prompt and company name | ✅ ×3 | ✅ ×3 |
+| P0-08 | Prompt saved in A is not returned to B (API) and sits in A's row only (DB) | ✅ ×3 | ✅ ×3 |
+| P0-09 | No e-mail carries the other tenant's content and each is sent from its own mailbox | ✅ ×3 | ✅ ×3 |
+| P0-10 | Stored agent memory is per tenant: A has no booking, B has no A facts | ✅ ×3 | ✅ ×3 |
+| P0-11 | An e-mail to B from an address that is only a lead in A does NOT attach to A's lead | ❌ ×3 | ✅ ×3 |
+| P0-12 | The agent's "find lead by e-mail" in B never returns A's lead | ❌ ×3 | ✅ ×3 |
+| P0-13 | No lead / conversation / message / agent-state lookup by phone or e-mail without tenant_id; no phone-only dedupe or queue key | ❌ ×3 | ✅ ×3 |
+| P0-14 | Per-contact memory table | ✅ ×3 | ✅ ×3 |
+
+**Reading the "before" column.** `P0-05` failed in one run and passed in two — that is **not** noise: in the failing run the voice-call script request existed and carried Tenant A's chat into Tenant B's LLM input; in the other two runs B's call was **suppressed by the phone-only call-dedupe key** (bug 5 below), so the leaking request was never made. After the fix the call is made in all 3 runs and nothing of A is in B's input. Without that diagnosis a green "before" would have hidden a real leak.
+
+### 14.2 Leaks found in Phase 0 — all **Fixed**
+
+| # | Where | What went wrong | Impact |
+| :-- | :-- | :-- | :-- |
+| 1 | `VoiceCall.service.ts` ~281 | The "Recent WhatsApp" history given to the **voice-call agent's LLM** was loaded by phone number across **all tenants** | **A's private WhatsApp chat was put in B's voice-agent prompt** (and could be spoken to the customer) — proven by the recorded LLM request |
+| 2 | `VoiceCall.service.ts` ~300 | The e-mail history for the same prompt (`EmailLog`) matched by e-mail address only | A's e-mails to that address reached B's voice agent |
+| 3 | `VoiceCall.service.ts` ~190–215, ~594–600, ~1024–1030 | Agent state, leads and the "resolve or **create** CRM lead" step matched by phone/id with no tenant | A call for B could attach to **A's lead** and write the outcome into it |
+| 4 | `VoiceCall.service.ts` ~49 | Call-dispatch dedupe key was the **phone number only** (90 s) | A call to a number in one tenant **silently suppressed** another tenant's call to the same number, and made leak #1 intermittent |
+| 5 | `EmailImap.service.ts` ~291, ~297 | Inbound e-mail looked up the lead by e-mail/phone across all tenants | **B's inbound e-mail was attached to A's lead** (P0-11 reproduced it) |
+| 6 | `EmailImap.service.ts` ~242 | Phone resolution read `ConversationAgentState` by e-mail across tenants | Another tenant's **customer phone number** could be returned |
+| 7 | `AgentTools.service.ts` 126 | "Find lead by e-mail" had no tenant (P0-12 reproduced it) | Agent tools could read and **write A's lead** while serving B |
+| 8 | `WhatsAppWebhook.service.ts` ~143 · `Omnichannel.service.ts` ~1796/1921/1952 | Per-number processing queue keyed by phone only (cross-tenant lock and timing channel); demo-seed lookups with no tenant | Tenants waiting on each other; seed could adopt another tenant's lead |
+
+**Guard against regression:** `P0-13` scans the whole backend source on every run and fails on any lead / conversation / message / e-mail-log / agent-state lookup by phone or e-mail without `tenant_id`, and on any phone-only dedupe/queue key. Before: **17 unscoped lookups + 5 phone-only keys**; after: **0 + 0**.
+
+**Not leaks (checked):** prompts (A's prompt never returned to B, API and DB), company names (each LLM input uses its own), WhatsApp credentials (each send used its own phone_number_id + token), conversations and messages (one set per tenant), `meeting_info` (only in B), e-mails (none crossed), and the in-memory `bizCache` (keyed by tenant). `contact_memory` does not exist yet — it is created in Phase 1; the only stored memory today is `conversation_agent_state` (clean, P0-10).
+
+### 14.3 Other problems seen during Phase 0 (logged for the phase that owns them — **Open**)
+
+| Seen | Owner phase |
+| :-- | :-- |
+| When the LLM answers in JSON, the customer receives the **raw JSON text** (`{"reply":"…","handoff":null,…}`) — no guard | Phase 2 |
+| B's booking uses the **hard-coded slot default** and a **fake Google Meet link**; the voice agent is auto-created with a hard-coded "Sharyx AI" persona and script | Phase 2 |
+| No confirmation e-mail is sent when the lead has no e-mail; nothing asks the customer for it | Phase 6 |
+| Replies after tool calls are fixed English strings, not LLM-written | Phase 2 |
+| Delayed background LLM calls (summaries) arrive after the reply; any future per-tenant proof must tag by tenant, not by time | Phase 3 |
+
+### 14.4 What was NOT done / not tested in Phase 0
+
+- **Browser check, UX score:** no page changed in Phase 0 → not applicable (first UI changes come in Phase 3).
+- **REC-001…040 / SAL-001…024 cases (3 runs each, real LLM):** **Not tested** — the AERIX test document was not pasted yet and no real LLM key was provided. Every quality result stays "Not tested" until both exist.
+- **Migrations:** none in Phase 0 (so no SQL / rollback to give yet; Phase 1 will give each migration with its rollback, and the code will work before the migration is applied).
+
+### 14.5 How the inbound WhatsApp message flows today (as read from the code and confirmed by the recorded run)
+
+```
+Meta  ->  POST /api/v1/WhatsApp/Webhook
+   1. signature check (X-Hub-Signature-256; log mode unless WA_SIGNATURE_MODE=enforce)
+   2. tenant = whatsapp_config WHERE phone_number_id = metadata.phone_number_id     <- the ONLY place the tenant is decided
+   3. duplicate guard (Meta message id)  ->  per-(tenant + phone) queue [fixed: was phone only]
+   4. lead      = find/create (tenant, phone)           conversation = find/create (tenant, phone)
+   5. STOP / opt-out words, human-takeover check, ai_mode check  (ai_mode "manual" is saved but NOT read yet - Phase 4)
+   6. PromptEngine.buildAutoContext(tenant, phone)  =  this tenant's company + knowledge + lead + last 8 messages + omnichannel logs
+   7. LLM call (this tenant's prompt + key)  ->  plain text   OR   {"action":"execute_tool","toolName":"book_appointment",...}
+   8. tool?  book_appointment -> meeting link, writes conversation.meeting_info + lead slot/link,
+             emits  agent.outcome (-> OutcomeTrigger: WhatsApp template/text + confirmation e-mail from THIS tenant's mailbox)
+             and    voice.call.requested (-> this tenant's voice agent calls the customer; its LLM prompt includes chat + e-mail history [leak #1/#2 were here])
+   9. send reply with THIS tenant's token + phone_number_id  ->  save wa_message (tenant_id)
+```
+**Where the "first message" and the "follow-up message" are today:** the first message is `wa_ai_config.welcome_message`, the follow-up is `followup_message` / `followup_delay_minutes` / `auto_followup_enabled`. They are editable in the Brain page, but **no scheduler reads the follow-up settings** (dead setting, Bug 10 of the original audit) and the welcome text is not variable-aware. Making both fully tenant-written, previewable and actually sent is **Phase 4, item 3** (the half-built UI from an interrupted attempt was set aside, not shipped — see 14.6).
+
+### 14.6 Process notes
+
+- Branch `module3-whatsapp-phase0`. Commit 1 is a **snapshot** of the whole working tree as it was (your pending work + Modules 1 and 2), so each phase commit contains only that phase's changes. A real-format Google client secret that was sitting in an old audit report (`auth-tenant-onboarding-audit.md`) was redacted before that commit — it is still on your rotate list. `backend/.env` (edited by you) and build output were excluded from every commit.
+- An earlier, interrupted attempt of mine left behind a half-built "first message / follow-up" editor in the Brain page, a stray test frontend and background processes. The UI previewed `{name}`/`{company}` substitution that the backend does not implement, so it would have sent a literal "{name}" to customers. I **stopped the stray processes, restored the Brain page to its committed state and kept the unfinished files** for Phase 4 (outside the repo, in my scratch folder).
+- All LLM calls now go through one helper (`Helper/LlmEndpoints.ts`); production behaviour is unchanged unless `LLM_OPENAI_BASE_URL` / `LLM_GEMINI_BASE_URL` are set, which only tests do. This is what makes "show the exact request the model received" possible in later phases.
+- The remote database was **not written to**. The only remote access was a read-only `pg_dump` (`backups/assistant_sharyx_2026-11-05_pre-module3.sql`, git-ignored). Earlier today, at your request, the Module 1 migration (`auth_otp`, `token_version`) **was** applied to the remote database.
+- The scratch Postgres and all test data are removed at the end of this phase.
+
+### 14.7 Status per original Module 3 requirement after Phase 0
+
+| Req | Status |
+| :-- | :-- |
+| Q1 strict multi-tenant isolation | **Improved — 8 leaks fixed and guarded by a regression scan.** `wa_message.campaign_id` and per-tenant opt-outs/outcomes remain for Phases 1 and 5 |
+| Q2 – Q7 | **Open** (Phases 2, 4, 5, 6, 7) |
+
+### 14.8 Proposed next step — Phase 1 (waiting for your "continue")
+
+Database and contact identity: `wa_message` (+`campaign_id`, `outcome`, `channel`), `wa_conversation` (+`detected_intent`, `intent_confidence`, `topic`), `contact_memory`, `wa_opt_outs`, `wa_outcome_mapping`, `email_event_template`, an extended `email_delivery_log`, health columns on `whatsapp_config` if Module 2's status table is not enough, and one E.164 helper used everywhere. Each migration will come with its rollback, will be tested on a fresh restore, and the new code will keep working before it is applied.

@@ -1,3 +1,4 @@
+import { openAiChatUrl, geminiGenerateUrl } from "@Helper/LlmEndpoints";
 import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 
@@ -58,7 +59,7 @@ export class AgentLlmService {
       if (provider === "openai") {
         const model = cfg.model && !cfg.model.startsWith("gemini") ? cfg.model : "gpt-4o-mini";
         const res = await axios.post(
-          "https://api.openai.com/v1/chat/completions",
+          openAiChatUrl(),
           {
             model,
             temperature,
@@ -96,7 +97,7 @@ export class AgentLlmService {
       for (const m of [model, "gemini-flash-latest"]) {
         try {
           const res = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
+            geminiGenerateUrl(m, geminiKey),
             body,
             { timeout: 20000 }
           );

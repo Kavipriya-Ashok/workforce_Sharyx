@@ -1,3 +1,4 @@
+import { openAiChatUrl, geminiGenerateUrl } from "@Helper/LlmEndpoints";
 import { Injectable, Logger } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import axios from "axios";
@@ -404,7 +405,7 @@ export class PromptEngineService {
         for (const m of candidateModels) {
           try {
             response = await axios.post(
-              `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
+              geminiGenerateUrl(m, geminiKey),
               {
                 systemInstruction: {
                   parts: [{ text: systemPrompt }],
@@ -453,7 +454,7 @@ export class PromptEngineService {
         ];
 
         const response = await axios.post(
-          "https://api.openai.com/v1/chat/completions",
+          openAiChatUrl(),
           {
             model,
             messages,
@@ -485,11 +486,9 @@ export class PromptEngineService {
 
     // ── C. Fallback when keys not configured or offline ─────────────────────
     return {
-      // Use the tenant's OWN configured fallback/welcome text; never another brand's canned message.
-      replyText:
-        aiConfig?.fallback_message ||
-        aiConfig?.welcome_message ||
-        "Thank you for your message. Our team has received it and will get back to you shortly.",
+      // ONLY the fallback this tenant wrote on the Brain page. The first message is NOT a fallback, and there is no
+      // canned English text of ours: empty means the caller stays quiet and a human sees the chat.
+      replyText: aiConfig?.fallback_message || "",
     };
   }
 

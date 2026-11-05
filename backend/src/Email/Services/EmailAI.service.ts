@@ -1,3 +1,4 @@
+import { openAiChatUrl, geminiGenerateUrl } from "@Helper/LlmEndpoints";
 import { Injectable, Logger } from "@nestjs/common";
 import axios from "axios";
 import { EmailAIConfig } from "@Database/Table/Email/EmailAIConfig.entity";
@@ -149,7 +150,7 @@ GENERAL MEMORY & FORMATTING:
     if (openAiKey) {
       try {
         const response = await axios.post(
-          "https://api.openai.com/v1/chat/completions",
+          openAiChatUrl(),
           {
             model: config?.llm_model || "gpt-4o-mini",
             messages: [
@@ -183,7 +184,7 @@ GENERAL MEMORY & FORMATTING:
       for (const model of uniqueModels) {
         try {
           const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            geminiGenerateUrl(model, geminiKey),
             {
               systemInstruction: { parts: [{ text: systemPrompt }] },
               contents: [{ parts: [{ text: userPromptContent }] }],
@@ -275,7 +276,7 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
       for (const model of modelsToTry) {
         try {
           const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            geminiGenerateUrl(model, geminiKey),
             {
               contents: [{ parts: [{ text: promptText }] }],
             },
@@ -305,7 +306,7 @@ STRICT INSTRUCTION: Output ONLY a valid JSON object without markdown or code fen
     if (openAiKey) {
       try {
         const response = await axios.post(
-          "https://api.openai.com/v1/chat/completions",
+          openAiChatUrl(),
           {
             model: "gpt-4o-mini",
             messages: [{ role: "user", content: promptText }],

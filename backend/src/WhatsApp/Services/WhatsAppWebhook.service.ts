@@ -141,7 +141,8 @@ export class WhatsAppWebhookService {
       }
 
       // 2. Per-Candidate Sequential Lock / Queue so two messages from the same number are processed in strict order
-      const cleanPhoneKey = (senderPhone || "unknown").replace(/\D/g, "").slice(-10) || senderPhone;
+      // the queue key carries the tenant: the same number in two tenants must never share a lock
+      const cleanPhoneKey = `${tenantId}:${(senderPhone || "unknown").replace(/\D/g, "").slice(-10) || senderPhone}`;
       const previousTask = WhatsAppWebhookService.phoneQueues.get(cleanPhoneKey) || Promise.resolve();
 
       const nextTask = previousTask

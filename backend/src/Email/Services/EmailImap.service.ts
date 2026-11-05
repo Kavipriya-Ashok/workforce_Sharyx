@@ -241,8 +241,8 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     try {
       const state = await ConversationAgentState.findOne({
         where: [
-          { conversation_ref: fromEmail.toLowerCase() },
-          { customer_email: fromEmail.toLowerCase() },
+          { conversation_ref: fromEmail.toLowerCase(), tenant_id: tenantId },
+          { customer_email: fromEmail.toLowerCase(), tenant_id: tenantId },
         ],
         order: { updated_on: "DESC" },
       });
@@ -289,13 +289,13 @@ export class EmailImapService implements OnModuleInit, OnModuleDestroy {
     try {
       // 1. Try finding by email
       existingLead = await lead.findOne({
-        where: { email: fromEmail, status: true },
+        where: { email: fromEmail, status: true, tenant_id: tenantId },
       });
 
       // 2. If not found by email and we extracted a phone number, try by phone
       if (!existingLead && extractedPhone) {
         existingLead = await lead.findOne({
-          where: { phone: extractedPhone, status: true },
+          where: { phone: extractedPhone, status: true, tenant_id: tenantId },
         });
       }
 

@@ -123,7 +123,7 @@ export class AgentToolsService {
       }
     }
     if (state.customer_email) {
-      const l = await lead.findOne({ where: { email: state.customer_email } });
+      const l = await lead.findOne({ where: { email: state.customer_email, tenant_id: state.tenant_id } });
       if (l) {
         state.lead_id = l.id;
         return l;

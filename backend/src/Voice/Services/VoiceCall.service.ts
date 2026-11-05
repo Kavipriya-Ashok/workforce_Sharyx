@@ -46,7 +46,8 @@ export class VoiceCallService {
     // Deduplication & Debounce: Prevent double-calling the same customer within 90 seconds
     const cleanPhone = (event.phone || "").replace(/\D/g, "").slice(-10);
     const now = Date.now();
-    const lastDispatched = this.recentCallDispatches.get(cleanPhone);
+    const dispatchKey = `${tenantId}:${cleanPhone}`;
+    const lastDispatched = this.recentCallDispatches.get(dispatchKey);
     if (lastDispatched && now - lastDispatched < 90000) {
       this.logger.warn(
         `⏳ [DUPLICATE CALL SUPPRESSED] Call to ${event.phone} already dispatched ${Math.round(
@@ -55,7 +56,7 @@ export class VoiceCallService {
       );
       return;
     }
-    this.recentCallDispatches.set(cleanPhone, now);
+    this.recentCallDispatches.set(dispatchKey, now);
 
     this.logger.log(
       `📞 [EVENT TRIGGERED CALL] Call to ${event.phone} (Tenant: ${tenantId}, Type: ${event.scheduledType || "auto"}, Target: ${event.agentKey || "sales"})`
@@ -194,7 +195,7 @@ export class VoiceCallService {
     try {
       if (cleanPhone) {
         const stateRec = await ConversationAgentState.findOne({
-          where: [{ customer_phone: Like(`%${cleanPhone}%`) }],
+          where: [{ customer_phone: Like(`%${cleanPhone}%`), tenant_id: tenantId }],
           order: { updated_on: "DESC" },
         });
         if (stateRec) {
@@ -204,11 +205,11 @@ export class VoiceCallService {
         }
 
         if (event.leadId) {
-          matchedLead = await lead.findOne({ where: { id: event.leadId } });
+          matchedLead = await lead.findOne({ where: { id: event.leadId, tenant_id: tenantId } });
         }
         if (!matchedLead) {
           matchedLead = await lead.findOne({
-            where: [{ phone: Like(`%${cleanPhone}%`) }],
+            where: [{ phone: Like(`%${cleanPhone}%`), tenant_id: tenantId }],
             order: { created_on: "DESC" },
           });
         }
@@ -278,8 +279,8 @@ export class VoiceCallService {
       if (cleanPhone) {
         const recentMsgs = await WhatsAppMessage.find({
           where: [
-            { sender_phone: Like(`%${cleanPhone}%`) },
-            { recipient_phone: Like(`%${cleanPhone}%`) },
+            { sender_phone: Like(`%${cleanPhone}%`), tenant_id: tenantId },
+            { recipient_phone: Like(`%${cleanPhone}%`), tenant_id: tenantId },
           ],
           order: { created_on: "DESC" },
           take: 8,
@@ -293,8 +294,8 @@ export class VoiceCallService {
       }
       if (customerEmail || matchedLead?.id) {
         const emailWhere: any[] = [];
-        if (customerEmail) emailWhere.push({ from_email: customerEmail }, { to_email: customerEmail });
-        if (matchedLead?.id) emailWhere.push({ lead_id: matchedLead.id });
+        if (customerEmail) emailWhere.push({ from_email: customerEmail, tenant_id: tenantId }, { to_email: customerEmail, tenant_id: tenantId });
+        if (matchedLead?.id) emailWhere.push({ lead_id: matchedLead.id, tenant_id: tenantId });
         const recentEmails = await EmailLog.find({
           where: emailWhere,
           order: { created_on: "DESC" },
@@ -591,11 +592,11 @@ Recent Email:
     });
 
     // Resolve or create CRM Lead
-    let leadRec = dto.lead_id ? await lead.findOne({ where: { id: dto.lead_id } }) : null;
+    let leadRec = dto.lead_id ? await lead.findOne({ where: { id: dto.lead_id, tenant_id: tenantId } }) : null;
     const cleanPhoneForLead = (dto.phone_number || "").replace(/\D/g, "").slice(-10);
     if (!leadRec && cleanPhoneForLead.length >= 8) {
       leadRec = await lead.findOne({
-        where: { phone: Like(`%${cleanPhoneForLead}`) },
+        where: { phone: Like(`%${cleanPhoneForLead}`), tenant_id: tenantId },
         order: { created_on: "DESC" },
       });
       if (!leadRec) {
@@ -1021,11 +1022,11 @@ Recent Email:
     let matchedLead: lead | null = null;
     try {
       if (callLog.lead_id) {
-        matchedLead = await lead.findOne({ where: { id: callLog.lead_id } });
+        matchedLead = await lead.findOne({ where: { id: callLog.lead_id, tenant_id: callLog.tenant_id } });
       }
       if (!matchedLead && cleanPhone.length >= 8) {
         matchedLead = await lead.findOne({
-          where: { phone: Like(`%${cleanPhone}`) },
+          where: { phone: Like(`%${cleanPhone}`), tenant_id: callLog.tenant_id },
           order: { created_on: "DESC" },
         });
       }
