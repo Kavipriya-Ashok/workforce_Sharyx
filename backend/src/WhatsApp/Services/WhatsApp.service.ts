@@ -235,7 +235,7 @@ export class WhatsAppService {
     }
 
     let metaResponse: any = null;
-    let metaMessageId = `mock_${Date.now()}`;
+    let metaMessageId: string | undefined;
     let deliveryStatus = "sent";
 
     try {
@@ -247,7 +247,7 @@ export class WhatsAppService {
         timeout: 10000,
       });
       metaResponse = response.data;
-      metaMessageId = metaResponse?.messages?.[0]?.id || metaMessageId;
+      metaMessageId = metaResponse?.messages?.[0]?.id;
     } catch (error: any) {
       this.logger.error(`Meta Graph API error: ${redactSecrets(error?.response?.data || error.message)}`);
       deliveryStatus = "failed";
@@ -258,6 +258,16 @@ export class WhatsAppService {
         throw new BadRequestException("Meta Access Token has expired or is invalid (Error 190). Please reconnect WhatsApp with a new token.");
       }
       throw new BadRequestException(noted?.error_message || redactSecrets(metaErr?.message || error?.message || "Unknown Meta Graph error"));
+    }
+    // Meta must hand back a message id. Without one we cannot know the message was accepted, so it is a FAILURE
+    // (a made-up "mock_" id is allowed only when NODE_ENV=test).
+    if (!metaMessageId) {
+      if (process.env.NODE_ENV === "test") {
+        metaMessageId = `mock_${Date.now()}`;
+      } else {
+        this.logger.error(`Meta returned no message id for tenant ${config.tenant_id}; treating the send as failed`);
+        throw new BadRequestException("WhatsApp did not confirm the message (no message id returned by Meta). It was not recorded as sent.");
+      }
     }
     // A real send worked: (re)confirm Connected (cheap: only writes when it was Failed/Degraded/unknown).
     void noteSuccess(config.tenant_id, "whatsapp", config.phone_number);
